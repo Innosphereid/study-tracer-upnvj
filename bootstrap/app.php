@@ -4,8 +4,6 @@ use App\Http\Middleware\CheckUserRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Support\Facades\RateLimiter;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,19 +16,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => CheckUserRole::class,
         ]);
-        
-        // Configure rate limiting
-        RateLimiter::for('password-reset', function ($request) {
-            $email = (string) $request->email;
-            
-            return Limit::perMinute(5)->by($email.$request->ip());
-        });
-        
-        RateLimiter::for('verify-otp', function ($request) {
-            $email = (string) $request->email;
-            
-            return Limit::perMinute(5)->by($email.$request->ip());
-        });
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
