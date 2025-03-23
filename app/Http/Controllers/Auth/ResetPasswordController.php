@@ -28,7 +28,6 @@ class ResetPasswordController extends Controller
     public function __construct(PasswordResetServiceInterface $resetService)
     {
         $this->resetService = $resetService;
-        $this->middleware('guest');
     }
 
     /**
