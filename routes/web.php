@@ -60,6 +60,13 @@ Route::get('/reset-success', [App\Http\Controllers\Auth\ResetPasswordController:
     ->middleware('guest')
     ->name('password.success');
 
+// Security Report Routes
+Route::get('/security/report', [App\Http\Controllers\SecurityController::class, 'showReportForm'])
+    ->name('security.report');
+
+Route::post('/security/report', [App\Http\Controllers\SecurityController::class, 'submitReport'])
+    ->name('security.report.submit');
+
 // SuperAdmin Dashboard
 Route::get('/superadmin/dashboard', [SuperAdminDashboardController::class, 'index'])
     ->middleware(['auth', 'role:superadmin'])
