@@ -73,7 +73,7 @@ class PasswordResetService implements PasswordResetServiceInterface
         Mail::to($email)->send(new PasswordResetMail($user->name, $token));
 
         // Log activity
-        $this->activityLogger->log(
+        $this->activityLogger->logActivity(
             'password_reset_request',
             "Permintaan reset password untuk email {$email}",
             null, // No user_id since not authenticated
@@ -117,7 +117,7 @@ class PasswordResetService implements PasswordResetServiceInterface
         }
 
         // Log successful verification
-        $this->activityLogger->log(
+        $this->activityLogger->logActivity(
             'password_reset_otp_verified',
             "Verifikasi OTP untuk reset password berhasil",
             null, // No user_id since not authenticated
@@ -163,7 +163,7 @@ class PasswordResetService implements PasswordResetServiceInterface
         Mail::to($email)->send(new PasswordResetSuccessMail($user->name, now()));
 
         // Log activity
-        $this->activityLogger->log(
+        $this->activityLogger->logActivity(
             'password_reset_success',
             "Password berhasil diubah untuk user {$user->username}",
             $user->id,
@@ -204,7 +204,7 @@ class PasswordResetService implements PasswordResetServiceInterface
      */
     protected function logFailedResetRequest(string $email, string $reason): void
     {
-        $this->activityLogger->log(
+        $this->activityLogger->logActivity(
             'password_reset_request_failed',
             "Reset password gagal untuk email {$email}: {$reason}",
             null,
@@ -222,7 +222,7 @@ class PasswordResetService implements PasswordResetServiceInterface
      */
     protected function logFailedOtpVerification(string $email, string $reason): void
     {
-        $this->activityLogger->log(
+        $this->activityLogger->logActivity(
             'password_reset_otp_failed',
             "Percobaan verifikasi OTP gagal untuk email {$email}: {$reason}",
             null,
@@ -240,7 +240,7 @@ class PasswordResetService implements PasswordResetServiceInterface
      */
     protected function logFailedPasswordReset(string $email, string $reason): void
     {
-        $this->activityLogger->log(
+        $this->activityLogger->logActivity(
             'password_reset_failed',
             "Reset password gagal untuk email {$email}: {$reason}",
             null,
