@@ -87,6 +87,7 @@ class LoginRequest extends FormRequest
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
+        // Also using a generic message for rate limiting to avoid timing attacks
         throw ValidationException::withMessages([
             'username' => trans('auth.throttle', [
                 'seconds' => $seconds,
@@ -100,6 +101,8 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->input('username')).'|'.$this->ip());
+        // Using generic rate limiting key based on IP rather than username
+        // to avoid leaking information about valid usernames
+        return Str::transliterate($this->ip());
     }
 }
