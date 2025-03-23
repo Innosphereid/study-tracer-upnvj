@@ -9,6 +9,7 @@ use App\Http\Requests\Auth\SendResetLinkRequest;
 use App\Http\Requests\Auth\VerifyOtpRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class ResetPasswordController extends Controller
@@ -29,6 +30,7 @@ class ResetPasswordController extends Controller
     public function __construct(PasswordResetServiceInterface $resetService)
     {
         $this->resetService = $resetService;
+        // Middleware adalah tanggung jawab route di Laravel 12, tidak menggunakan $this->middleware() lagi
     }
 
     /**
@@ -100,9 +102,20 @@ class ResetPasswordController extends Controller
         $email = $request->email;
         $otp = $request->otp;
 
+        // Log the parameters for debugging
+        Log::info('Verifying OTP', [
+            'email' => $email,
+            'otp' => $otp
+        ]);
+
         $verified = $this->resetService->verifyOtp($email, $otp);
 
         if ($verified) {
+            Log::info('OTP verification successful, redirecting to reset form', [
+                'email' => $email,
+                'otp' => $otp
+            ]);
+            
             return redirect()->route('password.reset-form', [
                 'token' => $otp,
                 'email' => $email
@@ -111,6 +124,11 @@ class ResetPasswordController extends Controller
 
         // Hit rate limiter on failure
         $request->hitRateLimiter();
+
+        Log::warning('OTP verification failed', [
+            'email' => $email,
+            'otp' => $otp
+        ]);
 
         return back()
             ->withInput($request->only('email'))
@@ -121,14 +139,21 @@ class ResetPasswordController extends Controller
      * Display the password reset form.
      *
      * @param string $token
-     * @param string $email
+     * @param Request $request
      * @return View
      */
-    public function showResetForm(string $token, string $email): View
+    public function showResetForm(string $token, Request $request): View
     {
+        // Log the parameters for debugging
+        Log::info('Showing reset form', [
+            'token' => $token,
+            'email' => $request->query('email'),
+            'all_params' => $request->all()
+        ]);
+        
         return view('password.reset', [
             'token' => $token,
-            'email' => $email
+            'email' => $request->query('email')
         ]);
     }
 
@@ -144,12 +169,21 @@ class ResetPasswordController extends Controller
         $token = $request->token;
         $password = $request->password;
 
+        // Log the reset attempt
+        Log::info('Attempting to reset password', [
+            'email' => $email,
+            'token_provided' => !empty($token)
+        ]);
+
         $reset = $this->resetService->resetPassword($email, $token, $password);
 
         if ($reset) {
+            Log::info('Password reset successful', ['email' => $email]);
             return redirect()->route('password.success');
         }
 
+        Log::warning('Password reset failed', ['email' => $email]);
+        
         return back()
             ->withInput($request->only('email'))
             ->withErrors(['email' => 'Token reset password tidak valid atau telah kedaluwarsa.']);
