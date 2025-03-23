@@ -48,10 +48,10 @@ class PasswordResetMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
+            from: new \Illuminate\Mail\Mailables\Address(config('mail.from.address'), config('mail.from.name')),
             subject: 'Reset Password UPN Veteran Jakarta Tracer Study',
         );
     }
-
     /**
      * Get the message content definition.
      *

@@ -10,6 +10,7 @@ use App\Mail\PasswordResetSuccessMail;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
@@ -69,19 +70,39 @@ class PasswordResetService implements PasswordResetServiceInterface
         // Create token record
         $this->resetRepository->createToken($email, $token, $expiresAt);
 
-        // Send email with OTP
-        Mail::to($email)->send(new PasswordResetMail($user->name, $token));
+        // Send email with OTP - Force sendNow to bypass queue for testing
+        try {
+            // Log sebelum mencoba mengirim email
+            Log::info("Attempting to send password reset email", [
+                'email' => $email,
+                'mailer' => config('mail.default'),
+                'host' => config('mail.mailers.smtp.host'),
+                'port' => config('mail.mailers.smtp.port')
+            ]);
 
-        // Log activity
-        $this->activityLogger->logActivity(
-            'password_reset_request',
-            "Permintaan reset password untuk email {$email}",
-            null, // No user_id since not authenticated
-            request()->ip(),
-            request()->userAgent()
-        );
-
-        return true;
+            // Coba kirim email
+            Mail::to($email)->sendNow(new PasswordResetMail($user->name, $token));
+            
+            // Log sukses
+            Log::info("Password reset email sent successfully", ['email' => $email]);
+            
+            // Logging aktivitas sukses
+            $this->activityLogger->logActivity(...);
+            
+            return true;
+        } catch (\Exception $e) {
+            // Log error secara detail
+            Log::error("Failed to send password reset email: {$e->getMessage()}", [
+                'email' => $email,
+                'exception' => $e,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Aktivitas logger
+            $this->activityLogger->logActivity(...);
+            
+            return true; // Masih mengembalikan true untuk UX
+        }
     }
 
     /**
@@ -160,7 +181,34 @@ class PasswordResetService implements PasswordResetServiceInterface
         $tokenRecord->markAsUsed();
 
         // Send confirmation email
-        Mail::to($email)->send(new PasswordResetSuccessMail($user->name, now()));
+        try {
+            Mail::to($email)->sendNow(new PasswordResetSuccessMail($user->name, now()));
+            
+            // Log successful email sending
+            $this->activityLogger->logActivity(
+                'password_reset_success_email_sent',
+                "Email konfirmasi reset password berhasil dikirim ke {$email}",
+                $user->id,
+                request()->ip(),
+                request()->userAgent()
+            );
+        } catch (\Exception $e) {
+            // Log failed email sending
+            $this->activityLogger->logActivity(
+                'password_reset_success_email_failed',
+                "Gagal mengirim email konfirmasi reset password ke {$email}: " . $e->getMessage(),
+                $user->id,
+                request()->ip(),
+                request()->userAgent()
+            );
+            
+            Log::error("Failed to send password reset success email: " . $e->getMessage(), [
+                'email' => $email,
+                'exception' => $e
+            ]);
+            
+            // We'll continue the process even if email fails
+        }
 
         // Log activity
         $this->activityLogger->logActivity(
@@ -181,7 +229,7 @@ class PasswordResetService implements PasswordResetServiceInterface
      */
     public function generateOtp(): string
     {
-        return mt_rand(100000, 999999);
+        return sprintf("%06d", mt_rand(0, 999999));
     }
 
     /**
