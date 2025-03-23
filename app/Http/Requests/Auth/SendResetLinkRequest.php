@@ -50,11 +50,11 @@ class SendResetLinkRequest extends FormRequest
      */
     public function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        if (! RateLimiter::tooManyAttempts('password-reset:'.$this->input('email').'|'.$this->ip(), 5)) {
             return;
         }
 
-        $seconds = RateLimiter::availableIn($this->throttleKey());
+        $seconds = RateLimiter::availableIn('password-reset:'.$this->input('email').'|'.$this->ip());
 
         throw ValidationException::withMessages([
             'email' => trans('auth.throttle', [
@@ -71,7 +71,7 @@ class SendResetLinkRequest extends FormRequest
      */
     public function hitRateLimiter(): void
     {
-        RateLimiter::hit($this->throttleKey(), 60);
+        RateLimiter::hit('password-reset:'.$this->input('email').'|'.$this->ip());
     }
 
     /**
