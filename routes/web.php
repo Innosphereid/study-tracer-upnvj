@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\SuperAdmin\DashboardController as SuperAdminDashboardController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -25,6 +26,51 @@ Route::get('/', function () {
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// Password Reset Routes
+Route::get('/forgot-password', function () {
+    return view('password.request');
+})->middleware('guest')->name('password.request');
+
+Route::post('/forgot-password', function (Request $request) {
+    // Implementasi akan dibuat pada backend
+    // Untuk sementara, redirect ke halaman verifikasi OTP
+    return redirect()->route('password.verify-otp-form', ['email' => $request->email]);
+})->middleware('guest')->name('password.email');
+
+Route::get('/verify-otp', function (Request $request) {
+    return view('password.verify-otp', ['email' => $request->email]);
+})->middleware('guest')->name('password.verify-otp-form');
+
+Route::post('/verify-otp', function (Request $request) {
+    // Implementasi akan dibuat pada backend
+    // Untuk sementara, redirect ke halaman reset password
+    return redirect()->route('password.reset-form', [
+        'token' => 'dummy-token',
+        'email' => $request->email
+    ]);
+})->middleware('guest')->name('password.verify-otp');
+
+Route::post('/resend-otp', function (Request $request) {
+    // Implementasi akan dibuat pada backend
+    return back()->with('status', 'Verification code has been resent to your email.');
+})->middleware('guest')->name('password.resend-otp');
+
+Route::get('/reset-password/{token}', function (Request $request, $token) {
+    return view('password.reset', [
+        'token' => $token,
+        'email' => $request->email
+    ]);
+})->middleware('guest')->name('password.reset-form');
+
+Route::post('/reset-password', function (Request $request) {
+    // Implementasi akan dibuat pada backend
+    return redirect()->route('password.success');
+})->middleware('guest')->name('password.update');
+
+Route::get('/reset-success', function () {
+    return view('password.success');
+})->middleware('guest')->name('password.success');
 
 // SuperAdmin Dashboard
 Route::get('/superadmin/dashboard', [SuperAdminDashboardController::class, 'index'])
