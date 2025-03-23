@@ -65,11 +65,11 @@ class VerifyOtpRequest extends FormRequest
      */
     public function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        if (! RateLimiter::tooManyAttempts('verify-otp:'.$this->input('email').'|'.$this->ip(), 5)) {
             return;
         }
 
-        $seconds = RateLimiter::availableIn($this->throttleKey());
+        $seconds = RateLimiter::availableIn('verify-otp:'.$this->input('email').'|'.$this->ip());
 
         throw ValidationException::withMessages([
             'otp' => trans('auth.throttle', [
@@ -86,7 +86,7 @@ class VerifyOtpRequest extends FormRequest
      */
     public function hitRateLimiter(): void
     {
-        RateLimiter::hit($this->throttleKey(), 60);
+        RateLimiter::hit('verify-otp:'.$this->input('email').'|'.$this->ip());
     }
 
     /**
