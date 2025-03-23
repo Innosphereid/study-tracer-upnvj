@@ -55,19 +55,45 @@ class ResetPasswordController extends Controller
         $request->ensureIsNotRateLimited();
 
         $email = $request->email;
+        
+        // Log the request
+        Log::info('Password reset requested', ['email' => $email, 'ip' => $request->ip()]);
+        
+        // First check if user exists
+        $user = $this->resetService->findUserByEmail($email);
+        
+        if (!$user) {
+            Log::warning('Password reset failed - Email not found', ['email' => $email]);
+            
+            // Hit rate limiter on failure
+            $request->hitRateLimiter();
+
+            return back()
+                ->withInput($request->only('email'))
+                ->withErrors(['email' => 'Kami tidak dapat menemukan pengguna dengan alamat email tersebut.']);
+        }
+        
+        // User exists, proceed with sending OTP
+        Log::info('User found, sending OTP', ['email' => $email, 'user_id' => $user->id]);
+        
         $success = $this->resetService->sendResetLinkEmail($email);
 
         if ($success) {
+            Log::info('OTP sent successfully', ['email' => $email]);
+            
             return redirect()->route('password.verify-otp-form', ['email' => $email])
                 ->with('status', 'Kami telah mengirimkan kode OTP ke alamat email Anda.');
         }
 
+        // If we get here, something went wrong with sending the email
+        Log::error('Failed to send OTP email', ['email' => $email]);
+        
         // Hit rate limiter on failure
         $request->hitRateLimiter();
 
         return back()
             ->withInput($request->only('email'))
-            ->withErrors(['email' => 'Kami tidak dapat menemukan pengguna dengan alamat email tersebut.']);
+            ->withErrors(['email' => 'Terjadi kesalahan saat mengirim kode OTP. Silakan coba lagi nanti.']);
     }
 
     /**
