@@ -93,3 +93,22 @@ Route::fallback(function () {
     
     return redirect()->route('login');
 });
+
+// Email Preview Routes (for development only)
+Route::prefix('email-preview')->name('email.preview.')->group(function () {
+    // Reset Password Request Email Preview
+    Route::get('/reset-password-request', function () {
+        return view('emails.password.reset-request', [
+            'name' => 'Budi Santoso',
+            'otp' => '123456'
+        ]);
+    })->name('reset-request');
+
+    // Reset Password Success Email Preview
+    Route::get('/reset-password-success', function () {
+        return view('emails.password.reset-success', [
+            'name' => 'Budi Santoso',
+            'reset_time' => now()
+        ]);
+    })->name('reset-success');
+});
