@@ -1,0 +1,831 @@
+Test Report with Coverage - Generated at: 2025-03-23 00:58:16
+==========================================================
+
+
+  [30;43;1m WARN [39;49;22m Test results may not be as expected because the XML configuration file did not pass validation:
+
+  Line 16:
+  - Element 'include': This element is not expected.
+
+
+   FAIL  Tests\Unit\Middleware\CheckUserRoleTest
+  ⨯ middleware allows access when user has required role                                                                                       0.04s  
+  ⨯ middleware allows access when user has one of multiple roles
+  ⨯ middleware redirects when user does not have required role
+  ✓ middleware redirects guest to login                                                                                                        0.03s  
+  ⨯ middleware redirects to superadmin dashboard for superadmin
+
+   PASS  Tests\Unit\Models\UserTest
+  ✓ has role returns true for matching role                                                                                                    0.01s  
+  ✓ has role returns false for non matching role
+  ✓ is super admin returns true for superadmin role
+  ✓ is super admin returns false for non superadmin role
+  ✓ is admin returns true for admin role
+  ✓ is admin returns false for non admin role
+
+   FAIL  Tests\Unit\Repositories\UserRepositoryTest
+  ✓ find by email returns user with matching email
+  ✓ find by username returns user with matching username
+  ✓ find by role returns users with matching role
+  ✓ all returns all users
+  ✓ find returns user with matching id
+  ⨯ create creates and returns new user
+  ✓ update updates and returns true on success
+  ✓ update returns false when user not found
+  ✓ delete deletes and returns true on success
+  ✓ delete returns false when user not found
+
+   FAIL  Tests\Unit\Services\ActivityLoggerServiceTest
+  ⨯ log login creates login activity log
+  ⨯ log logout creates logout activity log
+  ⨯ log failed login creates failed login activity log
+
+   FAIL  Tests\Unit\Services\AuthenticationServiceTest
+  ⨯ login authenticates and redirects admin                                                                                                    0.01s  
+  ⨯ login handles validation exception and logs failed attempt
+  ⨯ redirect based on role redirects superadmin to superadmin dashboard
+  ⨯ redirect based on role redirects admin to admin dashboard
+  ⨯ logout logs out user and invalidates session
+
+   FAIL  Tests\Unit\Services\AuthenticatorServiceTest
+  ⨯ attempt returns true with valid username and password
+  ⨯ attempt returns true with valid email and password
+  ⨯ attempt returns false with invalid password
+  ✓ attempt returns false with non existent user
+  ! logout calls auth logout → This test did not perform any assertions
+  ✓ user returns authenticated user
+  ✓ check returns authentication status
+  ✓ guest returns guest status
+
+   FAIL  Tests\Feature\Auth\AuthenticationIntegrationTest
+  ⨯ complete login logout flow with activity logging                                                                                           0.78s  
+  ⨯ failed login attempts are properly logged                                                                                                  0.02s  
+  ⨯ rate limiting after multiple failed attempts                                                                                               0.29s  
+  ⨯ role based redirection after login                                                                                                         0.04s  
+  ⨯ permissions cascade properly                                                                                                               0.02s  
+
+   FAIL  Tests\Feature\Auth\LoginSecurityTest
+  ⨯ login error messages are ambiguous for security                                                                                            0.06s  
+  ⨯ rate limiting uses ip address only for security                                                                                            0.05s  
+  ⨯ csrf protection for login form                                                                                                             0.73s  
+  ⨯ session regeneration on login for security                                                                                                 0.04s  
+
+   FAIL  Tests\Feature\Auth\LoginTest
+  ✓ login page loads successfully                                                                                                              0.05s  
+  ⨯ user can login with username                                                                                                               0.04s  
+  ⨯ user can login with email                                                                                                                  0.04s  
+  ⨯ superadmin login redirects to superadmin dashboard                                                                                         0.04s  
+  ⨯ login with invalid credentials fails                                                                                                       0.05s  
+  ⨯ login with non existent user fails                                                                                                         0.04s  
+  ⨯ username is required                                                                                                                       0.03s  
+  ⨯ password is required                                                                                                                       0.03s  
+  ⨯ remember me functionality                                                                                                                  0.03s  
+
+   FAIL  Tests\Feature\Auth\LogoutTest
+  ⨯ user can logout                                                                                                                            0.04s  
+  ⨯ unauthenticated users cannot logout                                                                                                        0.03s  
+  ⨯ session is regenerated on logout                                                                                                           0.03s  
+
+   FAIL  Tests\Feature\Auth\RoleAuthorizationTest
+  ⨯ superadmin can access superadmin dashboard                                                                                                 0.03s  
+  ⨯ admin cannot access superadmin dashboard                                                                                                   0.03s  
+  ⨯ admin can access admin dashboard                                                                                                           0.03s  
+  ⨯ superadmin can access admin dashboard                                                                                                      0.03s  
+  ✓ guest cannot access admin dashboard                                                                                                        0.03s  
+  ✓ guest cannot access superadmin dashboard                                                                                                   0.03s  
+  ✓ root path redirects to login for guest                                                                                                     0.03s  
+  ⨯ fallback route redirects to appropriate dashboard for authenticated user                                                                   0.05s  
+  ✓ fallback route redirects to login for guest                                                                                                0.02s  
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Unit\Middleware\CheckUserRoleTest > middleware allows access when user has required role                    BadMethodCallException   
+  Received Mockery_0_App_Models_User::setAttribute(), but no expectations were specified
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Model.php:2273
+    2269▕      * @return void
+    2270▕      */
+    2271▕     public function __set($key, $value)
+    2272▕     {
+  ➜ 2273▕         $this->setAttribute($key, $value);
+    2274▕     }
+    2275▕ 
+    2276▕     /**
+    2277▕      * Determine if the given attribute exists.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Model.php:2273
+  2   tests\Unit\Middleware\CheckUserRoleTest.php:28
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Unit\Middleware\CheckUserRoleTest > middleware allows access when user has one of multiple roles            BadMethodCallException   
+  Received Mockery_0_App_Models_User::setAttribute(), but no expectations were specified
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Model.php:2273
+    2269▕      * @return void
+    2270▕      */
+    2271▕     public function __set($key, $value)
+    2272▕     {
+  ➜ 2273▕         $this->setAttribute($key, $value);
+    2274▕     }
+    2275▕ 
+    2276▕     /**
+    2277▕      * Determine if the given attribute exists.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Model.php:2273
+  2   tests\Unit\Middleware\CheckUserRoleTest.php:59
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Unit\Middleware\CheckUserRoleTest > middleware redirects when user does not have required role              BadMethodCallException   
+  Received Mockery_0_App_Models_User::setAttribute(), but no expectations were specified
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Model.php:2273
+    2269▕      * @return void
+    2270▕      */
+    2271▕     public function __set($key, $value)
+    2272▕     {
+  ➜ 2273▕         $this->setAttribute($key, $value);
+    2274▕     }
+    2275▕ 
+    2276▕     /**
+    2277▕      * Determine if the given attribute exists.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Model.php:2273
+  2   tests\Unit\Middleware\CheckUserRoleTest.php:90
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Unit\Middleware\CheckUserRoleTest > middleware redirects to superadmin dashboard for superadmin             BadMethodCallException   
+  Received Mockery_0_App_Models_User::setAttribute(), but no expectations were specified
+
+  at vendor\laravel\framework\src\Illuminate\Database\Eloquent\Model.php:2273
+    2269▕      * @return void
+    2270▕      */
+    2271▕     public function __set($key, $value)
+    2272▕     {
+  ➜ 2273▕         $this->setAttribute($key, $value);
+    2274▕     }
+    2275▕ 
+    2276▕     /**
+    2277▕      * Determine if the given attribute exists.
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Model.php:2273
+  2   tests\Unit\Middleware\CheckUserRoleTest.php:161
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Unit\Repositories\UserRepositoryTest > create creates and returns new user                                        RuntimeException   
+  A facade root has not been set.
+
+  at vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:358
+    354▕     {
+    355▕         $instance = static::getFacadeRoot();
+    356▕ 
+    357▕         if (! $instance) {
+  ➜ 358▕             throw new RuntimeException('A facade root has not been set.');
+    359▕         }
+    360▕ 
+    361▕         return $instance->$method(...$args);
+    362▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:358
+  2   vendor\laravel\framework\src\Illuminate\Database\Eloquent\Concerns\HasAttributes.php:1431
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Unit\Services\ActivityLoggerServiceTest > log login creates login activity log                                               Error   
+  Cannot instantiate abstract class Illuminate\Database\Eloquent\Model
+
+  at tests\Unit\Services\ActivityLoggerServiceTest.php:51
+     47▕                 'description' => 'User logged in successfully',
+     48▕                 'ip_address' => $ipAddress,
+     49▕                 'user_agent' => $userAgent,
+     50▕             ])
+  ➜  51▕             ->andReturn(new Model());
+     52▕ 
+     53▕         $activityLogger = new ActivityLoggerService();
+     54▕ 
+     55▕         // Act
+
+  1   tests\Unit\Services\ActivityLoggerServiceTest.php:51
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Unit\Services\ActivityLoggerServiceTest > log logout creates logout activity log                                             Error   
+  Cannot instantiate abstract class Illuminate\Database\Eloquent\Model
+
+  at tests\Unit\Services\ActivityLoggerServiceTest.php:91
+     87▕                 'description' => 'User logged out',
+     88▕                 'ip_address' => $ipAddress,
+     89▕                 'user_agent' => $userAgent,
+     90▕             ])
+  ➜  91▕             ->andReturn(new Model());
+     92▕ 
+     93▕         $activityLogger = new ActivityLoggerService();
+     94▕ 
+     95▕         // Act
+
+  1   tests\Unit\Services\ActivityLoggerServiceTest.php:91
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Unit\Services\ActivityLoggerServiceTest > log failed login creates failed login activity log                                 Error   
+  Cannot instantiate abstract class Illuminate\Database\Eloquent\Model
+
+  at tests\Unit\Services\ActivityLoggerServiceTest.php:129
+    125▕                 'description' => 'Failed login attempt',
+    126▕                 'ip_address' => $ipAddress,
+    127▕                 'user_agent' => $userAgent,
+    128▕             ])
+  ➜ 129▕             ->andReturn(new Model());
+    130▕ 
+    131▕         $activityLogger = new ActivityLoggerService();
+    132▕ 
+    133▕         // Act
+
+  1   tests\Unit\Services\ActivityLoggerServiceTest.php:129
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Unit\Services\AuthenticationServiceTest > login authenticates and redirects admin                           BadMethodCallException   
+  Method Mockery_1::user() does not exist on this mock object
+
+  at vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:361
+    357▕         if (! $instance) {
+    358▕             throw new RuntimeException('A facade root has not been set.');
+    359▕         }
+    360▕ 
+  ➜ 361▕         return $instance->$method(...$args);
+    362▕     }
+    363▕ }
+    364▕
+
+  1   vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:361
+  2   app\Services\AuthenticationService.php:45
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Unit\Services\AuthenticationServiceTest > login handles validation exception and logs failed attempt              RuntimeException   
+  A facade root has not been set.
+
+  at vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:358
+    354▕     {
+    355▕         $instance = static::getFacadeRoot();
+    356▕ 
+    357▕         if (! $instance) {
+  ➜ 358▕             throw new RuntimeException('A facade root has not been set.');
+    359▕         }
+    360▕ 
+    361▕         return $instance->$method(...$args);
+    362▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:358
+  2   vendor\laravel\framework\src\Illuminate\Validation\ValidationException.php:71
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Unit\Services\AuthenticationServiceTest > redirect based on role redirects superadmin to superadmin dashb…  BadMethodCallException   
+  Method Mockery_1::user() does not exist on this mock object
+
+  at vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:361
+    357▕         if (! $instance) {
+    358▕             throw new RuntimeException('A facade root has not been set.');
+    359▕         }
+    360▕ 
+  ➜ 361▕         return $instance->$method(...$args);
+    362▕     }
+    363▕ }
+    364▕
+
+  1   vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:361
+  2   app\Services\AuthenticationService.php:61
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Unit\Services\AuthenticationServiceTest > redirect based on role redirects admin to admin dashboard         BadMethodCallException   
+  Method Mockery_1::user() does not exist on this mock object
+
+  at vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:361
+    357▕         if (! $instance) {
+    358▕             throw new RuntimeException('A facade root has not been set.');
+    359▕         }
+    360▕ 
+  ➜ 361▕         return $instance->$method(...$args);
+    362▕     }
+    363▕ }
+    364▕
+
+  1   vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:361
+  2   app\Services\AuthenticationService.php:61
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Unit\Services\AuthenticationServiceTest > logout logs out user and invalidates session                      BadMethodCallException   
+  Method Mockery_1::logout() does not exist on this mock object
+
+  at vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:361
+    357▕         if (! $instance) {
+    358▕             throw new RuntimeException('A facade root has not been set.');
+    359▕         }
+    360▕ 
+  ➜ 361▕         return $instance->$method(...$args);
+    362▕     }
+    363▕ }
+    364▕
+
+  1   vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:361
+  2   app\Services\AuthenticationService.php:80
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Unit\Services\AuthenticatorServiceTest > attempt returns true with valid username and password                    RuntimeException   
+  A facade root has not been set.
+
+  at vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:358
+    354▕     {
+    355▕         $instance = static::getFacadeRoot();
+    356▕ 
+    357▕         if (! $instance) {
+  ➜ 358▕             throw new RuntimeException('A facade root has not been set.');
+    359▕         }
+    360▕ 
+    361▕         return $instance->$method(...$args);
+    362▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:358
+  2   tests\Unit\Services\AuthenticatorServiceTest.php:30
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Unit\Services\AuthenticatorServiceTest > attempt returns true with valid email and password                       RuntimeException   
+  A facade root has not been set.
+
+  at vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:358
+    354▕     {
+    355▕         $instance = static::getFacadeRoot();
+    356▕ 
+    357▕         if (! $instance) {
+  ➜ 358▕             throw new RuntimeException('A facade root has not been set.');
+    359▕         }
+    360▕ 
+    361▕         return $instance->$method(...$args);
+    362▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:358
+  2   tests\Unit\Services\AuthenticatorServiceTest.php:61
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Unit\Services\AuthenticatorServiceTest > attempt returns false with invalid password                              RuntimeException   
+  A facade root has not been set.
+
+  at vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:358
+    354▕     {
+    355▕         $instance = static::getFacadeRoot();
+    356▕ 
+    357▕         if (! $instance) {
+  ➜ 358▕             throw new RuntimeException('A facade root has not been set.');
+    359▕         }
+    360▕ 
+    361▕         return $instance->$method(...$args);
+    362▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Support\Facades\Facade.php:358
+  2   tests\Unit\Services\AuthenticatorServiceTest.php:92
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\AuthenticationIntegrationTest > complete login logout flow with activity logging                                        
+  Expected response status code [201, 301, 302, 303, 307, 308] but received 419.
+Failed asserting that false is true.
+
+  at tests\Feature\Auth\AuthenticationIntegrationTest.php:33
+     29▕             'password' => 'password',
+     30▕         ]);
+     31▕ 
+     32▕         // Assert - Part 1: Login successful
+  ➜  33▕         $response->assertRedirect('/admin/dashboard');
+     34▕         $this->assertAuthenticatedAs($user);
+     35▕         
+     36▕         // Assert login activity was logged
+     37▕         $this->assertDatabaseHas('activity_logs', [
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\AuthenticationIntegrationTest > failed login attempts are properly logged                                               
+  Expected response status code [201, 301, 302, 303, 307, 308] but received 419.
+Failed asserting that false is true.
+
+  at tests\Feature\Auth\AuthenticationIntegrationTest.php:86
+     82▕             'password' => 'wrongpassword',
+     83▕         ]);
+     84▕ 
+     85▕         // Assert - Login failed
+  ➜  86▕         $response->assertRedirect();
+     87▕         $response->assertSessionHasErrors('username');
+     88▕         $this->assertGuest();
+     89▕         
+     90▕         // Assert failed login activity was logged
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\AuthenticationIntegrationTest > rate limiting after multiple failed attempts                                            
+  Expected response status code [201, 301, 302, 303, 307, 308] but received 419.
+Failed asserting that false is true.
+
+  at tests\Feature\Auth\AuthenticationIntegrationTest.php:125
+    121▕             'password' => 'wrongpassword',
+    122▕         ]);
+    123▕ 
+    124▕         // Assert - Rate limited
+  ➜ 125▕         $response->assertRedirect();
+    126▕         $response->assertSessionHasErrors('username');
+    127▕         $this->assertStringContainsString('Too many login attempts', session('errors')->first('username'));
+    128▕         
+    129▕         // Assert we have exactly maxAttempts + 1 failed login logs
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\AuthenticationIntegrationTest > role based redirection after login                                     QueryException   
+  SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value (Connection: mysql, SQL: insert into `users` (`name`, `email`, `email_verified_at`, `password`, `remember_token`, `role`, `updated_at`, `created_at`) values (Kristy Hansen, casimer19@example.net, 2025-03-23 00:58:14, $2y$12$yjTxxbzmdbkUf04G2Z4HruxKM7GeGQiRRSk7mw3GX/jpFVBgmIIyC, n7m95I9Rdw, admin, 2025-03-23 00:58:14, 2025-03-23 00:58:14))
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+    819▕                     $this->getName(), $query, $this->prepareBindings($bindings), $e
+    820▕                 );
+    821▕             }
+    822▕ 
+  ➜ 823▕             throw new QueryException(
+    824▕                 $this->getName(), $query, $this->prepareBindings($bindings), $e
+    825▕             );
+    826▕         }
+    827▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+
+  2   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+      NunoMaduro\Collision\Exceptions\TestException::("SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value")
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\AuthenticationIntegrationTest > permissions cascade properly                                           QueryException   
+  SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value (Connection: mysql, SQL: insert into `users` (`name`, `email`, `email_verified_at`, `password`, `remember_token`, `role`, `updated_at`, `created_at`) values (Eula Bartell, considine.jaden@example.com, 2025-03-23 00:58:14, $2y$12$yjTxxbzmdbkUf04G2Z4HruxKM7GeGQiRRSk7mw3GX/jpFVBgmIIyC, kz1bseSw9v, superadmin, 2025-03-23 00:58:14, 2025-03-23 00:58:14))
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+    819▕                     $this->getName(), $query, $this->prepareBindings($bindings), $e
+    820▕                 );
+    821▕             }
+    822▕ 
+  ➜ 823▕             throw new QueryException(
+    824▕                 $this->getName(), $query, $this->prepareBindings($bindings), $e
+    825▕             );
+    826▕         }
+    827▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+
+  2   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+      NunoMaduro\Collision\Exceptions\TestException::("SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value")
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\LoginSecurityTest > login error messages are ambiguous for security                                                     
+  Session is missing expected key [errors].
+Failed asserting that false is true.
+
+  at tests\Feature\Auth\LoginSecurityTest.php:48
+     44▕             'password' => 'password',
+     45▕         ]);
+     46▕ 
+     47▕         // Assert - Both errors should have the same message (ambiguous)
+  ➜  48▕         $response1->assertSessionHasErrors('username');
+     49▕         $response2->assertSessionHasErrors('username');
+     50▕         
+     51▕         // Check the session for error messages
+     52▕         $this->followRedirects($response1)->assertSee(trans('auth.failed'));
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\LoginSecurityTest > rate limiting uses ip address only for security                                                     
+  Session is missing expected key [errors].
+Failed asserting that false is true.
+
+  at tests\Feature\Auth\LoginSecurityTest.php:85
+     81▕             'password' => 'wrongpassword',
+     82▕         ]);
+     83▕ 
+     84▕         // Assert - Should be rate limited regardless of using different usernames
+  ➜  85▕         $response->assertSessionHasErrors('username');
+     86▕         $this->assertStringContainsString(
+     87▕             'Too many login attempts',
+     88▕             session('errors')->first('username')
+     89▕         );
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\LoginSecurityTest > csrf protection for login form                                                                      
+  The user is authenticated
+Failed asserting that true is false.
+
+  at tests\Feature\Auth\LoginSecurityTest.php:117
+    113▕             '_token' => csrf_token(),
+    114▕         ]);
+    115▕ 
+    116▕         // Assert - Without CSRF, should fail
+  ➜ 117▕         $this->assertGuest();
+    118▕         
+    119▕         // With CSRF, should succeed
+    120▕         $responseCsrf->assertRedirect('/admin/dashboard');
+    121▕     }
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\LoginSecurityTest > session regeneration on login for security                                         QueryException   
+  SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value (Connection: mysql, SQL: insert into `users` (`name`, `email`, `email_verified_at`, `password`, `remember_token`, `updated_at`, `created_at`) values (Dr. Ayla Kovacek Jr., hkshlerin@example.org, 2025-03-23 00:58:15, $2y$12$yjTxxbzmdbkUf04G2Z4HruxKM7GeGQiRRSk7mw3GX/jpFVBgmIIyC, SmhN97EvT2, 2025-03-23 00:58:15, 2025-03-23 00:58:15))
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+    819▕                     $this->getName(), $query, $this->prepareBindings($bindings), $e
+    820▕                 );
+    821▕             }
+    822▕ 
+  ➜ 823▕             throw new QueryException(
+    824▕                 $this->getName(), $query, $this->prepareBindings($bindings), $e
+    825▕             );
+    826▕         }
+    827▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+
+  2   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+      NunoMaduro\Collision\Exceptions\TestException::("SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value")
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\LoginTest > user can login with username                                                                                
+  Expected response status code [201, 301, 302, 303, 307, 308] but received 419.
+Failed asserting that false is true.
+
+  at tests\Feature\Auth\LoginTest.php:46
+     42▕             'password' => 'password',
+     43▕         ]);
+     44▕ 
+     45▕         // Assert
+  ➜  46▕         $response->assertRedirect('/admin/dashboard');
+     47▕         $this->assertAuthenticatedAs($user);
+     48▕     }
+     49▕ 
+     50▕     /**
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\LoginTest > user can login with email                                                                  QueryException   
+  SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value (Connection: mysql, SQL: insert into `users` (`name`, `email`, `email_verified_at`, `password`, `remember_token`, `role`, `updated_at`, `created_at`) values (Freida Kris V, test@example.com, 2025-03-23 00:58:15, $2y$12$yjTxxbzmdbkUf04G2Z4HruxKM7GeGQiRRSk7mw3GX/jpFVBgmIIyC, UqwTIntOGb, admin, 2025-03-23 00:58:15, 2025-03-23 00:58:15))
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+    819▕                     $this->getName(), $query, $this->prepareBindings($bindings), $e
+    820▕                 );
+    821▕             }
+    822▕ 
+  ➜ 823▕             throw new QueryException(
+    824▕                 $this->getName(), $query, $this->prepareBindings($bindings), $e
+    825▕             );
+    826▕         }
+    827▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+
+  2   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+      NunoMaduro\Collision\Exceptions\TestException::("SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value")
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\LoginTest > superadmin login redirects to superadmin dashboard                                                          
+  Expected response status code [201, 301, 302, 303, 307, 308] but received 419.
+Failed asserting that false is true.
+
+  at tests\Feature\Auth\LoginTest.php:90
+     86▕             'password' => 'password',
+     87▕         ]);
+     88▕ 
+     89▕         // Assert
+  ➜  90▕         $response->assertRedirect('/superadmin/dashboard');
+     91▕         $this->assertAuthenticatedAs($user);
+     92▕     }
+     93▕ 
+     94▕     /**
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\LoginTest > login with invalid credentials fails                                                                        
+  Expected response status code [201, 301, 302, 303, 307, 308] but received 419.
+Failed asserting that false is true.
+
+  at tests\Feature\Auth\LoginTest.php:112
+    108▕             'password' => 'wrongpassword',
+    109▕         ]);
+    110▕ 
+    111▕         // Assert
+  ➜ 112▕         $response->assertRedirect();
+    113▕         $response->assertSessionHasErrors('username');
+    114▕         $this->assertGuest();
+    115▕     }
+    116▕
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\LoginTest > login with non existent user fails                                                                          
+  Expected response status code [201, 301, 302, 303, 307, 308] but received 419.
+Failed asserting that false is true.
+
+  at tests\Feature\Auth\LoginTest.php:131
+    127▕             'password' => 'password',
+    128▕         ]);
+    129▕ 
+    130▕         // Assert
+  ➜ 131▕         $response->assertRedirect();
+    132▕         $response->assertSessionHasErrors('username');
+    133▕         $this->assertGuest();
+    134▕     }
+    135▕
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\LoginTest > username is required                                                                                        
+  Expected response status code [201, 301, 302, 303, 307, 308] but received 419.
+Failed asserting that false is true.
+
+  at tests\Feature\Auth\LoginTest.php:150
+    146▕             'password' => 'password',
+    147▕         ]);
+    148▕ 
+    149▕         // Assert
+  ➜ 150▕         $response->assertRedirect();
+    151▕         $response->assertSessionHasErrors('username');
+    152▕         $this->assertGuest();
+    153▕     }
+    154▕
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\LoginTest > password is required                                                                                        
+  Expected response status code [201, 301, 302, 303, 307, 308] but received 419.
+Failed asserting that false is true.
+
+  at tests\Feature\Auth\LoginTest.php:169
+    165▕             'password' => '',
+    166▕         ]);
+    167▕ 
+    168▕         // Assert
+  ➜ 169▕         $response->assertRedirect();
+    170▕         $response->assertSessionHasErrors('password');
+    171▕         $this->assertGuest();
+    172▕     }
+    173▕
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\LoginTest > remember me functionality                                                                  QueryException   
+  SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value (Connection: mysql, SQL: insert into `users` (`name`, `email`, `email_verified_at`, `password`, `remember_token`, `updated_at`, `created_at`) values (Ms. Chloe Langosh V, haleigh.mann@example.net, 2025-03-23 00:58:15, $2y$12$yjTxxbzmdbkUf04G2Z4HruxKM7GeGQiRRSk7mw3GX/jpFVBgmIIyC, EGPi7TU0Qr, 2025-03-23 00:58:15, 2025-03-23 00:58:15))
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+    819▕                     $this->getName(), $query, $this->prepareBindings($bindings), $e
+    820▕                 );
+    821▕             }
+    822▕ 
+  ➜ 823▕             throw new QueryException(
+    824▕                 $this->getName(), $query, $this->prepareBindings($bindings), $e
+    825▕             );
+    826▕         }
+    827▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+
+  2   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+      NunoMaduro\Collision\Exceptions\TestException::("SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value")
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\LogoutTest > user can logout                                                                           QueryException   
+  SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value (Connection: mysql, SQL: insert into `users` (`name`, `email`, `email_verified_at`, `password`, `remember_token`, `updated_at`, `created_at`) values (Christina Rippin, macy57@example.org, 2025-03-23 00:58:15, $2y$12$yjTxxbzmdbkUf04G2Z4HruxKM7GeGQiRRSk7mw3GX/jpFVBgmIIyC, ehME8stNCv, 2025-03-23 00:58:15, 2025-03-23 00:58:15))
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+    819▕                     $this->getName(), $query, $this->prepareBindings($bindings), $e
+    820▕                 );
+    821▕             }
+    822▕ 
+  ➜ 823▕             throw new QueryException(
+    824▕                 $this->getName(), $query, $this->prepareBindings($bindings), $e
+    825▕             );
+    826▕         }
+    827▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+
+  2   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+      NunoMaduro\Collision\Exceptions\TestException::("SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value")
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\LogoutTest > unauthenticated users cannot logout                                                                        
+  Expected response status code [201, 301, 302, 303, 307, 308] but received 419.
+Failed asserting that false is true.
+
+  at tests\Feature\Auth\LogoutTest.php:43
+     39▕         // Act
+     40▕         $response = $this->post('/logout');
+     41▕ 
+     42▕         // Assert
+  ➜  43▕         $response->assertRedirect('/login');
+     44▕         $this->assertGuest();
+     45▕     }
+     46▕ 
+     47▕     /**
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\LogoutTest > session is regenerated on logout                                                          QueryException   
+  SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value (Connection: mysql, SQL: insert into `users` (`name`, `email`, `email_verified_at`, `password`, `remember_token`, `updated_at`, `created_at`) values (Marilyne Ondricka, nettie44@example.org, 2025-03-23 00:58:15, $2y$12$yjTxxbzmdbkUf04G2Z4HruxKM7GeGQiRRSk7mw3GX/jpFVBgmIIyC, yNxNn5oKEr, 2025-03-23 00:58:15, 2025-03-23 00:58:15))
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+    819▕                     $this->getName(), $query, $this->prepareBindings($bindings), $e
+    820▕                 );
+    821▕             }
+    822▕ 
+  ➜ 823▕             throw new QueryException(
+    824▕                 $this->getName(), $query, $this->prepareBindings($bindings), $e
+    825▕             );
+    826▕         }
+    827▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+
+  2   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+      NunoMaduro\Collision\Exceptions\TestException::("SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value")
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\RoleAuthorizationTest > superadmin can access superadmin dashboard                                     QueryException   
+  SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value (Connection: mysql, SQL: insert into `users` (`name`, `email`, `email_verified_at`, `password`, `remember_token`, `role`, `updated_at`, `created_at`) values (Nayeli Ledner, adolfo.bergnaum@example.net, 2025-03-23 00:58:15, $2y$12$yjTxxbzmdbkUf04G2Z4HruxKM7GeGQiRRSk7mw3GX/jpFVBgmIIyC, LUy0eBPjTW, superadmin, 2025-03-23 00:58:15, 2025-03-23 00:58:15))
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+    819▕                     $this->getName(), $query, $this->prepareBindings($bindings), $e
+    820▕                 );
+    821▕             }
+    822▕ 
+  ➜ 823▕             throw new QueryException(
+    824▕                 $this->getName(), $query, $this->prepareBindings($bindings), $e
+    825▕             );
+    826▕         }
+    827▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+
+  2   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+      NunoMaduro\Collision\Exceptions\TestException::("SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value")
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\RoleAuthorizationTest > admin cannot access superadmin dashboard                                       QueryException   
+  SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value (Connection: mysql, SQL: insert into `users` (`name`, `email`, `email_verified_at`, `password`, `remember_token`, `role`, `updated_at`, `created_at`) values (Triston Konopelski, delphia42@example.net, 2025-03-23 00:58:15, $2y$12$yjTxxbzmdbkUf04G2Z4HruxKM7GeGQiRRSk7mw3GX/jpFVBgmIIyC, FIj8We5VuZ, admin, 2025-03-23 00:58:15, 2025-03-23 00:58:15))
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+    819▕                     $this->getName(), $query, $this->prepareBindings($bindings), $e
+    820▕                 );
+    821▕             }
+    822▕ 
+  ➜ 823▕             throw new QueryException(
+    824▕                 $this->getName(), $query, $this->prepareBindings($bindings), $e
+    825▕             );
+    826▕         }
+    827▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+
+  2   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+      NunoMaduro\Collision\Exceptions\TestException::("SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value")
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\RoleAuthorizationTest > admin can access admin dashboard                                               QueryException   
+  SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value (Connection: mysql, SQL: insert into `users` (`name`, `email`, `email_verified_at`, `password`, `remember_token`, `role`, `updated_at`, `created_at`) values (Effie Hayes, fay.dane@example.com, 2025-03-23 00:58:15, $2y$12$yjTxxbzmdbkUf04G2Z4HruxKM7GeGQiRRSk7mw3GX/jpFVBgmIIyC, 57EjUxuqrT, admin, 2025-03-23 00:58:15, 2025-03-23 00:58:15))
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+    819▕                     $this->getName(), $query, $this->prepareBindings($bindings), $e
+    820▕                 );
+    821▕             }
+    822▕ 
+  ➜ 823▕             throw new QueryException(
+    824▕                 $this->getName(), $query, $this->prepareBindings($bindings), $e
+    825▕             );
+    826▕         }
+    827▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+
+  2   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+      NunoMaduro\Collision\Exceptions\TestException::("SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value")
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\RoleAuthorizationTest > superadmin can access admin dashboard                                          QueryException   
+  SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value (Connection: mysql, SQL: insert into `users` (`name`, `email`, `email_verified_at`, `password`, `remember_token`, `role`, `updated_at`, `created_at`) values (Carlee Kiehn Sr., heathcote.chanel@example.org, 2025-03-23 00:58:15, $2y$12$yjTxxbzmdbkUf04G2Z4HruxKM7GeGQiRRSk7mw3GX/jpFVBgmIIyC, qMCWtFuZYY, superadmin, 2025-03-23 00:58:15, 2025-03-23 00:58:15))
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+    819▕                     $this->getName(), $query, $this->prepareBindings($bindings), $e
+    820▕                 );
+    821▕             }
+    822▕ 
+  ➜ 823▕             throw new QueryException(
+    824▕                 $this->getName(), $query, $this->prepareBindings($bindings), $e
+    825▕             );
+    826▕         }
+    827▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+
+  2   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+      NunoMaduro\Collision\Exceptions\TestException::("SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value")
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Auth\RoleAuthorizationTest > fallback route redirects to appropriate dashboard for authenticated user       QueryException   
+  SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value (Connection: mysql, SQL: insert into `users` (`name`, `email`, `email_verified_at`, `password`, `remember_token`, `role`, `updated_at`, `created_at`) values (Aliya Pagac, uoreilly@example.org, 2025-03-23 00:58:15, $2y$12$yjTxxbzmdbkUf04G2Z4HruxKM7GeGQiRRSk7mw3GX/jpFVBgmIIyC, j4yd5CJD22, admin, 2025-03-23 00:58:15, 2025-03-23 00:58:15))
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+    819▕                     $this->getName(), $query, $this->prepareBindings($bindings), $e
+    820▕                 );
+    821▕             }
+    822▕ 
+  ➜ 823▕             throw new QueryException(
+    824▕                 $this->getName(), $query, $this->prepareBindings($bindings), $e
+    825▕             );
+    826▕         }
+    827▕     }
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:823
+
+  2   vendor\laravel\framework\src\Illuminate\Database\MySqlConnection.php:53
+      NunoMaduro\Collision\Exceptions\TestException::("SQLSTATE[HY000]: General error: 1364 Field 'username' doesn't have a default value")
+
+
+  Tests:    41 failed, 1 risky, 25 passed (48 assertions)
+  Duration: 3.08s
+

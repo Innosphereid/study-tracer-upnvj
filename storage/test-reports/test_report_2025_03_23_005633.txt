@@ -1,0 +1,6 @@
+Test Report with Coverage - Generated at: 2025-03-23 00:56:33
+==========================================================
+
+
+   ERROR  Code coverage driver not available. Did you install Xdebug or PCOV?
+
