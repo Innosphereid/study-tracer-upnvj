@@ -32,6 +32,15 @@ class UserSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
 
+        User::create([
+            'name' => 'Nugraha Adhitama',
+            'email' => '2210512109@mahasiswa.upnvj.ac.id',
+            'username' => 'Nugraha Adhitama',
+            'password' => Hash::make('12345678'),
+            'role' => 'superadmin',
+            'email_verified_at' => now(),
+        ]);
+
         // Create admin user
         User::create([
             'name' => 'Admin',

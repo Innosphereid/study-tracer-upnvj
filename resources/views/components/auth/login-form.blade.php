@@ -41,9 +41,15 @@
 
         <!-- Password Input -->
         <div class="input-group">
-            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
-                {{ __('Password') }}
-            </label>
+            <div class="flex justify-between items-center mb-1">
+                <label for="password" class="block text-sm font-medium text-gray-700">
+                    {{ __('Password') }}
+                </label>
+                <a href="{{ route('password.request') }}"
+                    class="text-xs text-indigo-600 hover:text-indigo-800 transition-colors duration-200">
+                    {{ __('Forgot password?') }}
+                </a>
+            </div>
             <div class="relative" x-data="{ show: false }">
                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"

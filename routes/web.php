@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\SuperAdmin\DashboardController as SuperAdminDashboardController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -26,6 +27,46 @@ Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// Password Reset Routes
+Route::get('/forgot-password', [App\Http\Controllers\Auth\ResetPasswordController::class, 'showRequestForm'])
+    ->middleware('guest')
+    ->name('password.request');
+
+Route::post('/forgot-password', [App\Http\Controllers\Auth\ResetPasswordController::class, 'sendResetLink'])
+    ->middleware('guest')
+    ->name('password.email');
+
+Route::get('/verify-otp', [App\Http\Controllers\Auth\ResetPasswordController::class, 'showVerifyOtpForm'])
+    ->middleware('guest')
+    ->name('password.verify-otp-form');
+
+Route::post('/verify-otp', [App\Http\Controllers\Auth\ResetPasswordController::class, 'verifyOtp'])
+    ->middleware('guest')
+    ->name('password.verify-otp');
+
+Route::post('/resend-otp', [App\Http\Controllers\Auth\ResetPasswordController::class, 'resendOtp'])
+    ->middleware('guest')
+    ->name('password.resend-otp');
+
+Route::get('/reset-password/{token}', [App\Http\Controllers\Auth\ResetPasswordController::class, 'showResetForm'])
+    ->middleware('guest')
+    ->name('password.reset-form');
+
+Route::post('/reset-password', [App\Http\Controllers\Auth\ResetPasswordController::class, 'reset'])
+    ->middleware('guest')
+    ->name('password.update');
+
+Route::get('/reset-success', [App\Http\Controllers\Auth\ResetPasswordController::class, 'showSuccessPage'])
+    ->middleware('guest')
+    ->name('password.success');
+
+// Security Report Routes
+Route::get('/security/report', [App\Http\Controllers\SecurityController::class, 'showReportForm'])
+    ->name('security.report');
+
+Route::post('/security/report', [App\Http\Controllers\SecurityController::class, 'submitReport'])
+    ->name('security.report.submit');
+
 // SuperAdmin Dashboard
 Route::get('/superadmin/dashboard', [SuperAdminDashboardController::class, 'index'])
     ->middleware(['auth', 'role:superadmin'])
@@ -46,4 +87,23 @@ Route::fallback(function () {
     }
     
     return redirect()->route('login');
+});
+
+// Email Preview Routes (for development only)
+Route::prefix('email-preview')->name('email.preview.')->group(function () {
+    // Reset Password Request Email Preview
+    Route::get('/reset-password-request', function () {
+        return view('emails.password.reset-request', [
+            'name' => 'Budi Santoso',
+            'otp' => '123456'
+        ]);
+    })->name('reset-request');
+
+    // Reset Password Success Email Preview
+    Route::get('/reset-password-success', function () {
+        return view('emails.password.reset-success', [
+            'name' => 'Budi Santoso',
+            'reset_time' => now()
+        ]);
+    })->name('reset-success');
 });
