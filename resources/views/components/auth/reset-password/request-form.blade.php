@@ -15,7 +15,7 @@
     </div>
     @endif
 
-    <form method="POST" action="{{ route('password.email') }}" class="space-y-6">
+    <form method="POST" action="{{ route('password.email') }}" class="space-y-6" id="resetPasswordForm">
         @csrf
 
         <div class="input-group">
@@ -30,15 +30,20 @@
                             d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                 </div>
-                <x-form.text-input id="email" name="email" type="email" value="{{ old('email') }}"
-                    placeholder="Enter your email address" required autofocus />
+                <input id="email" type="email" name="email" value="{{ old('email') }}"
+                    placeholder="Enter your email address"
+                    class="w-full rounded-lg border-gray-300 pl-10 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 transition-all duration-300 ease-in-out {{ $errors->has('email') ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : '' }}"
+                    required autofocus>
             </div>
-            <x-form.input-error :messages="$errors->get('email')" class="mt-2" />
+            @error('email')
+            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+            @enderror
         </div>
 
         <button type="submit"
             class="w-full flex justify-center items-center px-4 py-3 bg-indigo-600 border border-transparent rounded-lg font-semibold text-sm text-white tracking-wider hover:bg-indigo-700 active:bg-indigo-800 focus:outline-none focus:border-indigo-700 focus:ring focus:ring-indigo-300 disabled:opacity-25 transition-all duration-300 ease-in-out transform hover:scale-[1.02] active:scale-[0.98]"
-            x-data="{ loading: false }" x-bind:class="{ 'opacity-75 cursor-wait': loading }" @click="loading = true">
+            id="submitBtn" x-data="{ loading: false }" x-bind:class="{ 'opacity-75 cursor-wait': loading }"
+            x-on:click="loading = true; document.getElementById('resetPasswordForm').submit();">
             <template x-if="loading">
                 <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
                     viewBox="0 0 24 24">
