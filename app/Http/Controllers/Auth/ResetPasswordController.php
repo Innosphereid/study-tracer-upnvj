@@ -8,6 +8,7 @@ use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Requests\Auth\SendResetLinkRequest;
 use App\Http\Requests\Auth\VerifyOtpRequest;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class ResetPasswordController extends Controller
@@ -70,11 +71,18 @@ class ResetPasswordController extends Controller
     /**
      * Display the OTP verification form.
      *
-     * @param string $email
+     * @param Request $request
      * @return View
      */
-    public function showVerifyOtpForm(string $email): View
+    public function showVerifyOtpForm(Request $request): View
     {
+        // Get email from request query parameter
+        $email = $request->email;
+        
+        if (empty($email)) {
+            abort(404, 'Email parameter is required');
+        }
+        
         return view('password.verify-otp', ['email' => $email]);
     }
 
