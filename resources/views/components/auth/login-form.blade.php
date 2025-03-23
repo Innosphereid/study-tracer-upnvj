@@ -9,7 +9,6 @@
     <!-- Validation Errors -->
     @if ($errors->any())
     <div class="mb-4 text-sm text-red-600">
-        <div class="font-medium">{{ __('Whoops! Something went wrong.') }}</div>
         <ul class="mt-3 list-disc list-inside">
             @foreach ($errors->all() as $error)
             <li>{{ $error }}</li>
@@ -38,9 +37,6 @@
                     placeholder="Enter your username or email" required autofocus
                     class="w-full rounded-lg border-gray-300 pl-10 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 transition-all duration-300 ease-in-out" />
             </div>
-            @error('username')
-            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-            @enderror
         </div>
 
         <!-- Password Input -->
