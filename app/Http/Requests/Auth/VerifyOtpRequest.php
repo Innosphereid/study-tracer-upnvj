@@ -31,6 +31,30 @@ class VerifyOtpRequest extends FormRequest
     }
 
     /**
+     * Prepare the data for validation.
+     *
+     * @return void
+     */
+    protected function prepareForValidation(): void
+    {
+        // Ensure the OTP is formatted correctly by joining the request data if needed
+        if (!$this->has('otp') && $this->has('otp_1') && $this->has('otp_2') && $this->has('otp_3') && 
+            $this->has('otp_4') && $this->has('otp_5') && $this->has('otp_6')) {
+            
+            $otpDigits = [
+                $this->input('otp_1'),
+                $this->input('otp_2'),
+                $this->input('otp_3'),
+                $this->input('otp_4'),
+                $this->input('otp_5'),
+                $this->input('otp_6'),
+            ];
+            
+            $this->merge(['otp' => implode('', $otpDigits)]);
+        }
+    }
+
+    /**
      * Get custom attributes for validator errors.
      *
      * @return array<string, string>
