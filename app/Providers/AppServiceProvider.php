@@ -14,6 +14,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // Register the password reset service provider
         $this->app->register(PasswordResetServiceProvider::class);
+        
+        // Register the rate limiting service provider
+        $this->app->register(RateLimitingServiceProvider::class);
     }
 
     /**
