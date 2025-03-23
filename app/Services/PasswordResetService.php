@@ -56,10 +56,13 @@ class PasswordResetService implements PasswordResetServiceInterface
         $user = $this->findUserByEmail($email);
 
         if (!$user) {
+            Log::warning('Attempted to send reset link to non-existent email', ['email' => $email]);
             $this->logFailedResetRequest($email, 'Email not found');
             return false;
         }
 
+        Log::info('Generating new OTP for reset password', ['email' => $email]);
+        
         // Invalidate old tokens
         $this->resetRepository->invalidateOldTokens($email);
 
@@ -67,41 +70,58 @@ class PasswordResetService implements PasswordResetServiceInterface
         $token = $this->generateOtp();
         $expiresAt = Carbon::now()->addMinutes(10);
 
+        Log::info('OTP generated', [
+            'email' => $email, 
+            'expires_at' => $expiresAt->toDateTimeString(),
+            'token_length' => strlen($token)
+        ]);
+
         // Create token record
         $this->resetRepository->createToken($email, $token, $expiresAt);
+        
+        Log::info('Token stored in database', ['email' => $email]);
 
         // Send email with OTP - Force sendNow to bypass queue for testing
         try {
-            // Log sebelum mencoba mengirim email
-            Log::info("Attempting to send password reset email", [
+            Log::info('Attempting to send email with OTP', [
                 'email' => $email,
                 'mailer' => config('mail.default'),
                 'host' => config('mail.mailers.smtp.host'),
                 'port' => config('mail.mailers.smtp.port')
             ]);
 
-            // Coba kirim email
             Mail::to($email)->sendNow(new PasswordResetMail($user->name, $token));
             
-            // Log sukses
-            Log::info("Password reset email sent successfully", ['email' => $email]);
+            // Log successful email sending
+            Log::info('Email with OTP sent successfully', ['email' => $email]);
             
-            // Logging aktivitas sukses
-            $this->activityLogger->logActivity(...);
+            $this->activityLogger->logActivity(
+                'password_reset_email_sent',
+                "Email reset password berhasil dikirim ke {$email}",
+                null,
+                request()->ip(),
+                request()->userAgent()
+            );
             
             return true;
         } catch (\Exception $e) {
-            // Log error secara detail
-            Log::error("Failed to send password reset email: {$e->getMessage()}", [
+            // Log failed email sending with detailed error
+            Log::error('Failed to send email with OTP', [
                 'email' => $email,
-                'exception' => $e,
+                'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
             
-            // Aktivitas logger
-            $this->activityLogger->logActivity(...);
+            $this->activityLogger->logActivity(
+                'password_reset_email_failed',
+                "Gagal mengirim email reset password ke {$email}: " . $e->getMessage(),
+                null,
+                request()->ip(),
+                request()->userAgent()
+            );
             
-            return true; // Masih mengembalikan true untuk UX
+            // We'll consider it a failure since the email is critical for OTP delivery
+            return false;
         }
     }
 
