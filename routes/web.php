@@ -2,8 +2,9 @@
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\SuperAdmin\DashboardController as SuperAdminDashboardController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -28,51 +29,58 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Password Reset Routes
-Route::get('/forgot-password', [App\Http\Controllers\Auth\ResetPasswordController::class, 'showRequestForm'])
+Route::get('/forgot-password', [ResetPasswordController::class, 'showRequestForm'])
     ->middleware('guest')
     ->name('password.request');
 
-Route::post('/forgot-password', [App\Http\Controllers\Auth\ResetPasswordController::class, 'sendResetLink'])
+Route::post('/forgot-password', [ResetPasswordController::class, 'sendResetLink'])
     ->middleware('guest')
     ->name('password.email');
 
-Route::get('/verify-otp', [App\Http\Controllers\Auth\ResetPasswordController::class, 'showVerifyOtpForm'])
+Route::get('/verify-otp', [ResetPasswordController::class, 'showVerifyOtpForm'])
     ->middleware('guest')
     ->name('password.verify-otp-form');
 
-Route::post('/verify-otp', [App\Http\Controllers\Auth\ResetPasswordController::class, 'verifyOtp'])
+Route::post('/verify-otp', [ResetPasswordController::class, 'verifyOtp'])
     ->middleware('guest')
     ->name('password.verify-otp');
 
-Route::post('/resend-otp', [App\Http\Controllers\Auth\ResetPasswordController::class, 'resendOtp'])
+Route::post('/resend-otp', [ResetPasswordController::class, 'resendOtp'])
     ->middleware('guest')
     ->name('password.resend-otp');
 
-Route::get('/reset-password/{token}', [App\Http\Controllers\Auth\ResetPasswordController::class, 'showResetForm'])
+Route::get('/reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])
     ->middleware('guest')
     ->name('password.reset-form');
 
-Route::post('/reset-password', [App\Http\Controllers\Auth\ResetPasswordController::class, 'reset'])
+Route::post('/reset-password', [ResetPasswordController::class, 'reset'])
     ->middleware('guest')
     ->name('password.update');
 
-Route::get('/reset-success', [App\Http\Controllers\Auth\ResetPasswordController::class, 'showSuccessPage'])
+Route::get('/reset-success', [ResetPasswordController::class, 'showSuccessPage'])
     ->middleware('guest')
     ->name('password.success');
 
 // Security Report Routes
-Route::get('/security/report', [App\Http\Controllers\SecurityController::class, 'showReportForm'])
+Route::get('/security/report', [SecurityController::class, 'showReportForm'])
     ->name('security.report');
 
-Route::post('/security/report', [App\Http\Controllers\SecurityController::class, 'submitReport'])
+Route::post('/security/report', [SecurityController::class, 'submitReport'])
     ->name('security.report.submit');
 
-// SuperAdmin Dashboard
+// Dashboard Routes - Shared route for both admin and superadmin
+Route::get('/dashboard', function () {
+    if (auth()->user()->role === 'superadmin') {
+        return app()->make(SuperAdminDashboardController::class)->index();
+    }
+    return app()->make(AdminDashboardController::class)->index();
+})->middleware(['auth'])->name('dashboard');
+
+// Legacy routes that will redirect to the main dashboard
 Route::get('/superadmin/dashboard', [SuperAdminDashboardController::class, 'index'])
     ->middleware(['auth', 'role:superadmin'])
     ->name('superadmin.dashboard');
 
-// Admin Dashboard
 Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])
     ->middleware(['auth', 'role:admin,superadmin'])
     ->name('admin.dashboard');
@@ -80,10 +88,7 @@ Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])
 // Fallback route
 Route::fallback(function () {
     if (auth()->check()) {
-        if (auth()->user()->role === 'superadmin') {
-            return redirect()->route('superadmin.dashboard');
-        }
-        return redirect()->route('admin.dashboard');
+        return redirect()->route('dashboard');
     }
     
     return redirect()->route('login');
