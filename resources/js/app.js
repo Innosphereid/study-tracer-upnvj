@@ -1,9 +1,12 @@
 import "./bootstrap";
 import Alpine from "alpinejs";
 import "./email-check";
+import collapse from "@alpinejs/collapse";
 
 // Make Alpine available globally
 window.Alpine = Alpine;
+
+Alpine.plugin(collapse);
 
 // Initialize Alpine
 Alpine.start();
