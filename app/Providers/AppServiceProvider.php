@@ -17,6 +17,9 @@ class AppServiceProvider extends ServiceProvider
         
         // Register the rate limiting service provider
         $this->app->register(RateLimitingServiceProvider::class);
+
+        // Register the questionnaire service provider
+        $this->app->register(QuestionnaireServiceProvider::class);
     }
 
     /**
