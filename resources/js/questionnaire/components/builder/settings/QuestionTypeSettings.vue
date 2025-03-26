@@ -16,6 +16,8 @@
 import { defineProps, defineEmits, computed } from "vue";
 import RadioQuestionSettings from "./RadioQuestionSettings.vue";
 import CheckboxQuestionSettings from "./CheckboxQuestionSettings.vue";
+import DropdownQuestionSettings from "./DropdownQuestionSettings.vue";
+import RatingQuestionSettings from "./RatingQuestionSettings.vue";
 import QuestionSettingsPanel from "./QuestionSettingsPanel.vue";
 
 const props = defineProps({
@@ -38,6 +40,10 @@ const questionTypeComponent = computed(() => {
         return RadioQuestionSettings;
     } else if (props.question.type === "checkbox") {
         return CheckboxQuestionSettings;
+    } else if (props.question.type === "dropdown") {
+        return DropdownQuestionSettings;
+    } else if (props.question.type === "rating") {
+        return RatingQuestionSettings;
     }
 
     // Default to basic settings panel for other question types
