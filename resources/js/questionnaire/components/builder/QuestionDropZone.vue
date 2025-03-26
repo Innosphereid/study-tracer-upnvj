@@ -1,7 +1,10 @@
 <template>
     <div
         class="question-drop-zone transition-all duration-150"
-        :class="{ 'h-12': isOver, 'h-2': !isOver }"
+        :class="{
+            'drop-zone-expanded': isOverFromComponent || isDraggingComponent,
+            'drop-zone-normal': !isOverFromComponent && !isDraggingComponent,
+        }"
         @dragover="onDragOver"
         @dragleave="onDragLeave"
         @drop="onDrop"
@@ -9,11 +12,13 @@
         <div
             class="w-full h-full rounded-md transition-colors"
             :class="{
-                'bg-indigo-200 border-2 border-dashed border-indigo-400':
+                'bg-indigo-200 border-2 border-dashed border-indigo-400 shadow-md':
                     isOver && isValidTarget,
                 'bg-red-200 border-2 border-dashed border-red-400':
                     isOver && !isValidTarget,
-                'bg-gray-200': !isOver,
+                'border border-gray-300 border-dashed':
+                    !isOver && isDraggingComponent,
+                'bg-gray-200': !isOver && !isDraggingComponent,
             }"
         >
             <div
@@ -34,13 +39,35 @@
                         d="M5 10l7-7m0 0l7 7m-7-7v18"
                     />
                 </svg>
+                <span class="ml-2 text-sm font-medium text-indigo-600"
+                    >Letakkan di sini</span
+                >
+            </div>
+            <div
+                v-else-if="!isOver && isDraggingComponent"
+                class="flex items-center justify-center h-full opacity-50"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5 text-gray-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M5 10l7-7m0 0l7 7m-7-7v18"
+                    />
+                </svg>
             </div>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits } from "vue";
+import { ref, defineProps, defineEmits, inject, watch } from "vue";
 
 const props = defineProps({
     sectionId: {
@@ -69,6 +96,11 @@ const emit = defineEmits(["drop"]);
 
 const isOver = ref(false);
 const isValidTarget = ref(false);
+const isOverFromComponent = ref(false);
+
+// Inject the global dragging state
+const isDraggingComponent = inject("isDraggingComponent", ref(false));
+const isDraggingQuestion = inject("isDraggingQuestion", ref(false));
 
 const onDragOver = (event) => {
     event.preventDefault();
@@ -85,6 +117,10 @@ const onDragOver = (event) => {
             const dataString = event.dataTransfer.getData("text/plain");
             if (dataString) {
                 const data = JSON.parse(dataString);
+
+                // Tentukan apakah drag berasal dari component atau question
+                isOverFromComponent.value = data.sourceType === "component";
+
                 if (data.sourceType === "question") {
                     // Jika ini posisi pertama dan pertanyaan tidak boleh ke atas,
                     // atau jika ini posisi terakhir dan pertanyaan tidak boleh ke bawah
@@ -108,6 +144,8 @@ const onDragOver = (event) => {
         } catch (error) {
             // Jika tidak bisa baca data, tetap anggap valid (akan divalidasi saat drop)
             console.log("Cannot read dragover data:", error);
+            // Asumsi ini adalah component jika kita tidak bisa menentukan
+            isOverFromComponent.value = true;
         }
     }
 };
@@ -117,12 +155,14 @@ const onDragLeave = (event) => {
     if (!event.currentTarget.contains(event.relatedTarget)) {
         isOver.value = false;
         isValidTarget.value = false;
+        isOverFromComponent.value = false;
     }
 };
 
 const onDrop = (event) => {
     event.preventDefault();
     isOver.value = false;
+    isOverFromComponent.value = false;
 
     try {
         let dataString = event.dataTransfer.getData("application/json");
@@ -155,6 +195,18 @@ const onDrop = (event) => {
 <style scoped>
 .question-drop-zone {
     width: 100%;
-    transition: height 0.2s ease;
+    transition: all 0.2s ease;
+}
+
+.drop-zone-normal {
+    height: 2px;
+}
+
+.drop-zone-expanded {
+    height: 40px; /* Expanded when user is dragging a component or hovering over the drop zone */
+}
+
+.question-drop-zone:hover {
+    height: 20px; /* Subtle expansion on hover to make it easier to target */
 }
 </style>
