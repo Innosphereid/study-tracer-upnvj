@@ -46,7 +46,18 @@
 
         <!-- Slot for type-specific settings -->
         <div class="border-t border-gray-200 pt-4">
-            <slot name="type-specific-settings"></slot>
+            <!-- Debug untuk memeriksa apakah slot ini dipanggil -->
+            <p class="mb-2 text-xs text-gray-500">
+                Pengaturan khusus {{ props.question.type }}
+            </p>
+            <slot name="type-specific-settings">
+                <!-- Konten fallback jika slot tidak diisi oleh komponen anak -->
+                <div
+                    class="py-2 px-3 bg-gray-50 rounded-md text-sm text-gray-500"
+                >
+                    Tidak ada pengaturan khusus untuk tipe pertanyaan ini
+                </div>
+            </slot>
         </div>
 
         <!-- Common action buttons -->
