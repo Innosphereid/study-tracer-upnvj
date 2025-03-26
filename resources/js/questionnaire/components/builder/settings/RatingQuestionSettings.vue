@@ -223,38 +223,47 @@ const localMaxRating = ref(props.question.maxRating || 5);
 const localMinRating = ref(props.question.minRating || 1);
 const localMaxRatingValue = ref(props.question.maxRatingValue || 5);
 const localStepValue = ref(props.question.stepValue || 1);
-const localLabels = ref(
-    props.question.labels ? { ...props.question.labels } : {}
-);
 
-// Initialize default labels if not present
-const initializeLabels = () => {
-    if (!localLabels.value[localMinRating.value]) {
-        localLabels.value[localMinRating.value] = "Sangat Buruk";
+// Initialize labels with defaults if not present
+const localLabels = ref(() => {
+    const labels = props.question.labels ? { ...props.question.labels } : {};
+
+    // Ensure default labels are set
+    if (!labels[props.question.minRating || 1]) {
+        labels[props.question.minRating || 1] = "Sangat Buruk";
     }
 
-    if (!localLabels.value[localMaxRatingValue.value]) {
-        localLabels.value[localMaxRatingValue.value] = "Sangat Baik";
+    if (!labels[props.question.maxRatingValue || 5]) {
+        labels[props.question.maxRatingValue || 5] = "Sangat Baik";
     }
-};
 
-// Initialize labels on component creation
-initializeLabels();
+    return labels;
+});
 
 // Watch for changes in the question prop
 watch(
     () => props.question,
     (newQuestion) => {
-        localMaxRating.value = newQuestion.maxRating || 5;
+        localMaxRating.value = Math.min(newQuestion.maxRating || 5, 10);
         localMinRating.value = newQuestion.minRating || 1;
-        localMaxRatingValue.value = newQuestion.maxRatingValue || 5;
+        localMaxRatingValue.value =
+            newQuestion.maxRatingValue || localMaxRating.value;
         localStepValue.value = newQuestion.stepValue || 1;
 
+        // Update labels with new defaults if needed
         if (newQuestion.labels) {
             localLabels.value = { ...newQuestion.labels };
         } else {
             localLabels.value = {};
-            initializeLabels();
+        }
+
+        // Ensure we always have labels for min and max ratings
+        if (!localLabels.value[localMinRating.value]) {
+            localLabels.value[localMinRating.value] = "Sangat Buruk";
+        }
+
+        if (!localLabels.value[localMaxRatingValue.value]) {
+            localLabels.value[localMaxRatingValue.value] = "Sangat Baik";
         }
     },
     { deep: true }
@@ -263,7 +272,14 @@ watch(
 // Watch for changes in min/max rating values to update labels
 watch([() => localMinRating.value, () => localMaxRatingValue.value], () => {
     // Ensure we have labels for min and max ratings
-    initializeLabels();
+    if (!localLabels.value[localMinRating.value]) {
+        localLabels.value[localMinRating.value] = "Sangat Buruk";
+    }
+
+    if (!localLabels.value[localMaxRatingValue.value]) {
+        localLabels.value[localMaxRatingValue.value] = "Sangat Baik";
+    }
+
     updateQuestion();
 });
 
@@ -291,8 +307,19 @@ const updateQuestion = () => {
         localMaxRatingValue.value = localMaxRating.value;
     }
 
+    // Ensure max rating is at most 10
+    if (localMaxRating.value > 10) {
+        localMaxRating.value = 10;
+    }
+
     // Ensure we have labels for the current min/max values
-    initializeLabels();
+    if (!localLabels.value[localMinRating.value]) {
+        localLabels.value[localMinRating.value] = "Sangat Buruk";
+    }
+
+    if (!localLabels.value[localMaxRatingValue.value]) {
+        localLabels.value[localMaxRatingValue.value] = "Sangat Baik";
+    }
 
     emit("update:question", {
         ...props.question,
