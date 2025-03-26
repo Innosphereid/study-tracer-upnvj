@@ -135,11 +135,18 @@ export function useDragDrop() {
 
         if (oldIndex === newIndex) return;
 
+        console.log(
+            `Reordering question in section ${sectionId} from index ${oldIndex} to ${newIndex}`
+        );
+
         // Temukan seksi yang relevan
         const section = store.questionnaire.sections.find(
             (s) => s.id === sectionId
         );
-        if (!section) return;
+        if (!section) {
+            console.error(`Section with ID ${sectionId} not found`);
+            return;
+        }
 
         // Buat array indeks baru untuk reorder
         const newOrder = [...Array(section.questions.length).keys()];
@@ -148,7 +155,19 @@ export function useDragDrop() {
         const movedItem = newOrder.splice(oldIndex, 1)[0];
         newOrder.splice(newIndex, 0, movedItem);
 
+        console.log("New question order:", newOrder);
         store.reorderQuestions(sectionId, newOrder);
+
+        // Pastikan komponen yang dipilih tetap konsisten jika dipindahkan
+        if (store.selectedComponent?.type === "question") {
+            const question = section.questions[oldIndex];
+            if (question && store.selectedComponent.id === question.id) {
+                // Update currentQuestionIndex ke posisi baru
+                setTimeout(() => {
+                    store.currentQuestionIndex = newIndex;
+                }, 0);
+            }
+        }
     };
 
     return {
