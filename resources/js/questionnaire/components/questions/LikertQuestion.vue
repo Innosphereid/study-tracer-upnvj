@@ -10,52 +10,45 @@
                 {{ question.helpText }}
             </p>
 
-            <div class="mt-4 overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead>
-                        <tr>
-                            <th
-                                class="w-1/4 px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                            >
-                                Pernyataan
-                            </th>
-                            <th
-                                v-for="option in question.scale"
-                                :key="option.value"
-                                class="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
-                            >
-                                {{ option.label }}
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        <tr
-                            v-for="(statement, index) in question.statements"
-                            :key="statement.id"
-                            :class="{ 'bg-gray-50': index % 2 === 0 }"
+            <div class="mt-4">
+                <!-- Scale labels -->
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-sm text-gray-500">
+                        {{ minLabel }}
+                    </span>
+                    <span class="text-sm text-gray-500">
+                        {{ maxLabel }}
+                    </span>
+                </div>
+
+                <!-- Scale options -->
+                <div class="flex items-center justify-between w-full">
+                    <div class="flex flex-1 justify-between overflow-x-auto">
+                        <div
+                            v-for="option in question.scale"
+                            :key="option.value"
+                            class="flex flex-col items-center mx-1"
                         >
-                            <td class="px-2 py-4 text-sm text-gray-900">
-                                {{ statement.text }}
-                            </td>
-                            <td
-                                v-for="option in question.scale"
-                                :key="`${statement.id}-${option.value}`"
-                                class="px-2 py-4 text-center"
+                            <input
+                                type="radio"
+                                :name="`likert-${question.id}`"
+                                :value="option.value"
+                                :id="`likert-${question.id}-${option.value}`"
+                                v-model="selectedValue"
+                                class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
+                                @change="updateValue"
+                                :disabled="isBuilder"
+                            />
+                            <label
+                                :for="`likert-${question.id}-${option.value}`"
+                                class="text-xs text-gray-600 mt-1 text-center whitespace-nowrap"
+                                style="min-width: 20px"
                             >
-                                <input
-                                    type="radio"
-                                    :name="`likert-${question.id}-${statement.id}`"
-                                    :value="option.value"
-                                    :id="`likert-${question.id}-${statement.id}-${option.value}`"
-                                    v-model="responses[statement.id]"
-                                    class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
-                                    @change="updateValue"
-                                    :disabled="isBuilder"
-                                />
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                                {{ option.value }}
+                            </label>
+                        </div>
+                    </div>
+                </div>
             </div>
         </fieldset>
 
@@ -66,7 +59,7 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits, watch, onMounted } from "vue";
+import { ref, defineProps, defineEmits, watch, computed } from "vue";
 
 const props = defineProps({
     question: {
@@ -74,8 +67,8 @@ const props = defineProps({
         required: true,
     },
     modelValue: {
-        type: Object,
-        default: () => ({ responses: {} }),
+        type: Number,
+        default: 0,
     },
     error: {
         type: String,
@@ -90,55 +83,33 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue", "validate"]);
 
 // Internal state
-const responses = ref({});
+const selectedValue = ref(props.modelValue || 0);
 
-// Initialize responses from model value or create empty object
-onMounted(() => {
-    if (props.modelValue && props.modelValue.responses) {
-        responses.value = { ...props.modelValue.responses };
-    } else {
-        // Initialize empty responses for each statement
-        props.question.statements.forEach((statement) => {
-            responses.value[statement.id] = null;
-        });
+// Computed properties for labels
+const minLabel = computed(() => {
+    if (props.question.scale && props.question.scale.length > 0) {
+        return props.question.scale[0].label;
     }
+    return "Sangat Tidak Setuju";
+});
+
+const maxLabel = computed(() => {
+    if (props.question.scale && props.question.scale.length > 0) {
+        return props.question.scale[props.question.scale.length - 1].label;
+    }
+    return "Sangat Setuju";
 });
 
 // Watch for external changes
 watch(
     () => props.modelValue,
     (newVal) => {
-        if (newVal && newVal.responses) {
-            responses.value = { ...newVal.responses };
-        }
-    },
-    { deep: true }
-);
-
-// Watch for statement changes (in builder mode)
-watch(
-    () => props.question.statements,
-    () => {
-        // Ensure all statements have a response entry
-        props.question.statements.forEach((statement) => {
-            if (responses.value[statement.id] === undefined) {
-                responses.value[statement.id] = null;
-            }
-        });
-
-        // Clean up responses for statements that no longer exist
-        const validStatementIds = props.question.statements.map((s) => s.id);
-        Object.keys(responses.value).forEach((statementId) => {
-            if (!validStatementIds.includes(statementId)) {
-                delete responses.value[statementId];
-            }
-        });
-    },
-    { deep: true }
+        selectedValue.value = newVal || 0;
+    }
 );
 
 const updateValue = () => {
-    emit("update:modelValue", { responses: { ...responses.value } });
+    emit("update:modelValue", selectedValue.value);
     validate();
 };
 
@@ -146,19 +117,10 @@ const validate = () => {
     let isValid = true;
     let errorMessage = "";
 
-    // Check if all statements have been answered (if required)
-    if (props.question.required) {
-        const unansweredStatements = props.question.statements.filter(
-            (statement) => !responses.value[statement.id]
-        );
-
-        if (unansweredStatements.length > 0) {
-            isValid = false;
-            errorMessage =
-                unansweredStatements.length === 1
-                    ? "Harap jawab semua pernyataan."
-                    : `Harap jawab semua ${unansweredStatements.length} pernyataan.`;
-        }
+    // Required validation
+    if (props.question.required && !selectedValue.value) {
+        isValid = false;
+        errorMessage = "Pertanyaan ini wajib dijawab.";
     }
 
     emit("validate", { isValid, errorMessage });
@@ -167,12 +129,10 @@ const validate = () => {
 </script>
 
 <style scoped>
-/* Custom responsive styling for likert scale */
+/* Responsive styling */
 @media (max-width: 640px) {
-    table {
-        display: block;
+    .flex-1 {
         overflow-x: auto;
-        white-space: nowrap;
     }
 }
 </style>
