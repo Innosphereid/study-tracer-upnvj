@@ -60,6 +60,7 @@
 
         <RankingQuestionSettings
             v-else-if="question.type === 'ranking'"
+            ref="rankingSettingsRef"
             :question="question"
             @update:question="$emit('update:question', $event)"
             @duplicate-question="$emit('duplicate-question')"
@@ -83,7 +84,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, onMounted } from "vue";
+import { defineProps, defineEmits, onMounted, ref } from "vue";
 import RadioQuestionSettings from "./RadioQuestionSettings.vue";
 import CheckboxQuestionSettings from "./CheckboxQuestionSettings.vue";
 import DropdownQuestionSettings from "./DropdownQuestionSettings.vue";
@@ -107,9 +108,24 @@ const emit = defineEmits([
     "delete-question",
 ]);
 
+// Referensi ke komponen pengaturan spesifik yang di-render
+const rankingSettingsRef = ref(null);
+
+// Metode untuk menambahkan opsi ranking
+function addRankingOptions(count = 1) {
+    if (props.question.type === "ranking" && rankingSettingsRef.value) {
+        rankingSettingsRef.value.addOption(count);
+    }
+}
+
 // Debug initial question
 onMounted(() => {
     console.log("QuestionTypeSettings mounted with question:", props.question);
     console.log("Question type:", props.question.type);
+});
+
+// Ekspos metode untuk digunakan oleh komponen lain
+defineExpose({
+    addRankingOptions,
 });
 </script>
