@@ -3,6 +3,7 @@
         v-if="previewComponent"
         :is="previewComponent"
         :question="question"
+        @add-options="(count) => $emit('add-options', count)"
     />
     <div
         v-else
@@ -22,6 +23,8 @@ const props = defineProps({
         required: true,
     },
 });
+
+const emit = defineEmits(["add-options"]);
 
 // Mendapatkan komponen yang sesuai dengan tipe pertanyaan
 const previewComponent = computed(() => {
