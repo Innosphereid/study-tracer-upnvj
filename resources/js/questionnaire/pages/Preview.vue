@@ -315,6 +315,7 @@ import YesNoQuestion from "../components/questions/YesNoQuestion.vue";
 import FileUploadQuestion from "../components/questions/FileUploadQuestion.vue";
 import LikertQuestion from "../components/questions/LikertQuestion.vue";
 import MatrixQuestion from "../components/questions/MatrixQuestion.vue";
+import RankingQuestion from "../components/questions/RankingQuestion.vue";
 
 const props = defineProps({
     questionnaire: {
@@ -491,6 +492,7 @@ const getQuestionComponent = (type) => {
         "file-upload": FileUploadQuestion,
         likert: LikertQuestion,
         matrix: MatrixQuestion,
+        ranking: RankingQuestion,
     };
 
     return componentMap[type] || ShortText;
@@ -550,6 +552,10 @@ onMounted(() => {
                                     checkboxResponses: {},
                                 };
                             }
+                            break;
+
+                        case "ranking":
+                            answers.value[question.id] = [];
                             break;
 
                         default:
