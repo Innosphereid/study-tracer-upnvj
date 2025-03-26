@@ -66,7 +66,8 @@
                         </div>
 
                         <p class="text-xs text-gray-500">
-                            {{ fileTypeText }} up to {{ question.maxSize }}MB
+                            {{ fileTypeText }} up to
+                            {{ question.maxSize || 5 }}MB
                             <span v-if="question.maxFiles > 1"
                                 >(max {{ question.maxFiles }} files)</span
                             >
@@ -205,7 +206,7 @@ const acceptedFileTypes = computed(() => props.question.allowedTypes.join(","));
 // Human-readable file types
 const fileTypeText = computed(() => {
     if (props.question.allowedTypes.includes("*/*")) {
-        return "Any file type";
+        return "All file types";
     }
 
     const typeMap = {
@@ -216,6 +217,8 @@ const fileTypeText = computed(() => {
             "Word documents",
         "application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
             "Excel files",
+        "application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation":
+            "PowerPoint files",
     };
 
     const typeNames = props.question.allowedTypes.map(
