@@ -147,6 +147,7 @@ import {
     onMounted,
     watch,
     onBeforeUnmount,
+    provide,
 } from "vue";
 import { useQuestionnaireStore } from "../../store/questionnaire";
 import DraggableItem from "../shared/DraggableItem.vue";
@@ -179,6 +180,10 @@ const sliderWidth = ref(10); // Width of the slider as percentage
 const isDraggingSlider = ref(false);
 const isAtStart = ref(true);
 const isAtEnd = ref(false);
+const isDraggingComponent = ref(false);
+
+// Provide dragging state to be consumed by other components
+provide("isDraggingComponent", isDraggingComponent);
 
 // Calculate slider position based on scroll
 const updateSliderPosition = () => {
@@ -398,10 +403,12 @@ const filteredComponents = computed(() => {
 });
 
 const onDragStart = (event) => {
+    isDraggingComponent.value = true;
     emit("dragstart", event);
 };
 
 const onDragEnd = () => {
+    isDraggingComponent.value = false;
     emit("dragend");
 };
 </script>
