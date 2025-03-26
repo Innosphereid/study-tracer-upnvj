@@ -4,6 +4,9 @@ import Builder from "./pages/Builder.vue";
 import Preview from "./pages/Preview.vue";
 import FormView from "./pages/FormView.vue";
 
+// Enable debug mode untuk troubleshooting drag-drop
+window.DEBUG_MODE = true;
+
 // Pastikan script ini berjalan setelah DOM selesai dimuat
 document.addEventListener("DOMContentLoaded", () => {
     // Inisialisasi Pinia (state management)
