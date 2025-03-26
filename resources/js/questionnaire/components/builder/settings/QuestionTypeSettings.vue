@@ -18,6 +18,7 @@ import RadioQuestionSettings from "./RadioQuestionSettings.vue";
 import CheckboxQuestionSettings from "./CheckboxQuestionSettings.vue";
 import DropdownQuestionSettings from "./DropdownQuestionSettings.vue";
 import RatingQuestionSettings from "./RatingQuestionSettings.vue";
+import LikertQuestionSettings from "./LikertQuestionSettings.vue";
 import QuestionSettingsPanel from "./QuestionSettingsPanel.vue";
 
 const props = defineProps({
@@ -44,6 +45,8 @@ const questionTypeComponent = computed(() => {
         return DropdownQuestionSettings;
     } else if (props.question.type === "rating") {
         return RatingQuestionSettings;
+    } else if (props.question.type === "likert") {
+        return LikertQuestionSettings;
     }
 
     // Default to basic settings panel for other question types
