@@ -7,10 +7,29 @@
                 !isSelected,
         }"
         @click.stop="selectQuestion"
+        draggable="true"
+        @dragstart="onDragStart"
+        @dragend="onDragEnd"
     >
         <!-- Question Type Badge -->
         <div class="flex justify-between items-start mb-3">
             <div class="flex items-center">
+                <div class="drag-handle mr-2 text-gray-400 cursor-move">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M4 8h16M4 16h16"
+                        />
+                    </svg>
+                </div>
                 <span
                     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                     :class="getTypeClass(question.type)"
@@ -257,7 +276,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from "vue";
+import { ref, defineProps, defineEmits } from "vue";
 
 const props = defineProps({
     question: {
@@ -278,10 +297,52 @@ const props = defineProps({
     },
 });
 
-const emit = defineEmits(["select", "duplicate", "delete"]);
+const emit = defineEmits([
+    "select",
+    "duplicate",
+    "delete",
+    "dragstart",
+    "dragend",
+]);
+
+const isDragging = ref(false);
 
 const selectQuestion = () => {
     emit("select", props.question.id);
+};
+
+const onDragStart = (event) => {
+    isDragging.value = true;
+
+    // Set data untuk transfer
+    event.dataTransfer.effectAllowed = "move";
+
+    try {
+        const dragData = {
+            item: props.question,
+            sourceType: "question",
+            sourceIndex: props.index,
+            sectionId: props.sectionId,
+        };
+
+        const jsonData = JSON.stringify(dragData);
+        event.dataTransfer.setData("application/json", jsonData);
+        event.dataTransfer.setData("text/plain", jsonData);
+
+        // Tambahkan kelas visual saat dragging
+        event.target.classList.add("opacity-50");
+
+        emit("dragstart", dragData);
+    } catch (error) {
+        console.error("Error setting drag data:", error);
+    }
+};
+
+const onDragEnd = () => {
+    isDragging.value = false;
+    // Hapus kelas visual
+    event.target.classList.remove("opacity-50");
+    emit("dragend");
 };
 
 // Helper methods for displaying type information
@@ -345,5 +406,21 @@ const getTypeClass = (type) => {
 <style scoped>
 .question-wrapper {
     cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.question-wrapper.dragging {
+    opacity: 0.5;
+    transform: scale(0.98);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.drag-handle {
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.question-wrapper:hover .drag-handle {
+    opacity: 1;
 }
 </style>
