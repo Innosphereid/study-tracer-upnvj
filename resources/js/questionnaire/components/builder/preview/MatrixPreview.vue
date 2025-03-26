@@ -18,9 +18,9 @@
                             </th>
                             <!-- Column headers - limit to max-width for better display -->
                             <th
-                                v-for="(column, colIndex) in question.columns &&
-                                question.columns.length
-                                    ? question.columns
+                                v-for="(column, colIndex) in matrixColumns &&
+                                matrixColumns.length
+                                    ? matrixColumns
                                     : defaultMatrixColumns"
                                 :key="colIndex"
                                 scope="col"
@@ -38,9 +38,9 @@
                     <tbody class="bg-white divide-y divide-gray-200">
                         <!-- Show maximum 3 rows or default ones if not defined -->
                         <tr
-                            v-for="(row, rowIndex) in question.rows &&
-                            question.rows.length
-                                ? question.rows.slice(0, 3)
+                            v-for="(row, rowIndex) in previewRows &&
+                            previewRows.length
+                                ? previewRows
                                 : defaultMatrixRows.slice(0, 3)"
                             :key="rowIndex"
                             class="bg-white hover:bg-gray-50"
@@ -56,9 +56,9 @@
 
                             <!-- Matrix cells -->
                             <td
-                                v-for="(column, colIndex) in question.columns &&
-                                question.columns.length
-                                    ? question.columns
+                                v-for="(column, colIndex) in matrixColumns &&
+                                matrixColumns.length
+                                    ? matrixColumns
                                     : defaultMatrixColumns"
                                 :key="colIndex"
                                 class="px-2 py-2 whitespace-nowrap text-center text-sm"
@@ -69,7 +69,7 @@
                             >
                                 <!-- Radio button if matrixType is radio or default -->
                                 <div
-                                    v-if="question.matrixType !== 'checkbox'"
+                                    v-if="matrixType !== 'checkbox'"
                                     class="flex justify-center"
                                 >
                                     <input
@@ -97,10 +97,7 @@
                         </tr>
 
                         <!-- Indicator for more rows if applicable -->
-                        <tr
-                            v-if="question.rows && question.rows.length > 3"
-                            class="bg-white"
-                        >
+                        <tr v-if="hasMoreRows" class="bg-white">
                             <td
                                 colspan="100%"
                                 class="px-3 py-2 text-center text-xs text-gray-500 border-t border-dashed border-gray-300"
@@ -120,7 +117,7 @@
                                             d="M19 9l-7 7-7-7"
                                         />
                                     </svg>
-                                    {{ question.rows.length - 3 }} baris lainnya
+                                    {{ matrixRows.length - 3 }} baris lainnya
                                 </span>
                             </td>
                         </tr>
@@ -148,14 +145,14 @@
                     <span>
                         Matriks
                         {{
-                            question.matrixType === "checkbox"
+                            matrixType === "checkbox"
                                 ? "pilihan ganda"
                                 : "pilihan tunggal"
                         }}
                         dengan
-                        {{ question.rows ? question.rows.length : 0 }}
+                        {{ matrixRows ? matrixRows.length : 0 }}
                         baris dan
-                        {{ question.columns ? question.columns.length : 0 }}
+                        {{ matrixColumns ? matrixColumns.length : 0 }}
                         kolom
                     </span>
                 </div>
@@ -165,7 +162,7 @@
 </template>
 
 <script setup>
-import { defineProps } from "vue";
+import { defineProps, computed } from "vue";
 import { useDefaultConfigs } from "./composables/useDefaultConfigs";
 
 const props = defineProps({
@@ -176,4 +173,31 @@ const props = defineProps({
 });
 
 const { defaultMatrixRows, defaultMatrixColumns } = useDefaultConfigs();
+
+// Computed properties for displaying matrix data
+const matrixRows = computed(() => {
+    return props.question.rows && props.question.rows.length
+        ? props.question.rows
+        : defaultMatrixRows;
+});
+
+const matrixColumns = computed(() => {
+    return props.question.columns && props.question.columns.length
+        ? props.question.columns
+        : defaultMatrixColumns;
+});
+
+const matrixType = computed(() => {
+    return props.question.matrixType || "radio";
+});
+
+const previewRows = computed(() => {
+    // Return up to 3 rows for preview
+    return matrixRows.value.slice(0, 3);
+});
+
+// Whether to show "more rows" indicator
+const hasMoreRows = computed(() => {
+    return matrixRows.value.length > 3;
+});
 </script>
