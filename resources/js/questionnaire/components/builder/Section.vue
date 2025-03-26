@@ -296,8 +296,9 @@ const draggedQuestionIndex = ref(null);
 const isEmptySectionDragOver = ref(false);
 const isValidTargetForDrop = ref(false);
 
-// Provide dragging state to child components
+// Provide dragging state and index to child components
 provide("isDraggingQuestion", isDraggingQuestion);
+provide("draggedQuestionIndex", draggedQuestionIndex);
 
 // Handle drag-drop events for this section
 const handleSectionDrop = (dropData) => {
@@ -378,6 +379,47 @@ const handleQuestionDrop = (dropData) => {
 const onQuestionDragStart = (dragData) => {
     isDraggingQuestion.value = true;
     draggedQuestionIndex.value = dragData.sourceIndex;
+    console.log(`Started dragging question at index ${dragData.sourceIndex}`);
+
+    // Show a quick toast notification
+    showDragInstructions();
+};
+
+const showDragInstructions = () => {
+    // Check if we already have a toast notification
+    let toast = document.getElementById("drag-instructions-toast");
+
+    if (!toast) {
+        // Create a toast notification
+        toast = document.createElement("div");
+        toast.id = "drag-instructions-toast";
+        toast.className =
+            "fixed top-4 left-1/2 transform -translate-x-1/2 bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 text-sm flex items-center";
+        toast.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+            </svg>
+            <span>Seret pertanyaan ke zona drop yang ditandai untuk mengubah urutan</span>
+        `;
+
+        // Add to document
+        document.body.appendChild(toast);
+
+        // Auto remove after 3 seconds
+        setTimeout(() => {
+            if (toast && toast.parentNode) {
+                toast.classList.add("opacity-0");
+                setTimeout(() => {
+                    if (toast && toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }
+        }, 3000);
+
+        // Add transition
+        toast.style.transition = "opacity 0.3s ease-in-out";
+    }
 };
 
 const onQuestionDragEnd = () => {
