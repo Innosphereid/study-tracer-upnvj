@@ -3,33 +3,29 @@
         <div
             class="flex items-center justify-between text-xs text-gray-500 mb-2"
         >
-            <span v-if="question.labels && question.labels[question.minRating]">
-                {{ question.labels[question.minRating] }}
+            <span v-if="question.labels && question.labels[minRating]">
+                {{ question.labels[minRating] }}
             </span>
-            <span v-else>{{ question.minRating || 1 }}</span>
+            <span v-else>{{ minRating }}</span>
 
-            <span
-                v-if="
-                    question.labels && question.labels[question.maxRatingValue]
-                "
-            >
-                {{ question.labels[question.maxRatingValue] }}
+            <span v-if="question.labels && question.labels[maxRatingValue]">
+                {{ question.labels[maxRatingValue] }}
             </span>
-            <span v-else>{{ question.maxRatingValue || 5 }}</span>
+            <span v-else>{{ maxRatingValue }}</span>
         </div>
 
         <div class="flex items-center justify-center space-x-1">
-            <template v-for="n in question.maxRating || 5" :key="n">
+            <template v-for="n in maxRating" :key="n">
                 <span
                     :class="
-                        n <= Math.ceil((question.maxRating || 5) / 2)
+                        n <= Math.ceil(maxRating / 2)
                             ? 'text-yellow-400'
                             : 'text-gray-300'
                     "
                 >
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        class="h-6 w-6"
+                        class="h-8 w-8"
                         viewBox="0 0 20 20"
                         fill="currentColor"
                     >
@@ -51,7 +47,7 @@
 </template>
 
 <script setup>
-import { defineProps } from "vue";
+import { defineProps, computed } from "vue";
 
 const props = defineProps({
     question: {
@@ -59,4 +55,11 @@ const props = defineProps({
         required: true,
     },
 });
+
+// Computed properties for rating settings to ensure defaults are used
+const minRating = computed(() => props.question.minRating || 1);
+const maxRating = computed(() => Math.min(props.question.maxRating || 5, 10));
+const maxRatingValue = computed(
+    () => props.question.maxRatingValue || maxRating.value
+);
 </script>
