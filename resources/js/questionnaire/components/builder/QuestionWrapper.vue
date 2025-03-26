@@ -5,6 +5,7 @@
             'border-indigo-500 bg-indigo-50': isSelected,
             'border-gray-200 hover:border-indigo-300 hover:shadow-sm':
                 !isSelected,
+            dragging: isDragging,
         }"
         @click.stop="selectQuestion"
         draggable="true"
@@ -563,10 +564,31 @@ const selectQuestion = () => {
 const onDragStart = (event) => {
     isDragging.value = true;
 
+    // Add visual feedback for drag operation
+    event.target.classList.add("dragging");
+
     // Set data untuk transfer
     event.dataTransfer.effectAllowed = "move";
 
     try {
+        // Create drag ghost image to show while dragging
+        const ghostElement = event.target.cloneNode(true);
+        ghostElement.style.width = `${event.target.offsetWidth}px`;
+        ghostElement.classList.add("drag-ghost");
+        ghostElement.style.opacity = "0.8";
+        document.body.appendChild(ghostElement);
+
+        // Set custom drag image with offset
+        const rect = event.target.getBoundingClientRect();
+        const offsetX = event.clientX - rect.left;
+        const offsetY = event.clientY - rect.top;
+        event.dataTransfer.setDragImage(ghostElement, offsetX, offsetY);
+
+        // Remove ghost element after it's been used
+        setTimeout(() => {
+            document.body.removeChild(ghostElement);
+        }, 0);
+
         const dragData = {
             item: props.question,
             sourceType: "question",
@@ -578,9 +600,6 @@ const onDragStart = (event) => {
         event.dataTransfer.setData("application/json", jsonData);
         event.dataTransfer.setData("text/plain", jsonData);
 
-        // Tambahkan kelas visual saat dragging
-        event.target.classList.add("opacity-50");
-
         emit("dragstart", dragData);
     } catch (error) {
         console.error("Error setting drag data:", error);
@@ -589,8 +608,10 @@ const onDragStart = (event) => {
 
 const onDragEnd = () => {
     isDragging.value = false;
-    // Hapus kelas visual
-    event.target.classList.remove("opacity-50");
+
+    // Remove visual feedback
+    event.target.classList.remove("dragging");
+
     emit("dragend");
 };
 
@@ -656,12 +677,27 @@ const getTypeClass = (type) => {
 .question-wrapper {
     cursor: pointer;
     transition: all 0.2s ease;
+    transform-origin: center center;
+    will-change: transform, box-shadow, opacity;
 }
 
 .question-wrapper.dragging {
-    opacity: 0.5;
+    opacity: 0.7;
     transform: scale(0.98);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
+        0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border-color: #6366f1;
+    background-color: #eef2ff;
+    z-index: 10;
+    position: relative;
+}
+
+.drag-ghost {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: -1;
 }
 
 .drag-handle {
