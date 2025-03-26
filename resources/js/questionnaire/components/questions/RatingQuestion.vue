@@ -114,7 +114,7 @@ const emit = defineEmits(["update:modelValue", "validate"]);
 
 // Computed properties for rating settings
 const minRating = computed(() => props.question.minRating || 1);
-const maxRating = computed(() => props.question.maxRating || 5);
+const maxRating = computed(() => Math.min(props.question.maxRating || 5, 10)); // Ensure max 10 stars
 const maxRatingValue = computed(
     () => props.question.maxRatingValue || maxRating.value
 );
@@ -191,5 +191,10 @@ const validate = () => {
 <style scoped>
 .rating-star:hover {
     transform: scale(1.1);
+}
+
+.rating-star svg {
+    width: 2.5rem;
+    height: 2.5rem;
 }
 </style>
