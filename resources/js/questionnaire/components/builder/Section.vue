@@ -94,71 +94,94 @@
 
             <div
                 v-else
-                class="empty-section flex items-center justify-center py-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded-md"
+                class="empty-section bg-gray-50 border-2 border-dashed border-gray-300 rounded-md overflow-hidden relative"
             >
+                <div class="p-6">
+                    <div class="text-center">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="mx-auto h-10 w-10 text-gray-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                        </svg>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">
+                            Belum ada pertanyaan
+                        </h3>
+                        <p class="mt-1 text-sm text-gray-500">
+                            Tambahkan pertanyaan untuk seksi ini.
+                        </p>
+                        <div class="mt-4">
+                            <button
+                                type="button"
+                                class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                @click.stop="$emit('add-question', section.id)"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="-ml-0.5 mr-2 h-4 w-4"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                >
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                        clip-rule="evenodd"
+                                    />
+                                </svg>
+                                Tambah Pertanyaan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Overlay DropZone untuk seksi kosong -->
                 <DropZone
                     target-type="section"
                     :target-id="section.id"
                     :accept-types="['component', 'question']"
                     @drop="handleSectionDrop"
-                    zone-class="w-full h-full absolute inset-0"
+                    zone-class="absolute inset-0 w-full h-full"
                 >
                     <template v-slot="{ isOver, isValidTarget }">
                         <div
-                            class="text-center relative z-10"
-                            :class="{ 'opacity-50': isOver }"
+                            v-if="isOver"
+                            class="absolute inset-0 flex items-center justify-center"
+                            :class="
+                                isValidTarget
+                                    ? 'bg-indigo-50 bg-opacity-80'
+                                    : 'bg-red-50 bg-opacity-80'
+                            "
                         >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="mx-auto h-10 w-10"
-                                :class="
-                                    isOver && isValidTarget
-                                        ? 'text-indigo-500'
-                                        : 'text-gray-400'
-                                "
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                            </svg>
-                            <h3 class="mt-2 text-sm font-medium text-gray-900">
-                                Belum ada pertanyaan
-                            </h3>
-                            <p class="mt-1 text-sm text-gray-500">
-                                {{
-                                    isOver && isValidTarget
-                                        ? "Lepas untuk menambahkan komponen"
-                                        : "Tambahkan pertanyaan untuk seksi ini."
-                                }}
-                            </p>
-                            <div class="mt-4" v-if="!isOver">
-                                <button
-                                    type="button"
-                                    class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                    @click.stop="
-                                        $emit('add-question', section.id)
+                            <div class="text-center p-4">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="mx-auto h-10 w-10"
+                                    :class="
+                                        isValidTarget
+                                            ? 'text-indigo-500'
+                                            : 'text-red-500'
                                     "
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
                                 >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        class="-ml-0.5 mr-2 h-4 w-4"
-                                        viewBox="0 0 20 20"
-                                        fill="currentColor"
-                                    >
-                                        <path
-                                            fill-rule="evenodd"
-                                            d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                                            clip-rule="evenodd"
-                                        />
-                                    </svg>
-                                    Tambah Pertanyaan
-                                </button>
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                    />
+                                </svg>
+                                <p class="mt-2 text-sm font-medium">
+                                    Lepas untuk menambahkan komponen
+                                </p>
                             </div>
                         </div>
                     </template>
@@ -173,6 +196,7 @@
             :accept-types="['component', 'question']"
             @drop="handleSectionDrop"
             zone-class="py-4 px-2 border-t border-gray-200 rounded-b-lg"
+            v-if="section.questions.length > 0"
         >
             <template v-slot="{ isOver, isValidTarget }">
                 <div
@@ -272,5 +296,14 @@ const selectQuestion = (questionId) => {
 <style scoped>
 .section {
     transition: border-color 0.15s ease-in-out;
+}
+
+.empty-section {
+    min-height: 180px;
+    position: relative;
+}
+
+.questions-container {
+    position: relative;
 }
 </style>
