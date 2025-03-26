@@ -19,6 +19,7 @@ import CheckboxQuestionSettings from "./CheckboxQuestionSettings.vue";
 import DropdownQuestionSettings from "./DropdownQuestionSettings.vue";
 import RatingQuestionSettings from "./RatingQuestionSettings.vue";
 import LikertQuestionSettings from "./LikertQuestionSettings.vue";
+import FileUploadQuestionSettings from "./FileUploadQuestionSettings.vue";
 import QuestionSettingsPanel from "./QuestionSettingsPanel.vue";
 
 const props = defineProps({
@@ -47,6 +48,8 @@ const questionTypeComponent = computed(() => {
         return RatingQuestionSettings;
     } else if (props.question.type === "likert") {
         return LikertQuestionSettings;
+    } else if (props.question.type === "file-upload") {
+        return FileUploadQuestionSettings;
     }
 
     // Default to basic settings panel for other question types
