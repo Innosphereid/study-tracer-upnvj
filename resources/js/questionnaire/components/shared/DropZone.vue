@@ -44,34 +44,22 @@ const isValidTarget = ref(false);
 const onDragOver = (event) => {
     event.preventDefault();
 
+    // Selalu izinkan drop terlebih dahulu
+    event.dataTransfer.dropEffect = "move";
+
     if (!isOver.value) {
         isOver.value = true;
 
-        // Cek apakah tipe sumber valid
-        try {
-            const data = JSON.parse(
-                event.dataTransfer.getData("application/json") || "{}"
-            );
-            const sourceType = data.sourceType;
+        // Cek apakah tipe sumber valid, namun jangan coba parse data di sini
+        // Hal ini tidak berfungsi di Firefox karena dataTransfer.getData hanya dapat dipanggil pada event drop
+        isValidTarget.value = true; // default to true for better UX
 
-            // Validasi: jika acceptTypes kosong, terima semua. Jika tidak, cek apakah tipe diterima
-            isValidTarget.value =
-                props.acceptTypes.length === 0 ||
-                props.acceptTypes.includes(sourceType);
-
-            emit("dragover", {
-                isValid: isValidTarget.value,
-                sourceType,
-                targetType: props.targetType,
-                targetId: props.targetId,
-            });
-        } catch (error) {
-            isValidTarget.value = false;
-        }
+        emit("dragover", {
+            isValid: isValidTarget.value,
+            targetType: props.targetType,
+            targetId: props.targetId,
+        });
     }
-
-    // Set drop effect berdasarkan validitas
-    event.dataTransfer.dropEffect = isValidTarget.value ? "move" : "none";
 };
 
 const onDragLeave = (event) => {
@@ -85,12 +73,26 @@ const onDragLeave = (event) => {
 
 const onDrop = (event) => {
     event.preventDefault();
+    console.log("Drop event triggered on dropzone");
+
     isOver.value = false;
 
     try {
-        const data = JSON.parse(
-            event.dataTransfer.getData("application/json") || "{}"
-        );
+        // Coba dapatkan data dari berbagai format
+        let dataString = event.dataTransfer.getData("application/json");
+
+        if (!dataString) {
+            dataString = event.dataTransfer.getData("text/plain");
+            console.log("Using text/plain format:", dataString);
+        }
+
+        if (!dataString) {
+            console.log("No valid data format found in drop event");
+            return;
+        }
+
+        const data = JSON.parse(dataString || "{}");
+        console.log("Parsed drop data:", data);
 
         if (data && data.item) {
             emit("drop", {
@@ -99,6 +101,10 @@ const onDrop = (event) => {
                 targetType: props.targetType,
                 targetId: props.targetId,
             });
+
+            // Reset state
+            isOver.value = false;
+            isValidTarget.value = false;
         }
     } catch (error) {
         console.error("Error parsing drop data:", error);
