@@ -32,21 +32,13 @@
             <!-- Ranking items list with connecting lines -->
             <div class="space-y-0">
                 <div
-                    v-for="(option, index) in question.options &&
-                    question.options.length > 0
-                        ? question.options.slice(0, 5)
-                        : defaultRankingOptions"
+                    v-for="(option, index) in displayOptions"
                     :key="index"
                     class="relative"
                 >
                     <!-- Connecting line between items except for the last one -->
                     <div
-                        v-if="
-                            index <
-                            (question.options && question.options.length > 0
-                                ? Math.min(question.options.length, 5) - 1
-                                : defaultRankingOptions.length - 1)
-                        "
+                        v-if="index < displayOptions.length - 1"
                         class="absolute left-4 top-10 h-4 w-0 border-l-2 border-dashed border-gray-300 z-0"
                     ></div>
 
@@ -145,11 +137,7 @@
                 </svg>
                 <span>
                     Responden diminta untuk mengurutkan
-                    {{
-                        question.options
-                            ? question.options.length
-                            : defaultRankingOptions.length
-                    }}
+                    {{ displayOptions.length }}
                     pilihan sesuai prioritas mereka
                 </span>
             </div>
@@ -158,7 +146,7 @@
 </template>
 
 <script setup>
-import { defineProps } from "vue";
+import { defineProps, computed } from "vue";
 import { useDefaultConfigs } from "./composables/useDefaultConfigs";
 
 const props = defineProps({
@@ -169,4 +157,14 @@ const props = defineProps({
 });
 
 const { defaultRankingOptions } = useDefaultConfigs();
+
+// Computed property untuk menampilkan opsi yang sesuai
+const displayOptions = computed(() => {
+    // Gunakan opsi dari pertanyaan jika ada dan tidak kosong
+    if (props.question.options && props.question.options.length > 0) {
+        return props.question.options.slice(0, 5);
+    }
+    // Jika tidak, gunakan opsi default
+    return defaultRankingOptions;
+});
 </script>
