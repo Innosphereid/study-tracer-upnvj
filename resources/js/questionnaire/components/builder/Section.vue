@@ -96,49 +96,73 @@
                 v-else
                 class="empty-section flex items-center justify-center py-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded-md"
             >
-                <div class="text-center">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="mx-auto h-10 w-10 text-gray-400"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                    </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900">
-                        Belum ada pertanyaan
-                    </h3>
-                    <p class="mt-1 text-sm text-gray-500">
-                        Tambahkan pertanyaan untuk seksi ini.
-                    </p>
-                    <div class="mt-4">
-                        <button
-                            type="button"
-                            class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                            @click.stop="$emit('add-question', section.id)"
+                <DropZone
+                    target-type="section"
+                    :target-id="section.id"
+                    :accept-types="['component', 'question']"
+                    @drop="handleSectionDrop"
+                    zone-class="w-full h-full absolute inset-0"
+                >
+                    <template v-slot="{ isOver, isValidTarget }">
+                        <div
+                            class="text-center relative z-10"
+                            :class="{ 'opacity-50': isOver }"
                         >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
-                                class="-ml-0.5 mr-2 h-4 w-4"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
+                                class="mx-auto h-10 w-10"
+                                :class="
+                                    isOver && isValidTarget
+                                        ? 'text-indigo-500'
+                                        : 'text-gray-400'
+                                "
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
                             >
                                 <path
-                                    fill-rule="evenodd"
-                                    d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                                    clip-rule="evenodd"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                                 />
                             </svg>
-                            Tambah Pertanyaan
-                        </button>
-                    </div>
-                </div>
+                            <h3 class="mt-2 text-sm font-medium text-gray-900">
+                                Belum ada pertanyaan
+                            </h3>
+                            <p class="mt-1 text-sm text-gray-500">
+                                {{
+                                    isOver && isValidTarget
+                                        ? "Lepas untuk menambahkan komponen"
+                                        : "Tambahkan pertanyaan untuk seksi ini."
+                                }}
+                            </p>
+                            <div class="mt-4" v-if="!isOver">
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                    @click.stop="
+                                        $emit('add-question', section.id)
+                                    "
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        class="-ml-0.5 mr-2 h-4 w-4"
+                                        viewBox="0 0 20 20"
+                                        fill="currentColor"
+                                    >
+                                        <path
+                                            fill-rule="evenodd"
+                                            d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                            clip-rule="evenodd"
+                                        />
+                                    </svg>
+                                    Tambah Pertanyaan
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </DropZone>
             </div>
         </div>
 
@@ -147,7 +171,7 @@
             target-type="section"
             :target-id="section.id"
             :accept-types="['component', 'question']"
-            @drop="handleDrop"
+            @drop="handleSectionDrop"
             zone-class="py-4 px-2 border-t border-gray-200 rounded-b-lg"
         >
             <template v-slot="{ isOver, isValidTarget }">
@@ -179,6 +203,8 @@ import QuestionWrapper from "./QuestionWrapper.vue";
 import DropZone from "../shared/DropZone.vue";
 import { useDragDrop } from "../../composables/useDragDrop";
 
+const { handleDrop } = useDragDrop();
+
 const props = defineProps({
     section: {
         type: Object,
@@ -203,8 +229,34 @@ const emit = defineEmits([
     "delete-question",
 ]);
 
-const { handleDrop } = useDragDrop();
 const selectedQuestionId = ref(null);
+
+// Handle drag-drop events for this section
+const handleSectionDrop = (dropData) => {
+    console.log("Section drop handler called:", {
+        dropData,
+        sectionId: props.section.id,
+    });
+
+    // Pastikan target ID adalah ID seksi ini
+    if (dropData.targetType === "section") {
+        if (dropData.targetId !== props.section.id) {
+            console.log("Target ID mismatch:", {
+                expected: props.section.id,
+                received: dropData.targetId,
+            });
+            // Update targetId jika tidak cocok
+            dropData.targetId = props.section.id;
+        }
+
+        const result = handleDrop(dropData);
+        console.log("Section drop result:", result);
+        return result;
+    }
+
+    console.log("Drop ignored: not for section");
+    return false;
+};
 
 const selectSection = () => {
     selectedQuestionId.value = null;
