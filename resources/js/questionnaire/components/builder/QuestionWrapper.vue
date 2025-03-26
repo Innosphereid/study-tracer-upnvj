@@ -97,7 +97,10 @@
         </div>
 
         <!-- Question Preview -->
-        <DynamicQuestionPreview :question="question" />
+        <DynamicQuestionPreview
+            :question="question"
+            @add-options="(count) => $emit('add-options', count)"
+        />
     </div>
 </template>
 
@@ -131,6 +134,7 @@ const emit = defineEmits([
     "delete",
     "dragstart",
     "dragend",
+    "add-options",
 ]);
 
 const isDragging = ref(false);
