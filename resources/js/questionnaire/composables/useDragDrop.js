@@ -9,11 +9,13 @@ export function useDragDrop() {
     const dragSource = ref(null);
     const dropTarget = ref(null);
 
-    const startDrag = (item, source) => {
-        isDragging.value = true;
-        draggedItem.value = item;
-        dragSource.value = source;
-        store.isDragging = true;
+    const startDrag = (dragEvent) => {
+        if (dragEvent && dragEvent.item) {
+            isDragging.value = true;
+            draggedItem.value = dragEvent.item;
+            dragSource.value = { type: dragEvent.sourceType };
+            store.isDragging = true;
+        }
     };
 
     const endDrag = () => {
@@ -48,29 +50,67 @@ export function useDragDrop() {
         return false;
     };
 
-    const handleDrop = (target, targetType) => {
-        if (!draggedItem.value || !canDrop(targetType, dragSource.value.type)) {
-            endDrag();
-            return false;
-        }
+    const handleDrop = (dropEvent) => {
+        // Handle drop events from DropZone component
+        if (dropEvent && dropEvent.item && dropEvent.targetType) {
+            const { item, sourceType, targetType, targetId } = dropEvent;
 
-        if (dragSource.value.type === "component" && targetType === "section") {
-            // Tambahkan komponen baru ke seksi
-            const sectionId = target.id;
-            const componentType = draggedItem.value.type;
+            console.log("Drop event:", {
+                item,
+                sourceType,
+                targetType,
+                targetId,
+            });
 
-            // Temukan indeks seksi
-            const sectionIndex = store.questionnaire.sections.findIndex(
-                (s) => s.id === sectionId
-            );
-            if (sectionIndex >= 0) {
-                store.currentSectionIndex = sectionIndex;
+            if (!canDrop(targetType, sourceType)) {
+                console.log("Cannot drop this item type in this target", {
+                    targetType,
+                    sourceType,
+                });
+                return false;
+            }
+
+            if (sourceType === "component" && targetType === "section") {
+                // Add new component to section
+                const sectionId = targetId;
+                const componentType = item.id;
+
+                console.log("Adding component to section", {
+                    sectionId,
+                    componentType,
+                });
+
+                // Find section index
+                const sectionIndex = store.questionnaire.sections.findIndex(
+                    (s) => s.id === sectionId
+                );
+
+                console.log("Section index:", sectionIndex);
+
+                if (sectionIndex >= 0) {
+                    store.currentSectionIndex = sectionIndex;
+                    store.addQuestion(componentType);
+                    return true;
+                }
+            } else if (sourceType === "component" && targetType === "canvas") {
+                // For components dropped on canvas, create a new section first
+                console.log("Adding component to new section");
+
+                store.addSection();
+                const newSectionId =
+                    store.questionnaire.sections[
+                        store.questionnaire.sections.length - 1
+                    ].id;
+
+                console.log("New section created:", newSectionId);
+
+                // Then add the component to the new section
+                const componentType = item.id;
                 store.addQuestion(componentType);
+                return true;
             }
         }
-
-        endDrag();
-        return true;
+        return false;
     };
 
     const handleSectionReorder = (event, sectionList) => {
