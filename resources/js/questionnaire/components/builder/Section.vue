@@ -120,11 +120,26 @@
                 v-else
                 class="empty-section bg-gray-50 border-2 border-dashed border-gray-300 rounded-md overflow-hidden relative"
             >
-                <div class="p-6">
-                    <div class="text-center">
+                <!-- Improved empty section with enhanced drop zone UI -->
+                <div
+                    class="p-8 flex flex-col items-center justify-center transition-all duration-300"
+                    @dragover.prevent="onEmptySectionDragOver"
+                    @dragleave.prevent="onEmptySectionDragLeave"
+                    @drop.prevent="onEmptySectionDrop"
+                    :class="{
+                        'bg-indigo-50 border-indigo-300':
+                            isEmptySectionDragOver && isValidTargetForDrop,
+                        'bg-red-50 border-red-300':
+                            isEmptySectionDragOver && !isValidTargetForDrop,
+                    }"
+                >
+                    <div
+                        v-if="isEmptySectionDragOver && isValidTargetForDrop"
+                        class="mb-4"
+                    >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            class="mx-auto h-10 w-10 text-gray-400"
+                            class="h-12 w-12 text-indigo-500"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -132,84 +147,80 @@
                             <path
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                stroke-width="1.5"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                             />
                         </svg>
-                        <h3 class="mt-2 text-sm font-medium text-gray-900">
-                            Belum ada pertanyaan
-                        </h3>
-                        <p class="mt-1 text-sm text-gray-500">
-                            Tambahkan pertanyaan untuk seksi ini.
-                        </p>
-                        <div class="mt-4">
-                            <button
-                                type="button"
-                                class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                @click.stop="$emit('add-question', section.id)"
+                    </div>
+                    <div
+                        v-else-if="
+                            isEmptySectionDragOver && !isValidTargetForDrop
+                        "
+                        class="mb-4"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-12 w-12 text-red-500"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="1.5"
+                                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                        </svg>
+                    </div>
+                    <div v-else class="mb-4">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-12 w-12 text-gray-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="1.5"
+                                d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+                            />
+                        </svg>
+                    </div>
+                    <p class="text-gray-500 text-center">
+                        <span class="font-medium">Belum ada pertanyaan</span
+                        ><br />
+                        <span class="text-sm">{{
+                            isEmptySectionDragOver && isValidTargetForDrop
+                                ? "Lepas untuk menambahkan pertanyaan ini"
+                                : "Tambahkan pertanyaan untuk seksi ini"
+                        }}</span>
+                    </p>
+
+                    <div class="mt-4" v-if="!isEmptySectionDragOver">
+                        <button
+                            type="button"
+                            class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            @click.stop="$emit('add-question', section.id)"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="-ml-0.5 mr-2 h-4 w-4"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
                             >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="-ml-0.5 mr-2 h-4 w-4"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                >
-                                    <path
-                                        fill-rule="evenodd"
-                                        d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                                        clip-rule="evenodd"
-                                    />
-                                </svg>
-                                Tambah Pertanyaan
-                            </button>
-                        </div>
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                    clip-rule="evenodd"
+                                />
+                            </svg>
+                            Tambah Pertanyaan
+                        </button>
                     </div>
                 </div>
-                <!-- Overlay DropZone untuk seksi kosong -->
-                <DropZone
-                    target-type="section"
-                    :target-id="section.id"
-                    :accept-types="['component', 'question']"
-                    @drop="handleSectionDrop"
-                    zone-class="absolute inset-0 w-full h-full"
-                >
-                    <template v-slot="{ isOver, isValidTarget }">
-                        <div
-                            v-if="isOver"
-                            class="absolute inset-0 flex items-center justify-center"
-                            :class="
-                                isValidTarget
-                                    ? 'bg-indigo-50 bg-opacity-80'
-                                    : 'bg-red-50 bg-opacity-80'
-                            "
-                        >
-                            <div class="text-center p-4">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="mx-auto h-10 w-10"
-                                    :class="
-                                        isValidTarget
-                                            ? 'text-indigo-500'
-                                            : 'text-red-500'
-                                    "
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                    />
-                                </svg>
-                                <p class="mt-2 text-sm font-medium">
-                                    Lepas untuk menambahkan komponen
-                                </p>
-                            </div>
-                        </div>
-                    </template>
-                </DropZone>
             </div>
         </div>
 
@@ -246,7 +257,7 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits } from "vue";
+import { ref, defineProps, defineEmits, provide } from "vue";
 import QuestionWrapper from "./QuestionWrapper.vue";
 import DropZone from "../shared/DropZone.vue";
 import QuestionDropZone from "./QuestionDropZone.vue";
@@ -282,6 +293,11 @@ const emit = defineEmits([
 const selectedQuestionId = ref(null);
 const isDraggingQuestion = ref(false);
 const draggedQuestionIndex = ref(null);
+const isEmptySectionDragOver = ref(false);
+const isValidTargetForDrop = ref(false);
+
+// Provide dragging state to child components
+provide("isDraggingQuestion", isDraggingQuestion);
 
 // Handle drag-drop events for this section
 const handleSectionDrop = (dropData) => {
@@ -377,6 +393,70 @@ const selectSection = () => {
 const selectQuestion = (questionId) => {
     selectedQuestionId.value = questionId;
     emit("select", { type: "question", id: questionId });
+};
+
+const onEmptySectionDragOver = (event) => {
+    isEmptySectionDragOver.value = true;
+
+    try {
+        // Try to validate the dragged item
+        const dataString = event.dataTransfer.getData("text/plain");
+        if (!dataString) {
+            // On Firefox and some browsers, we can't read data on dragover
+            // Default to true for better UX
+            isValidTargetForDrop.value = true;
+            return;
+        }
+
+        const data = JSON.parse(dataString);
+        // Only components from sidebar are valid, not questions (since section is empty)
+        isValidTargetForDrop.value = data.sourceType === "component";
+    } catch (error) {
+        console.log("Error reading dragover data:", error);
+        // Default to true if we can't read the data
+        isValidTargetForDrop.value = true;
+    }
+};
+
+const onEmptySectionDragLeave = (event) => {
+    // Make sure we're not triggering when moving to a child element
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+        isEmptySectionDragOver.value = false;
+        isValidTargetForDrop.value = false;
+    }
+};
+
+const onEmptySectionDrop = (event) => {
+    isEmptySectionDragOver.value = false;
+
+    try {
+        let dataString = event.dataTransfer.getData("application/json");
+        if (!dataString) {
+            dataString = event.dataTransfer.getData("text/plain");
+        }
+
+        if (!dataString) {
+            console.log("No valid data found in drop event");
+            return;
+        }
+
+        const data = JSON.parse(dataString);
+        if (data && data.item && data.sourceType === "component") {
+            // Create drop data for position 0 (beginning of empty section)
+            const customDropData = {
+                item: data.item,
+                sourceType: "component",
+                targetType: "section",
+                targetId: props.section.id,
+                targetPosition: 0, // Add at the beginning
+            };
+
+            // Handle the drop
+            handleDrop(customDropData);
+        }
+    } catch (error) {
+        console.error("Error parsing drop data:", error);
+    }
 };
 </script>
 
