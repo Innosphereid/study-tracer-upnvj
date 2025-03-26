@@ -538,7 +538,7 @@ onMounted(() => {
                             break;
 
                         case "likert":
-                            answers.value[question.id] = { responses: {} };
+                            answers.value[question.id] = 0;
                             break;
 
                         case "matrix":
