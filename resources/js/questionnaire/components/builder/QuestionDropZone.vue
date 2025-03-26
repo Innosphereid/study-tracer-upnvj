@@ -53,7 +53,7 @@ const props = defineProps({
     },
     acceptTypes: {
         type: Array,
-        default: () => ["question"],
+        default: () => ["question", "component"],
     },
     isFirstPosition: {
         type: Boolean,
@@ -96,6 +96,9 @@ const onDragOver = (event) => {
                     ) {
                         isValidTarget.value = false;
                     }
+                } else if (data.sourceType === "component") {
+                    // Komponen dari sidebar selalu valid untuk drop di mana saja
+                    isValidTarget.value = true;
                 } else {
                     isValidTarget.value = props.acceptTypes.includes(
                         data.sourceType
