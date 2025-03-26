@@ -1,8 +1,32 @@
 <template>
     <div class="mt-2">
+        <div
+            class="flex items-center justify-between text-xs text-gray-500 mb-2"
+        >
+            <span v-if="question.labels && question.labels[question.minRating]">
+                {{ question.labels[question.minRating] }}
+            </span>
+            <span v-else>{{ question.minRating || 1 }}</span>
+
+            <span
+                v-if="
+                    question.labels && question.labels[question.maxRatingValue]
+                "
+            >
+                {{ question.labels[question.maxRatingValue] }}
+            </span>
+            <span v-else>{{ question.maxRatingValue || 5 }}</span>
+        </div>
+
         <div class="flex items-center justify-center space-x-1">
             <template v-for="n in question.maxRating || 5" :key="n">
-                <span class="text-gray-300">
+                <span
+                    :class="
+                        n <= Math.ceil((question.maxRating || 5) / 2)
+                            ? 'text-yellow-400'
+                            : 'text-gray-300'
+                    "
+                >
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         class="h-6 w-6"
@@ -16,8 +40,12 @@
                 </span>
             </template>
         </div>
-        <div class="mt-2 text-center text-xs text-gray-500">
-            <span>{{ question.maxRating || 5 }} bintang maksimum</span>
+
+        <div
+            v-if="question.stepValue && question.stepValue !== 1"
+            class="mt-2 text-center text-xs text-gray-500"
+        >
+            <span>Langkah: {{ question.stepValue }}</span>
         </div>
     </div>
 </template>
