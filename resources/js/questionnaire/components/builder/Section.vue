@@ -310,11 +310,11 @@ const handleSectionDrop = (dropData) => {
     return false;
 };
 
-// New function to handle question drop for reordering
+// New function to handle question drop for reordering or adding new component
 const handleQuestionDrop = (dropData) => {
     console.log("Question drop handler called:", dropData);
 
-    // Handle reordering
+    // Handle reordering of existing questions
     if (
         dropData.sourceType === "question" &&
         dropData.sectionId === props.section.id
@@ -331,6 +331,29 @@ const handleQuestionDrop = (dropData) => {
 
             return true;
         }
+    }
+    // Handle adding new component from sidebar at specific position
+    else if (dropData.sourceType === "component") {
+        // Get the component type and target position
+        const componentType = dropData.item.id;
+        const targetPosition = dropData.targetIndex;
+
+        console.log(
+            `Adding component ${componentType} at position ${targetPosition} in section ${props.section.id}`
+        );
+
+        // Create custom drop data for the handleDrop function
+        const customDropData = {
+            item: dropData.item,
+            sourceType: "component",
+            targetType: "section",
+            targetId: props.section.id,
+            targetPosition: targetPosition, // Add target position information
+        };
+
+        // Call the drop handler with position information
+        const result = handleDrop(customDropData);
+        return result;
     }
 
     return false;
