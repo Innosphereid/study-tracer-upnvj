@@ -21,11 +21,14 @@
             >
                 <option value="" disabled selected>-- Pilih Opsi --</option>
                 <option
-                    v-for="option in question.options"
+                    v-for="option in sortedOptions"
                     :key="option.id"
                     :value="option.value"
                 >
                     {{ option.text }}
+                </option>
+                <option v-if="question.allowNone" value="none">
+                    Tidak Ada
                 </option>
                 <option v-if="question.allowOther" value="other">
                     Lainnya...
@@ -86,6 +89,26 @@ const inputName = computed(() => `question_${props.question.id || ""}`);
 // Internal state
 const internalValue = ref(props.modelValue.value || "");
 const otherText = ref(props.modelValue.otherText || "");
+
+// Computed property to sort options based on optionsOrder
+const sortedOptions = computed(() => {
+    if (!props.question.options || !props.question.options.length) {
+        return [];
+    }
+
+    // Create a copy to avoid mutating original data
+    const options = [...props.question.options];
+
+    // Apply sorting based on optionsOrder
+    if (props.question.optionsOrder === "asc") {
+        return options.sort((a, b) => a.text.localeCompare(b.text));
+    } else if (props.question.optionsOrder === "desc") {
+        return options.sort((a, b) => b.text.localeCompare(a.text));
+    }
+
+    // Default: return in original order
+    return options;
+});
 
 // Watch for external changes
 watch(
