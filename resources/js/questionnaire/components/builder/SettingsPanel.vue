@@ -345,6 +345,7 @@
             <!-- Question Settings -->
             <div v-else-if="selectedComponent?.type === 'question'">
                 <QuestionTypeSettings
+                    ref="questionTypeSettingsRef"
                     :question="currentQuestion"
                     @update:question="updateQuestionFromComponent"
                     @duplicate-question="duplicateQuestion"
@@ -480,6 +481,9 @@ const questionSettings = ref({
     helpText: "",
     required: false,
 });
+
+// Referensi ke komponen QuestionTypeSettings
+const questionTypeSettingsRef = ref(null);
 
 // Update settings when selected component changes
 watch(
@@ -699,6 +703,22 @@ const deleteQuestion = () => {
 
     emit("delete-question", props.selectedComponent.id);
 };
+
+// Fungsi untuk menambahkan opsi ranking
+function addRankingOptions(count = 1) {
+    if (
+        props.selectedComponent?.type === "question" &&
+        currentQuestion.value?.type === "ranking" &&
+        questionTypeSettingsRef.value
+    ) {
+        questionTypeSettingsRef.value.addRankingOptions(count);
+    }
+}
+
+// Expose fungsi untuk dipanggil dari komponen lain
+defineExpose({
+    addRankingOptions,
+});
 </script>
 
 <style scoped>
