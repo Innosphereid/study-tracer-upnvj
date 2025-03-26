@@ -15,13 +15,13 @@
                 type="text"
                 :name="inputName"
                 :placeholder="question.placeholder"
-                v-model="modelValue"
+                :value="modelValue"
+                @input="updateValue($event.target.value)"
                 :required="question.required"
                 :maxlength="
                     question.maxLength > 0 ? question.maxLength : undefined
                 "
                 class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                @input="updateValue"
             />
 
             <div
@@ -67,20 +67,9 @@ const emit = defineEmits(["update:modelValue", "validate"]);
 const inputId = computed(() => `q-${props.question.id || uuidv4()}`);
 const inputName = computed(() => `question_${props.question.id || ""}`);
 
-// Update value when changed externally
-watch(
-    () => props.modelValue,
-    (newVal) => {
-        if (newVal !== internalValue.value) {
-            internalValue.value = newVal;
-        }
-    }
-);
-
-const internalValue = ref(props.modelValue);
-
-const updateValue = () => {
-    emit("update:modelValue", internalValue.value);
+// Fungsi untuk memperbarui nilai
+const updateValue = (value) => {
+    emit("update:modelValue", value);
 
     // Validate on change
     validate();
@@ -91,7 +80,7 @@ const validate = () => {
     let errorMessage = "";
 
     // Required validation
-    if (props.question.required && !internalValue.value.trim()) {
+    if (props.question.required && !props.modelValue.trim()) {
         isValid = false;
         errorMessage = "Pertanyaan ini wajib dijawab.";
     }
@@ -99,7 +88,7 @@ const validate = () => {
     // Max length validation
     if (
         props.question.maxLength > 0 &&
-        internalValue.value.length > props.question.maxLength
+        props.modelValue.length > props.question.maxLength
     ) {
         isValid = false;
         errorMessage = `Jawaban tidak boleh lebih dari ${props.question.maxLength} karakter.`;

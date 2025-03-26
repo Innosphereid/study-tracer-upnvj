@@ -4,40 +4,75 @@ import Builder from "./pages/Builder.vue";
 import Preview from "./pages/Preview.vue";
 import FormView from "./pages/FormView.vue";
 
-// Initialize Pinia
-const pinia = createPinia();
-
-// Mount the application components if they exist in the DOM
+// Pastikan script ini berjalan setelah DOM selesai dimuat
 document.addEventListener("DOMContentLoaded", () => {
-    // Builder component
+    // Inisialisasi Pinia (state management)
+    const pinia = createPinia();
+
+    // Mount Builder component
     const builderElement = document.getElementById("questionnaire-builder");
     if (builderElement) {
-        const questionnaire = JSON.parse(
-            builderElement.dataset.questionnaire || "{}"
-        );
-        const app = createApp(Builder, { initialQuestionnaire: questionnaire });
+        console.log("Builder element found, initializing Vue app..."); // Debug log
+
+        // Parse data questionnaire (jika ada)
+        let questionnaireData = {};
+        try {
+            if (builderElement.dataset.questionnaire) {
+                questionnaireData = JSON.parse(
+                    builderElement.dataset.questionnaire
+                );
+                console.log("Questionnaire data parsed:", questionnaireData); // Debug log
+            }
+        } catch (e) {
+            console.error("Error parsing questionnaire data:", e);
+        }
+
+        const app = createApp(Builder, {
+            initialQuestionnaire: questionnaireData,
+        });
         app.use(pinia);
         app.mount(builderElement);
+        console.log("Builder app mounted successfully"); // Debug log
+    } else {
+        console.log("No builder element found in the DOM"); // Debug log
     }
 
-    // Preview component
+    // Mount Preview component
     const previewElement = document.getElementById("questionnaire-preview");
     if (previewElement) {
-        const questionnaire = JSON.parse(
-            previewElement.dataset.questionnaire || "{}"
-        );
-        const app = createApp(Preview, { questionnaire });
+        // Parse data questionnaire
+        let questionnaireData = {};
+        try {
+            if (previewElement.dataset.questionnaire) {
+                questionnaireData = JSON.parse(
+                    previewElement.dataset.questionnaire
+                );
+            }
+        } catch (e) {
+            console.error("Error parsing questionnaire data for preview:", e);
+        }
+
+        const app = createApp(Preview, { questionnaire: questionnaireData });
         app.use(pinia);
         app.mount(previewElement);
     }
 
-    // Form view component (for alumni)
+    // Mount FormView component
     const formViewElement = document.getElementById("questionnaire-form");
     if (formViewElement) {
-        const questionnaire = JSON.parse(
-            formViewElement.dataset.questionnaire || "{}"
-        );
-        const app = createApp(FormView, { questionnaire });
+        // Parse data questionnaire
+        let questionnaireData = {};
+        try {
+            if (formViewElement.dataset.questionnaire) {
+                questionnaireData = JSON.parse(
+                    formViewElement.dataset.questionnaire
+                );
+            }
+        } catch (e) {
+            console.error("Error parsing questionnaire data for form:", e);
+        }
+
+        const app = createApp(FormView, { questionnaire: questionnaireData });
         app.use(pinia);
         app.mount(formViewElement);
     }

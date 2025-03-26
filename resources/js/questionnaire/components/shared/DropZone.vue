@@ -107,11 +107,23 @@ const onDrop = (event) => {
 </script>
 
 <style scoped>
+/* Menggunakan CSS kustom secara terlokalisasi pada komponen ini saja */
 .drop-zone-active {
-    @apply bg-indigo-50 border-2 border-dashed border-indigo-300;
+    background-color: #eef2ff; /* Warna yang setara dengan bg-indigo-50 */
+    border: 2px dashed #a5b4fc; /* Warna yang setara dengan border-indigo-300 */
 }
 
 .drop-zone-invalid {
-    @apply bg-red-50 border-2 border-dashed border-red-300;
+    background-color: #fee2e2; /* Warna yang setara dengan bg-red-50 */
+    border: 2px dashed #fecaca; /* Warna yang setara dengan border-red-300 */
+}
+
+/* Menambahkan class-class lain yang mungkin dibutuhkan */
+.transition-all {
+    transition-property: all;
+}
+
+.duration-200 {
+    transition-duration: 200ms;
 }
 </style>

@@ -84,6 +84,10 @@
                 </div>
             </div>
         </footer>
+
+        <!-- Scripts -->
+        @vite(['resources/js/app.js'])
+        @yield('scripts')
     </div>
 </body>
 
