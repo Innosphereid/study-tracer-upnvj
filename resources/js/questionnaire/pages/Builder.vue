@@ -158,6 +158,7 @@
                     @delete-section="deleteSection"
                     @duplicate-question="duplicateQuestion"
                     @delete-question="deleteQuestion"
+                    @add-options="handleAddOptions"
                 />
             </main>
 
@@ -172,6 +173,7 @@
                 @duplicate-question="duplicateQuestion"
                 @delete-question="deleteQuestion"
                 @close="selectedComponent = null"
+                ref="settingsPanelRef"
             />
         </div>
 
@@ -379,6 +381,9 @@ const selectedComponent = ref(null);
 const showPublishModal = ref(false);
 const isPublishing = ref(false);
 
+// Referensi ke komponen SettingsPanel
+const settingsPanelRef = ref(null);
+
 // Watch for window close with unsaved changes
 const handleBeforeUnload = (e) => {
     if (unsavedChanges.value) {
@@ -502,6 +507,25 @@ const confirmPublish = async () => {
 
 const publishQuestionnaire = () => {
     openPublishModal();
+};
+
+const handleAddOptions = (payload) => {
+    // Ekstrak questionId dan count dari payload
+    const questionId = payload.questionId || payload;
+    const count = payload.count || 1;
+
+    // Jika ada questionId, pilih pertanyaan tersebut terlebih dahulu
+    if (questionId) {
+        selectComponent({ type: "question", id: questionId });
+
+        // Berikan sedikit waktu untuk komponen dirender
+        setTimeout(() => {
+            // Panggil metode addRankingOptions di SettingsPanel dengan jumlah yang sesuai
+            if (settingsPanelRef.value) {
+                settingsPanelRef.value.addRankingOptions(count);
+            }
+        }, 50);
+    }
 };
 </script>
 
