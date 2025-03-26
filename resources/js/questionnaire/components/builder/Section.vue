@@ -79,17 +79,41 @@
         <!-- Questions List -->
         <div class="questions-container p-4 space-y-4">
             <template v-if="section.questions.length > 0">
-                <QuestionWrapper
+                <!-- Drop zone at the beginning of the list -->
+                <QuestionDropZone
+                    :section-id="section.id"
+                    :target-index="0"
+                    :is-first-position="true"
+                    @drop="handleQuestionDrop"
+                />
+
+                <div
                     v-for="(question, qIndex) in section.questions"
                     :key="question.id"
-                    :question="question"
-                    :section-id="section.id"
-                    :index="qIndex"
-                    :is-selected="selectedQuestionId === question.id"
-                    @select="selectQuestion"
-                    @duplicate="$emit('duplicate-question', $event)"
-                    @delete="$emit('delete-question', $event)"
-                />
+                    class="question-item"
+                >
+                    <QuestionWrapper
+                        :question="question"
+                        :section-id="section.id"
+                        :index="qIndex"
+                        :is-selected="selectedQuestionId === question.id"
+                        @select="selectQuestion"
+                        @duplicate="$emit('duplicate-question', $event)"
+                        @delete="$emit('delete-question', $event)"
+                        @dragstart="onQuestionDragStart"
+                        @dragend="onQuestionDragEnd"
+                    />
+
+                    <!-- Drop zone after each question except the last one -->
+                    <QuestionDropZone
+                        :section-id="section.id"
+                        :target-index="qIndex + 1"
+                        :is-last-position="
+                            qIndex === section.questions.length - 1
+                        "
+                        @drop="handleQuestionDrop"
+                    />
+                </div>
             </template>
 
             <div
@@ -225,9 +249,10 @@
 import { ref, defineProps, defineEmits } from "vue";
 import QuestionWrapper from "./QuestionWrapper.vue";
 import DropZone from "../shared/DropZone.vue";
+import QuestionDropZone from "./QuestionDropZone.vue";
 import { useDragDrop } from "../../composables/useDragDrop";
 
-const { handleDrop } = useDragDrop();
+const { handleDrop, handleQuestionReorder } = useDragDrop();
 
 const props = defineProps({
     section: {
@@ -251,9 +276,12 @@ const emit = defineEmits([
     "delete",
     "duplicate-question",
     "delete-question",
+    "reorder-questions",
 ]);
 
 const selectedQuestionId = ref(null);
+const isDraggingQuestion = ref(false);
+const draggedQuestionIndex = ref(null);
 
 // Handle drag-drop events for this section
 const handleSectionDrop = (dropData) => {
@@ -282,6 +310,42 @@ const handleSectionDrop = (dropData) => {
     return false;
 };
 
+// New function to handle question drop for reordering
+const handleQuestionDrop = (dropData) => {
+    console.log("Question drop handler called:", dropData);
+
+    // Handle reordering
+    if (
+        dropData.sourceType === "question" &&
+        dropData.sectionId === props.section.id
+    ) {
+        const oldIndex = dropData.sourceIndex;
+        const newIndex = dropData.targetIndex;
+
+        if (oldIndex !== newIndex) {
+            console.log(`Reordering question from ${oldIndex} to ${newIndex}`);
+
+            // Call reorder function from useDragDrop
+            const reorderEvent = { oldIndex, newIndex };
+            handleQuestionReorder(reorderEvent, props.section.id);
+
+            return true;
+        }
+    }
+
+    return false;
+};
+
+const onQuestionDragStart = (dragData) => {
+    isDraggingQuestion.value = true;
+    draggedQuestionIndex.value = dragData.sourceIndex;
+};
+
+const onQuestionDragEnd = () => {
+    isDraggingQuestion.value = false;
+    draggedQuestionIndex.value = null;
+};
+
 const selectSection = () => {
     selectedQuestionId.value = null;
     emit("select", { type: "section", id: props.section.id });
@@ -304,6 +368,10 @@ const selectQuestion = (questionId) => {
 }
 
 .questions-container {
+    position: relative;
+}
+
+.question-item {
     position: relative;
 }
 </style>
