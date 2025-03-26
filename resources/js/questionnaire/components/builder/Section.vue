@@ -102,6 +102,13 @@
                         @delete="$emit('delete-question', $event)"
                         @dragstart="onQuestionDragStart"
                         @dragend="onQuestionDragEnd"
+                        @add-options="
+                            (count) =>
+                                $emit('add-options', {
+                                    questionId: question.id,
+                                    count,
+                                })
+                        "
                     />
 
                     <!-- Drop zone after each question except the last one -->
@@ -288,6 +295,7 @@ const emit = defineEmits([
     "duplicate-question",
     "delete-question",
     "reorder-questions",
+    "add-options",
 ]);
 
 const selectedQuestionId = ref(null);
