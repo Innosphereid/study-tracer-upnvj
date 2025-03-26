@@ -117,6 +117,7 @@
                         @delete="confirmDeleteSection(section.id)"
                         @duplicate-question="duplicateQuestion($event)"
                         @delete-question="confirmDeleteQuestion($event)"
+                        @add-options="handleAddOptions($event)"
                     />
 
                     <!-- Add Section Button (when sections exist) -->
@@ -267,6 +268,7 @@ const emit = defineEmits([
     "delete-section",
     "duplicate-question",
     "delete-question",
+    "add-options",
 ]);
 
 // Delete confirmation
@@ -418,6 +420,11 @@ onBeforeUnmount(() => {
         autoscrollInterval = null;
     }
 });
+
+// Menambahkan handler untuk event add-options
+function handleAddOptions(payload) {
+    emit("add-options", payload);
+}
 </script>
 
 <style scoped>
