@@ -13,6 +13,7 @@ import FileUploadPreview from "./FileUploadPreview.vue";
 import MatrixPreview from "./MatrixPreview.vue";
 import SliderPreview from "./SliderPreview.vue";
 import RankingPreview from "./RankingPreview.vue";
+import PhonePreview from "./PhonePreview.vue";
 
 // Register semua komponen preview di sini
 const previewComponents = {
@@ -31,6 +32,7 @@ const previewComponents = {
     matrix: MatrixPreview,
     slider: SliderPreview,
     ranking: RankingPreview,
+    phone: PhonePreview,
 };
 
 // Fungsi untuk mendapatkan komponen preview berdasarkan tipe pertanyaan
