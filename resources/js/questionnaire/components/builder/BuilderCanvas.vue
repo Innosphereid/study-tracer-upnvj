@@ -48,14 +48,85 @@
                 </div>
             </div>
 
-            <!-- Sections -->
+            <!-- Main Content Area: Sections or Empty State -->
             <div class="space-y-8 mb-8">
-                <template v-if="questionnaire.sections.length === 0">
-                    <div class="flex justify-center py-8">
-                        <div class="text-center">
+                <!-- Empty State (No Sections) -->
+                <div
+                    v-if="questionnaire.sections.length === 0"
+                    class="flex justify-center py-8"
+                >
+                    <div class="text-center">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="mx-auto h-12 w-12 text-gray-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+                            />
+                        </svg>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">
+                            Belum ada seksi
+                        </h3>
+                        <p class="mt-1 text-sm text-gray-500">
+                            Tambahkan seksi baru untuk memulai pembuatan
+                            kuesioner.
+                        </p>
+                        <div class="mt-4">
+                            <button
+                                type="button"
+                                class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                @click="addSection"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="-ml-1 mr-2 h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M12 4v16m8-8H4"
+                                    />
+                                </svg>
+                                Tambah Seksi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sections List -->
+                <template v-else>
+                    <Section
+                        v-for="(section, index) in questionnaire.sections"
+                        :key="section.id"
+                        :section="section"
+                        :index="index"
+                        :is-selected="isSelectedSection(section.id)"
+                        @select="selectSectionComponent"
+                        @add-question="addQuestionToSection"
+                        @duplicate="duplicateSection(section.id)"
+                        @delete="confirmDeleteSection(section.id)"
+                    />
+
+                    <!-- Add Section Button (when sections exist) -->
+                    <div class="flex justify-center">
+                        <button
+                            type="button"
+                            class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            @click="addSection"
+                        >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
-                                class="mx-auto h-12 w-12 text-gray-400"
+                                class="-ml-1 mr-2 h-5 w-5"
                                 fill="none"
                                 viewBox="0 0 24 24"
                                 stroke="currentColor"
@@ -64,82 +135,13 @@
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
                                     stroke-width="2"
-                                    d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+                                    d="M12 4v16m8-8H4"
                                 />
                             </svg>
-                            <h3 class="mt-2 text-sm font-medium text-gray-900">
-                                Belum ada seksi
-                            </h3>
-                            <p class="mt-1 text-sm text-gray-500">
-                                Tambahkan seksi baru untuk memulai pembuatan
-                                kuesioner.
-                            </p>
-                            <div class="mt-4">
-                                <button
-                                    type="button"
-                                    class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                    @click="addSection"
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        class="-ml-1 mr-2 h-5 w-5"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M12 4v16m8-8H4"
-                                        />
-                                    </svg>
-                                    Tambah Seksi
-                                </button>
-                            </div>
-                        </div>
+                            Tambah Seksi
+                        </button>
                     </div>
                 </template>
-
-                <Section
-                    v-for="(section, index) in questionnaire.sections"
-                    :key="section.id"
-                    :section="section"
-                    :index="index"
-                    :is-selected="isSelectedSection(section.id)"
-                    @select="selectSectionComponent"
-                    @add-question="addQuestionToSection"
-                    @duplicate="duplicateSection(section.id)"
-                    @delete="confirmDeleteSection(section.id)"
-                />
-            </div>
-
-            <!-- Add Section Button -->
-            <div
-                v-if="questionnaire.sections.length > 0"
-                class="flex justify-center mb-8"
-            >
-                <button
-                    type="button"
-                    class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    @click="addSection"
-                >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="-ml-1 mr-2 h-5 w-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 4v16m8-8H4"
-                        />
-                    </svg>
-                    Tambah Seksi
-                </button>
             </div>
 
             <!-- Thank You Screen -->
