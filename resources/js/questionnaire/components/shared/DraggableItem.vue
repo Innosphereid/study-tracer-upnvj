@@ -54,10 +54,14 @@ const onDragStart = (event) => {
             sourceType: props.sourceType,
         };
 
-        event.dataTransfer.setData(
-            "application/json",
-            JSON.stringify(transferData)
-        );
+        console.log("Starting drag:", transferData);
+
+        // Pastikan data mentransfer dengan benar - gunakan format yang konsisten
+        const jsonData = JSON.stringify(transferData);
+        event.dataTransfer.setData("application/json", jsonData);
+
+        // Tambahkan juga sebagai text/plain untuk kompatibilitas
+        event.dataTransfer.setData("text/plain", jsonData);
     } catch (error) {
         console.error("Error setting drag data:", error);
     }
