@@ -16,7 +16,7 @@
                 <div>
                     <button
                         type="button"
-                        @click="addOption"
+                        @click="tambahSatuOpsi"
                         class="px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-md text-sm font-medium hover:bg-indigo-100 transition-colors flex items-center"
                     >
                         <svg
@@ -123,16 +123,45 @@ function ensureOptions() {
     }
 }
 
-// Tambah opsi baru
-function addOption() {
+// Fungsi khusus untuk menambah satu opsi saja
+function tambahSatuOpsi() {
     ensureOptions();
+
+    // Buat opsi baru dengan nomor urut yang sesuai
+    const newOption = {
+        text: `Opsi ${props.question.options?.length + 1 || 1}`,
+        value: `option_${Date.now()}`,
+    };
+
+    // Tambahkan ke array opsi yang sudah ada
+    const updatedOptions = [...(props.question.options || []), newOption];
+
+    // Kirim update ke komponen induk
+    emit("update:question", {
+        ...props.question,
+        options: updatedOptions,
+    });
+}
+
+// Tambah opsi baru (bisa lebih dari satu)
+function addOption(count = 1) {
+    ensureOptions();
+    const updatedOptions = [...(props.question.options || [])];
+
+    // Tambahkan sebanyak jumlah yang diminta
+    for (let i = 0; i < count; i++) {
+        const newOption = {
+            text: "Opsi " + (props.question.options?.length + i + 1 || i + 1),
+            value: `option_${Date.now() + i}`,
+        };
+        updatedOptions.push(newOption);
+    }
+
     const updatedQuestion = {
         ...props.question,
-        options: [
-            ...(props.question.options || []),
-            { text: "", value: `option_${Date.now()}` },
-        ],
+        options: updatedOptions,
     };
+
     emit("update:question", updatedQuestion);
 }
 
@@ -153,4 +182,9 @@ function updateQuestion() {
 
 // Inisialisasi options jika belum ada
 ensureOptions();
+
+// Ekspos fungsi untuk dipanggil dari luar
+defineExpose({
+    addOption,
+});
 </script>
