@@ -115,6 +115,8 @@
                         @add-question="addQuestionToSection"
                         @duplicate="duplicateSection(section.id)"
                         @delete="confirmDeleteSection(section.id)"
+                        @duplicate-question="duplicateQuestion($event)"
+                        @delete-question="confirmDeleteQuestion($event)"
                     />
 
                     <!-- Add Section Button (when sections exist) -->
@@ -256,6 +258,7 @@ const emit = defineEmits([
     "add-question",
     "duplicate-section",
     "delete-section",
+    "duplicate-question",
     "delete-question",
 ]);
 
@@ -310,6 +313,10 @@ const confirmDeleteQuestion = (questionId) => {
     deleteType.value = "question";
     deleteId.value = questionId;
     showDeleteConfirm.value = true;
+};
+
+const duplicateQuestion = (questionId) => {
+    emit("duplicate-question", questionId);
 };
 
 const confirmDelete = () => {
