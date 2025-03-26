@@ -201,6 +201,31 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
             this.saveQuestionnaire();
         },
 
+        addQuestionAtPosition(questionType, position) {
+            if (!this.canAddQuestion) {
+                this.addSection();
+                position = 0; // If we had to create a new section, force position to 0
+            }
+
+            const newQuestion = this.createQuestion(questionType);
+            const sectionQuestions =
+                this.questionnaire.sections[this.currentSectionIndex].questions;
+
+            // Validate position - ensure it's within bounds
+            if (position < 0) position = 0;
+            if (position > sectionQuestions.length)
+                position = sectionQuestions.length;
+
+            // Insert question at the specified position
+            sectionQuestions.splice(position, 0, newQuestion);
+
+            // Update current question index and selected component
+            this.currentQuestionIndex = position;
+            this.selectedComponent = { type: "question", id: newQuestion.id };
+
+            this.saveQuestionnaire();
+        },
+
         createQuestion(type) {
             const baseQuestion = {
                 id: uuidv4(),
