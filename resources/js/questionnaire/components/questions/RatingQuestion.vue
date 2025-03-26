@@ -13,30 +13,35 @@
             <div class="mt-4">
                 <div class="flex items-center justify-between">
                     <div
-                        v-if="question.labels && question.labels[1]"
+                        v-if="question.labels && question.labels[minRating]"
                         class="text-sm text-gray-500"
                     >
-                        {{ question.labels[1] }}
+                        {{ question.labels[minRating] }}
+                    </div>
+                    <div v-else class="text-sm text-gray-500">
+                        {{ minRating }}
                     </div>
 
                     <div
                         v-if="
-                            question.labels &&
-                            question.labels[question.maxRating]
+                            question.labels && question.labels[maxRatingValue]
                         "
                         class="text-sm text-gray-500"
                     >
-                        {{ question.labels[question.maxRating] }}
+                        {{ question.labels[maxRatingValue] }}
+                    </div>
+                    <div v-else class="text-sm text-gray-500">
+                        {{ maxRatingValue }}
                     </div>
                 </div>
 
                 <div class="rating-stars mt-2 flex items-center justify-center">
                     <div
-                        v-for="n in question.maxRating"
+                        v-for="n in maxRating"
                         :key="n"
                         class="rating-star p-1 cursor-pointer"
-                        @click="selectRating(n)"
-                        @mouseenter="showHover(n)"
+                        @click="selectRating(calculateRatingValue(n))"
+                        @mouseenter="showHover(calculateRatingValue(n))"
                         @mouseleave="clearHover()"
                         :class="{ 'opacity-50': isBuilder }"
                     >
@@ -46,7 +51,7 @@
                             fill="currentColor"
                             :class="[
                                 'w-8 h-8 transition-all',
-                                hoveredRating >= n || internalValue >= n
+                                isRatingActive(n)
                                     ? 'text-yellow-400'
                                     : 'text-gray-300',
                             ]"
@@ -62,13 +67,13 @@
 
                 <div class="text-center mt-2">
                     <span class="text-sm font-medium" v-if="internalValue">
-                        {{ internalValue }} / {{ question.maxRating }}
+                        {{ internalValue }} / {{ maxRatingValue }}
                     </span>
                     <span
                         v-else-if="hoveredRating"
                         class="text-sm text-gray-500"
                     >
-                        {{ hoveredRating }} / {{ question.maxRating }}
+                        {{ hoveredRating }} / {{ maxRatingValue }}
                     </span>
                     <span v-else class="text-sm text-gray-400">
                         Klik untuk memberi rating
@@ -84,7 +89,7 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits, watch } from "vue";
+import { ref, defineProps, defineEmits, watch, computed } from "vue";
 
 const props = defineProps({
     question: {
@@ -107,6 +112,14 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue", "validate"]);
 
+// Computed properties for rating settings
+const minRating = computed(() => props.question.minRating || 1);
+const maxRating = computed(() => props.question.maxRating || 5);
+const maxRatingValue = computed(
+    () => props.question.maxRatingValue || maxRating.value
+);
+const stepValue = computed(() => props.question.stepValue || 1);
+
 // Internal state
 const internalValue = ref(props.modelValue || 0);
 const hoveredRating = ref(0);
@@ -118,6 +131,30 @@ watch(
         internalValue.value = newVal || 0;
     }
 );
+
+// Calculate rating value for a star position
+const calculateRatingValue = (position) => {
+    // Map position to value based on min/max and step
+    const range = maxRatingValue.value - minRating.value;
+    const stepsPerStar = range / (maxRating.value - 1);
+
+    return (
+        Math.round(
+            (minRating.value + (position - 1) * stepsPerStar) / stepValue.value
+        ) * stepValue.value
+    );
+};
+
+// Check if a star position should be active
+const isRatingActive = (position) => {
+    const ratingForPosition = calculateRatingValue(position);
+
+    if (hoveredRating.value) {
+        return hoveredRating.value >= ratingForPosition;
+    }
+
+    return internalValue.value >= ratingForPosition;
+};
 
 const selectRating = (rating) => {
     if (props.isBuilder) return;
