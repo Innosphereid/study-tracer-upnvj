@@ -12,7 +12,7 @@
 
             <div class="mt-4 space-y-3">
                 <div
-                    v-for="option in question.options"
+                    v-for="option in sortedOptions"
                     :key="option.id"
                     class="flex items-start"
                 >
@@ -34,6 +34,30 @@
                             class="font-medium text-gray-700"
                         >
                             {{ option.text }}
+                        </label>
+                    </div>
+                </div>
+
+                <!-- "None" option -->
+                <div v-if="question.allowNone" class="flex items-start">
+                    <div class="flex items-center h-5">
+                        <input
+                            :id="`option-${question.id}-none`"
+                            :name="`question_${question.id}`"
+                            type="radio"
+                            value="none"
+                            v-model="internalValue"
+                            class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
+                            @change="updateValue"
+                            :disabled="isBuilder"
+                        />
+                    </div>
+                    <div class="ml-3 text-sm">
+                        <label
+                            :for="`option-${question.id}-none`"
+                            class="font-medium text-gray-700"
+                        >
+                            Tidak Ada
                         </label>
                     </div>
                 </div>
@@ -105,6 +129,26 @@ const emit = defineEmits(["update:modelValue", "validate"]);
 // Internal state
 const internalValue = ref(props.modelValue.value || "");
 const otherText = ref(props.modelValue.otherText || "");
+
+// Computed property to sort options based on optionsOrder
+const sortedOptions = computed(() => {
+    if (!props.question.options || !props.question.options.length) {
+        return [];
+    }
+
+    // Create a copy to avoid mutating original data
+    const options = [...props.question.options];
+
+    // Apply sorting based on optionsOrder
+    if (props.question.optionsOrder === "asc") {
+        return options.sort((a, b) => a.text.localeCompare(b.text));
+    } else if (props.question.optionsOrder === "desc") {
+        return options.sort((a, b) => b.text.localeCompare(a.text));
+    }
+
+    // Default: return in original order
+    return options;
+});
 
 // Watch for external changes
 watch(
