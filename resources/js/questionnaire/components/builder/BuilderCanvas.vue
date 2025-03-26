@@ -230,7 +230,14 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, ref, computed } from "vue";
+import {
+    defineProps,
+    defineEmits,
+    ref,
+    computed,
+    onMounted,
+    onBeforeUnmount,
+} from "vue";
 import { useQuestionnaireStore } from "../../store/questionnaire";
 import { useDragDrop } from "../../composables/useDragDrop";
 import Section from "./Section.vue";
@@ -336,6 +343,81 @@ const handleDrop = (dropData) => {
     console.log("Canvas handleDrop result:", result);
     return result;
 };
+
+// Auto-scroll functionality during drag operations
+let autoscrollInterval = null;
+const SCROLL_SPEED = 10;
+const SCROLL_ZONE_SIZE = 100; // px from top/bottom to trigger auto-scroll
+
+const handleDragScroll = (event) => {
+    if (
+        !event.dataTransfer.types.includes("application/json") &&
+        !event.dataTransfer.types.includes("text/plain")
+    ) {
+        return; // Not our drag event
+    }
+
+    const canvas = document.querySelector(".builder-canvas");
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseY = event.clientY;
+
+    // Clear any existing interval
+    if (autoscrollInterval) {
+        clearInterval(autoscrollInterval);
+        autoscrollInterval = null;
+    }
+
+    // Check if near top edge
+    if (mouseY < rect.top + SCROLL_ZONE_SIZE) {
+        const intensity = Math.max(
+            0,
+            1 - (mouseY - rect.top) / SCROLL_ZONE_SIZE
+        );
+        const scrollSpeed = Math.round(SCROLL_SPEED * intensity * 2);
+
+        autoscrollInterval = setInterval(() => {
+            canvas.scrollTop -= scrollSpeed;
+        }, 16); // ~60fps
+    }
+    // Check if near bottom edge
+    else if (mouseY > rect.bottom - SCROLL_ZONE_SIZE) {
+        const intensity = Math.max(
+            0,
+            1 - (rect.bottom - mouseY) / SCROLL_ZONE_SIZE
+        );
+        const scrollSpeed = Math.round(SCROLL_SPEED * intensity * 2);
+
+        autoscrollInterval = setInterval(() => {
+            canvas.scrollTop += scrollSpeed;
+        }, 16); // ~60fps
+    }
+};
+
+const handleDragEnd = () => {
+    if (autoscrollInterval) {
+        clearInterval(autoscrollInterval);
+        autoscrollInterval = null;
+    }
+};
+
+onMounted(() => {
+    document.addEventListener("dragover", handleDragScroll);
+    document.addEventListener("dragend", handleDragEnd);
+    document.addEventListener("drop", handleDragEnd);
+});
+
+onBeforeUnmount(() => {
+    document.removeEventListener("dragover", handleDragScroll);
+    document.removeEventListener("dragend", handleDragEnd);
+    document.removeEventListener("drop", handleDragEnd);
+
+    if (autoscrollInterval) {
+        clearInterval(autoscrollInterval);
+        autoscrollInterval = null;
+    }
+});
 </script>
 
 <style scoped>
