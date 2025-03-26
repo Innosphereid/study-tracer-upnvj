@@ -277,7 +277,7 @@ import Section from "./Section.vue";
 import DropZone from "../shared/DropZone.vue";
 
 const store = useQuestionnaireStore();
-const { handleDrop } = useDragDrop();
+const { handleDrop: originalHandleDrop } = useDragDrop();
 
 const props = defineProps({
     questionnaire: {
@@ -362,6 +362,14 @@ const confirmDelete = () => {
     }
     showDeleteConfirm.value = false;
     deleteId.value = null;
+};
+
+// Wrapper untuk handleDrop
+const handleDrop = (dropData) => {
+    console.log("Canvas handleDrop called with:", dropData);
+    const result = originalHandleDrop(dropData);
+    console.log("Canvas handleDrop result:", result);
+    return result;
 };
 </script>
 
