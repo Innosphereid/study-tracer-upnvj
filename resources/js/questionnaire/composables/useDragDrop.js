@@ -53,13 +53,15 @@ export function useDragDrop() {
     const handleDrop = (dropEvent) => {
         // Handle drop events from DropZone component
         if (dropEvent && dropEvent.item && dropEvent.targetType) {
-            const { item, sourceType, targetType, targetId } = dropEvent;
+            const { item, sourceType, targetType, targetId, targetPosition } =
+                dropEvent;
 
             console.log("Drop event:", {
                 item,
                 sourceType,
                 targetType,
                 targetId,
+                targetPosition,
             });
 
             if (!canDrop(targetType, sourceType)) {
@@ -78,6 +80,7 @@ export function useDragDrop() {
                 console.log("Adding component to section", {
                     sectionId,
                     componentType,
+                    targetPosition,
                 });
 
                 // Find section index
@@ -89,7 +92,17 @@ export function useDragDrop() {
 
                 if (sectionIndex >= 0) {
                     store.currentSectionIndex = sectionIndex;
-                    store.addQuestion(componentType);
+
+                    // If targetPosition is provided, add question at specific position
+                    if (targetPosition !== undefined) {
+                        store.addQuestionAtPosition(
+                            componentType,
+                            targetPosition
+                        );
+                    } else {
+                        // Otherwise add at the end (default behavior)
+                        store.addQuestion(componentType);
+                    }
                     return true;
                 }
             } else if (sourceType === "component" && targetType === "canvas") {
