@@ -895,12 +895,28 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                         this.questionnaire.is_draft = false;
 
                         this.saveStatus = "Tersimpan";
+
+                        // Buat URL lengkap untuk kuesioner yang dipublikasikan
+                        let detailUrl = `/kuesioner/${this.questionnaire.id}`;
+                        if (
+                            response.data.questionnaire &&
+                            response.data.questionnaire.slug
+                        ) {
+                            const slug = response.data.questionnaire.slug;
+                            detailUrl = `/kuesioner/${this.questionnaire.id}/${slug}`;
+                        }
+
+                        // URL untuk akses publik ke kuesioner
+                        const publicPath = `/form/${this.questionnaire.id}`;
+
                         return {
                             success: true,
-                            url: `/kuesioner/${this.questionnaire.id}`,
+                            url: detailUrl,
+                            publicUrl: publicPath,
                             message:
                                 response.data.message ||
                                 "Kuesioner berhasil dipublikasikan",
+                            questionnaire: response.data.questionnaire || null,
                         };
                     }
                     return {
