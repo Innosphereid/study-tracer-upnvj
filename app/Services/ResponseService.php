@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Contracts\Repositories\AnswerDetailRepositoryInterface;
 use App\Contracts\Repositories\QuestionnaireRepositoryInterface;
 use App\Contracts\Repositories\ResponseRepositoryInterface;
 use App\Contracts\Services\ResponseServiceInterface;
@@ -23,17 +24,25 @@ class ResponseService implements ResponseServiceInterface
     protected $questionnaireRepository;
     
     /**
+     * @var AnswerDetailRepositoryInterface
+     */
+    protected $answerDetailRepository;
+    
+    /**
      * ResponseService constructor.
      *
      * @param ResponseRepositoryInterface $responseRepository
      * @param QuestionnaireRepositoryInterface $questionnaireRepository
+     * @param AnswerDetailRepositoryInterface $answerDetailRepository
      */
     public function __construct(
         ResponseRepositoryInterface $responseRepository,
-        QuestionnaireRepositoryInterface $questionnaireRepository
+        QuestionnaireRepositoryInterface $questionnaireRepository,
+        AnswerDetailRepositoryInterface $answerDetailRepository
     ) {
         $this->responseRepository = $responseRepository;
         $this->questionnaireRepository = $questionnaireRepository;
+        $this->answerDetailRepository = $answerDetailRepository;
     }
     
     /**
@@ -96,8 +105,35 @@ class ResponseService implements ResponseServiceInterface
      */
     public function saveAnswers(int $responseId, array $answers): bool
     {
-        Log::info('Saving answers for response', ['responseId' => $responseId, 'answerCount' => count($answers)]);
-        return $this->responseRepository->saveAnswers($responseId, $answers);
+        Log::info('Saving answers for response', [
+            'responseId' => $responseId, 
+            'answerCount' => count($answers)
+        ]);
+        
+        // Get response to verify it exists and get questionnaire ID
+        $response = $this->responseRepository->find($responseId);
+        if (!$response) {
+            Log::error('Failed to save answers: response not found', ['responseId' => $responseId]);
+            return false;
+        }
+        
+        // Continue to update response_data in the Response model for backward compatibility
+        $result = $this->responseRepository->saveAnswers($responseId, $answers);
+        
+        // Additionally save structured answer details
+        $saveDetailResult = $this->answerDetailRepository->saveAnswers(
+            $responseId, 
+            $answers, 
+            $response->questionnaire_id
+        );
+        
+        if (!$saveDetailResult) {
+            Log::warning('Successfully saved answers to response_data but failed to save detailed answers', [
+                'responseId' => $responseId
+            ]);
+        }
+        
+        return $result;
     }
     
     /**
@@ -124,6 +160,20 @@ class ResponseService implements ResponseServiceInterface
     public function getResponseAnswers(int $responseId): Collection
     {
         Log::info('Getting answers for response', ['responseId' => $responseId]);
+        
+        // Try to get answers from answerDetails first
+        $answerDetails = $this->answerDetailRepository->getByResponseId($responseId);
+        
+        if ($answerDetails->isNotEmpty()) {
+            Log::info('Retrieved answers from answer_details table', [
+                'responseId' => $responseId,
+                'count' => $answerDetails->count()
+            ]);
+            return $answerDetails;
+        }
+        
+        // Fall back to the legacy method if no structured answers found
+        Log::info('No structured answers found, falling back to response_data');
         return $this->responseRepository->getAnswers($responseId);
     }
     
@@ -150,7 +200,8 @@ class ResponseService implements ResponseServiceInterface
             return '';
         }
         
-        $responses = $this->responseRepository->getByQuestionnaireId($questionnaireId, ['*'], ['answers']);
+        // Get responses without loading the 'answers' relationship
+        $responses = $this->responseRepository->getByQuestionnaireId($questionnaireId);
         
         if ($responses->isEmpty()) {
             Log::warning('No responses to export', ['questionnaireId' => $questionnaireId]);
@@ -158,7 +209,7 @@ class ResponseService implements ResponseServiceInterface
         }
         
         // Prepare headers
-        $headers = ['Response ID', 'Respondent', 'Started At', 'Completed At', 'IP Address'];
+        $headers = ['Response ID', 'Respondent', 'Created At', 'Completed At', 'IP Address'];
         
         // Add question headers
         $questions = [];
@@ -178,31 +229,57 @@ class ResponseService implements ResponseServiceInterface
         foreach ($responses as $response) {
             $row = [
                 $response->id,
-                $response->respondent_identifier ?? 'Anonymous',
-                $response->started_at ? $response->started_at->format('Y-m-d H:i:s') : '',
-                $response->completed_at ? $response->completed_at->format('Y-m-d H:i:s') : '',
-                $response->ip_address ?? ''
+                $response->respondent_name ?? $response->respondent_email ?? 'Anonymous',
+                $response->created_at->format('Y-m-d H:i:s'),
+                $response->completed_at ? $response->completed_at->format('Y-m-d H:i:s') : 'Not Completed',
+                $response->ip_address ?? 'N/A'
             ];
             
-            // Create a map of answers by question ID for easy access
-            $answerMap = [];
-            foreach ($response->answers as $answer) {
-                $answerMap[$answer->question_id] = $answer;
-            }
+            // Check if there are answer details for this response
+            $answerDetails = $this->answerDetailRepository->getByResponseId($response->id);
+            $hasStructuredAnswers = $answerDetails->isNotEmpty();
             
-            // Add answers for each question
-            foreach ($questions as $questionId => $question) {
-                if (isset($answerMap[$questionId])) {
-                    $answer = $answerMap[$questionId]->getFormattedAnswer();
-                    
-                    // Format the answer based on question type
-                    if (is_array($answer)) {
-                        $row[] = implode('; ', $answer);
+            if ($hasStructuredAnswers) {
+                Log::info('Using structured answer details for export', [
+                    'responseId' => $response->id,
+                    'answerCount' => $answerDetails->count()
+                ]);
+                
+                // Create a map for easy lookup by question ID
+                $answerMap = [];
+                foreach ($answerDetails as $detail) {
+                    $answerMap[$detail->question_id] = $detail;
+                }
+                
+                // Add answers for each question
+                foreach ($questions as $questionId => $question) {
+                    if (isset($answerMap[$questionId])) {
+                        $value = $answerMap[$questionId]->answer_value;
+                        
+                        // If we have JSON data, try to format it
+                        $jsonData = $answerMap[$questionId]->answer_data;
+                        if ($jsonData && is_array($jsonData)) {
+                            if (isset($jsonData['formatted'])) {
+                                $value = $jsonData['formatted'];
+                            } elseif (isset($jsonData['values']) && is_array($jsonData['values'])) {
+                                $value = implode('; ', $jsonData['values']);
+                            }
+                        }
+                        
+                        $row[] = $value;
                     } else {
-                        $row[] = $answer;
+                        $row[] = '';
                     }
-                } else {
-                    $row[] = ''; // No answer
+                }
+            } else {
+                Log::info('Using legacy response_data for export', ['responseId' => $response->id]);
+                
+                // Use response_data as fallback
+                $responseData = $response->response_data ?? [];
+                
+                // Add answers for each question
+                foreach ($questions as $questionId => $question) {
+                    $row[] = $responseData[$questionId] ?? '';
                 }
             }
             
@@ -212,7 +289,10 @@ class ResponseService implements ResponseServiceInterface
             }, $row)) . "\n";
         }
         
-        Log::info('CSV export completed', ['questionnaireId' => $questionnaireId, 'rowCount' => $responses->count()]);
+        Log::info('Successfully exported responses to CSV', [
+            'questionnaireId' => $questionnaireId,
+            'responseCount' => $responses->count()
+        ]);
         
         return $csv;
     }
