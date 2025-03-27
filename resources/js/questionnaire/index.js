@@ -5,8 +5,14 @@ import Builder from "./pages/Builder.vue";
 import Preview from "./pages/Preview.vue";
 import FormView from "./pages/FormView.vue";
 
+// Import standalone preview component
+import PreviewApp from "./components/preview/PreviewApp.vue";
+
 // Enable debug mode untuk troubleshooting drag-drop
 window.DEBUG_MODE = true;
+
+// Find the standalone preview element
+const standalonePreviewElement = document.getElementById("standalone-preview");
 
 // Pastikan script ini berjalan setelah DOM selesai dimuat
 document.addEventListener("DOMContentLoaded", () => {
@@ -112,5 +118,35 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         app.use(pinia);
         app.mount(formElement);
+    } else if (standalonePreviewElement) {
+        console.log(
+            "Standalone preview element found, initializing standalone preview app..."
+        );
+
+        // Parse questionnaire data
+        let questionnaire = {};
+        try {
+            if (standalonePreviewElement.dataset.questionnaire) {
+                questionnaire = JSON.parse(
+                    standalonePreviewElement.dataset.questionnaire
+                );
+
+                // Ensure ID is properly handled for string operations
+                if (questionnaire.id && typeof questionnaire.id !== "string") {
+                    console.log(
+                        `Converting ID from ${typeof questionnaire.id} to string`
+                    );
+                    questionnaire.id = String(questionnaire.id);
+                }
+            }
+        } catch (e) {
+            console.error("Error parsing questionnaire data:", e);
+        }
+
+        const app = createApp(PreviewApp, {
+            questionnaire,
+        });
+        app.use(pinia);
+        app.mount(standalonePreviewElement);
     }
 });
