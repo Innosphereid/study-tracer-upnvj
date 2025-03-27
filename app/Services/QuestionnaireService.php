@@ -841,11 +841,31 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                         
                         // Update options if provided
                         if (isset($questionData['options']) && is_array($questionData['options'])) {
-                            Log::debug('Updating question options', [
-                                'question_id' => $questionId,
-                                'option_count' => count($questionData['options'])
+                            Log::info('Setting options for question', [
+                                'id' => $questionId,
+                                'options_count' => count($questionData['options'])
                             ]);
                             
+                            // Check if "Other" and "None" options should be included
+                            $hasOtherOption = false;
+                            $hasNoneOption = false;
+                            
+                            if (isset($questionData['allowOther']) && $questionData['allowOther']) {
+                                $hasOtherOption = true;
+                            } elseif (isset($questionData['settings']) && is_array($questionData['settings']) && 
+                                      isset($questionData['settings']['allowOther']) && $questionData['settings']['allowOther']) {
+                                $hasOtherOption = true;
+                            }
+                            
+                            if (isset($questionData['allowNone']) && $questionData['allowNone']) {
+                                $hasNoneOption = true;
+                            } elseif (isset($questionData['settings']) && is_array($questionData['settings']) && 
+                                      isset($questionData['settings']['allowNone']) && $questionData['settings']['allowNone']) {
+                                $hasNoneOption = true;
+                            }
+                            
+                            // The setQuestionOptions method in repository will handle adding "Other" and "None" options
+                            // based on the settings of the question
                             $this->setQuestionOptions($questionId, $questionData['options']);
                         }
                         
@@ -879,6 +899,26 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                                 'option_count' => count($questionData['options'])
                             ]);
                             
+                            // Check if "Other" and "None" options should be included
+                            $hasOtherOption = false;
+                            $hasNoneOption = false;
+                            
+                            if (isset($questionData['allowOther']) && $questionData['allowOther']) {
+                                $hasOtherOption = true;
+                            } elseif (isset($questionData['settings']) && is_array($questionData['settings']) && 
+                                      isset($questionData['settings']['allowOther']) && $questionData['settings']['allowOther']) {
+                                $hasOtherOption = true;
+                            }
+                            
+                            if (isset($questionData['allowNone']) && $questionData['allowNone']) {
+                                $hasNoneOption = true;
+                            } elseif (isset($questionData['settings']) && is_array($questionData['settings']) && 
+                                      isset($questionData['settings']['allowNone']) && $questionData['settings']['allowNone']) {
+                                $hasNoneOption = true;
+                            }
+                            
+                            // The setQuestionOptions method in repository will handle adding "Other" and "None" options
+                            // based on the settings of the question
                             $this->setQuestionOptions($questionId, $questionData['options']);
                         }
                         
@@ -1047,7 +1087,18 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                 
                 // Handle value - ensure it's not empty
                 if (isset($option['value']) && !empty($option['value'])) {
-                    $normalizedOption['value'] = $option['value'];
+                    // If value follows the option_X pattern and we have text/label, use text/label as value
+                    if (preg_match('/^option_\d+$/', $option['value'])) {
+                        if (isset($option['text'])) {
+                            $normalizedOption['value'] = $option['text'];
+                        } elseif (isset($option['label'])) {
+                            $normalizedOption['value'] = $option['label'];
+                        } else {
+                            $normalizedOption['value'] = $option['value'];
+                        }
+                    } else {
+                        $normalizedOption['value'] = $option['value'];
+                    }
                 } elseif (isset($option['text'])) {
                     // If no value but text exists, use that as the value
                     $normalizedOption['value'] = $option['text'];
