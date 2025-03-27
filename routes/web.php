@@ -113,188 +113,39 @@ Route::prefix('email-preview')->name('email.preview.')->group(function () {
     })->name('reset-success');
 });
 
-// Questionnaire Routes (Frontend Only)
-Route::prefix('kuesioner')->middleware(['auth', 'role:admin,superadmin'])->group(function () {
+// Questionnaire Routes
+Route::prefix('kuesioner')->middleware(['auth'])->group(function () {
     // Menampilkan daftar kuesioner
-    Route::get('/', function() {
-        // Data dummy untuk daftar kuesioner
-        // PERUBAHAN: Menggunakan array assosiatif daripada stdClass untuk menghindari masalah konversi
-        $questionnaires = collect([
-            [
-                'id' => 1, // Memastikan id adalah integer atau string, bukan objek
-                'title' => 'Tracer Study Alumni Angkatan 2020',
-                'slug' => 'tracer-study-alumni-2020',
-                'is_published' => true,
-                'is_draft' => false,
-                'start_date' => now(),
-                'end_date' => now()->addMonths(3),
-                'responses_count' => 42,
-                'updated_at' => now()->subDays(2)
-            ],
-            [
-                'id' => 2, // Memastikan id adalah integer atau string, bukan objek
-                'title' => 'Kuesioner Kepuasan Layanan Akademik',
-                'slug' => 'kepuasan-layanan-akademik',
-                'is_published' => false,
-                'is_draft' => true,
-                'start_date' => null,
-                'end_date' => null,
-                'responses_count' => 0,
-                'updated_at' => now()->subDays(5)
-            ]
-        ])->map(function ($item) {
-            // Konversi array menjadi objek tetapi dengan id yang bernilai scalar (integer/string)
-            return (object) $item;
-        });
-        
-        // Membuat pagination sederhana
-        $questionnaires = new \Illuminate\Pagination\LengthAwarePaginator(
-            $questionnaires,
-            $questionnaires->count(),
-            10,
-            1
-        );
-        
-        return view('questionnaire.index', compact('questionnaires'));
-    })->name('questionnaires.index');
+    Route::get('/', 'App\Http\Controllers\Questionnaire\QuestionnaireController@index')->name('questionnaires.index');
     
     // Membuat kuesioner baru
-    Route::get('/create', function() {
-        $initialData = [
-            'title' => 'Kuesioner Baru',
-            'sections' => []
-        ];
-        
-        return view('questionnaire.create', compact('initialData'));
-    })->name('questionnaires.create');
+    Route::get('/create', 'App\Http\Controllers\Questionnaire\QuestionnaireController@create')->name('questionnaires.create');
+    Route::post('/', 'App\Http\Controllers\Questionnaire\QuestionnaireController@store')->name('questionnaires.store');
     
-    // Mengedit kuesioner (parameter bisa apapun, hanya untuk demo)
-    Route::get('/{questionnaire}/edit', function($questionnaire) {
-        // Data dummy untuk kuesioner
-        $questionnaire = [
-            'id' => $questionnaire,
-            'title' => 'Kuesioner Demo',
-            'description' => 'Ini adalah kuesioner contoh untuk pengembangan frontend',
-            'slug' => 'kuesioner-demo',
-            'startDate' => now()->format('Y-m-d'),
-            'endDate' => now()->addMonths(3)->format('Y-m-d'),
-            'showProgressBar' => true,
-            'showPageNumbers' => true,
-            'requiresLogin' => false,
-            'sections' => [
-                [
-                    'id' => 'section1',
-                    'title' => 'Informasi Umum',
-                    'description' => 'Bagian ini berisi pertanyaan tentang informasi umum responden',
-                    'questions' => [
-                        [
-                            'id' => 'q1',
-                            'type' => 'short-text',
-                            'text' => 'Nama Lengkap',
-                            'helpText' => 'Masukkan nama lengkap Anda sesuai ijazah',
-                            'required' => true,
-                            'placeholder' => 'Masukkan nama lengkap Anda'
-                        ],
-                        [
-                            'id' => 'q2',
-                            'type' => 'radio',
-                            'text' => 'Jenis Kelamin',
-                            'helpText' => '',
-                            'required' => true,
-                            'options' => [
-                                ['id' => 'opt1', 'text' => 'Laki-laki', 'value' => 'male'],
-                                ['id' => 'opt2', 'text' => 'Perempuan', 'value' => 'female']
-                            ]
-                        ]
-                    ]
-                ]
-            ],
-            'welcomeScreen' => [
-                'title' => 'Selamat Datang di Kuesioner Demo',
-                'description' => 'Terima kasih telah berpartisipasi dalam tracer study kami.'
-            ],
-            'thankYouScreen' => [
-                'title' => 'Terima Kasih',
-                'description' => 'Terima kasih atas partisipasi Anda dalam tracer study ini.'
-            ]
-        ];
-        
-        return view('questionnaire.edit', compact('questionnaire'));
-    })->name('questionnaires.edit');
+    // Menampilkan, mengedit, dan menghapus kuesioner
+    Route::get('/{id}', 'App\Http\Controllers\Questionnaire\QuestionnaireController@show')->name('questionnaires.show');
+    Route::get('/{id}/edit', 'App\Http\Controllers\Questionnaire\QuestionnaireController@edit')->name('questionnaires.edit');
+    Route::put('/{id}', 'App\Http\Controllers\Questionnaire\QuestionnaireController@update')->name('questionnaires.update');
+    Route::delete('/{id}', 'App\Http\Controllers\Questionnaire\QuestionnaireController@destroy')->name('questionnaires.destroy');
     
-    // Preview kuesioner (untuk admin)
-    Route::get('/{questionnaire}/preview', function($questionnaire) {
-        // Gunakan data dummy yang sama dengan edit
-        $questionnaire = [
-            'id' => $questionnaire,
-            'title' => 'Kuesioner Demo',
-            'description' => 'Ini adalah kuesioner contoh untuk pengembangan frontend',
-            'slug' => 'kuesioner-demo',
-            'startDate' => now()->format('Y-m-d'),
-            'endDate' => now()->addMonths(3)->format('Y-m-d'),
-            'showProgressBar' => true,
-            'showPageNumbers' => true,
-            'requiresLogin' => false,
-            'sections' => [
-                [
-                    'id' => 'section1',
-                    'title' => 'Informasi Umum',
-                    'description' => 'Bagian ini berisi pertanyaan tentang informasi umum responden',
-                    'questions' => [
-                        [
-                            'id' => 'q1',
-                            'type' => 'short-text',
-                            'text' => 'Nama Lengkap',
-                            'helpText' => 'Masukkan nama lengkap Anda sesuai ijazah',
-                            'required' => true,
-                            'placeholder' => 'Masukkan nama lengkap Anda'
-                        ],
-                        [
-                            'id' => 'q2',
-                            'type' => 'radio',
-                            'text' => 'Jenis Kelamin',
-                            'helpText' => '',
-                            'required' => true,
-                            'options' => [
-                                ['id' => 'opt1', 'text' => 'Laki-laki', 'value' => 'male'],
-                                ['id' => 'opt2', 'text' => 'Perempuan', 'value' => 'female']
-                            ]
-                        ]
-                    ]
-                ]
-            ],
-            'welcomeScreen' => [
-                'title' => 'Selamat Datang di Kuesioner Demo',
-                'description' => 'Terima kasih telah berpartisipasi dalam tracer study kami.'
-            ],
-            'thankYouScreen' => [
-                'title' => 'Terima Kasih',
-                'description' => 'Terima kasih atas partisipasi Anda dalam tracer study ini.'
-            ]
-        ];
-        
-        return view('questionnaire.preview', compact('questionnaire'));
-    })->name('questionnaires.preview');
+    // Melihat preview kuesioner
+    Route::get('/{id}/preview', 'App\Http\Controllers\Questionnaire\QuestionnaireController@preview')->name('questionnaires.preview');
     
-    // Untuk routes menyimpan, memperbarui, dan menghapus kuesioner
-    // Buat route dummy yang return redirect atau response JSON untuk kebutuhan frontend testing
-    Route::post('/', function() {
-        // Response JSON untuk simulasi
-        return response()->json(['success' => true, 'id' => rand(1, 100)]);
-    })->name('questionnaires.store');
+    // Mempublikasikan kuesioner
+    Route::post('/{id}/publish', 'App\Http\Controllers\Questionnaire\QuestionnaireController@publish')->name('questionnaires.publish');
     
-    Route::put('/{questionnaire}', function() {
-        return response()->json(['success' => true]);
-    })->name('questionnaires.update');
+    // Menutup kuesioner
+    Route::post('/{id}/close', 'App\Http\Controllers\Questionnaire\QuestionnaireController@close')->name('questionnaires.close');
     
-    Route::delete('/{questionnaire}', function() {
-        return redirect()->route('questionnaires.index')->with('success', 'Kuesioner berhasil dihapus');
-    })->name('questionnaires.destroy');
+    // Menduplikasi kuesioner
+    Route::post('/{id}/clone', 'App\Http\Controllers\Questionnaire\QuestionnaireController@clone')->name('questionnaires.clone');
     
-    // Tambahkan route untuk results (dummy)
-    Route::get('/{questionnaire}/results', function() {
-        return view('questionnaire.results', ['questionnaire' => ['title' => 'Kuesioner Demo']]);
-    })->name('questionnaires.results');
+    // Mengelola respons
+    Route::get('/{questionnaireId}/responses', 'App\Http\Controllers\Questionnaire\ResponseController@index')->name('questionnaires.responses.index');
+    Route::get('/{questionnaireId}/responses/{responseId}', 'App\Http\Controllers\Questionnaire\ResponseController@show')->name('questionnaires.responses.show');
+    Route::delete('/{questionnaireId}/responses/{responseId}', 'App\Http\Controllers\Questionnaire\ResponseController@destroy')->name('questionnaires.responses.destroy');
+    Route::get('/{questionnaireId}/responses/export', 'App\Http\Controllers\Questionnaire\ResponseController@export')->name('questionnaires.responses.export');
+    Route::get('/{questionnaireId}/statistics', 'App\Http\Controllers\Questionnaire\ResponseController@statistics')->name('questionnaires.statistics');
 });
 
 // Endpoint untuk alumni (tidak perlu login)
