@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { v4 as uuidv4 } from "uuid";
+import axios from "axios";
 
 export const useQuestionnaireStore = defineStore("questionnaire", {
     state: () => ({
@@ -618,59 +619,140 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
         saveQuestionnaire() {
             this.saveStatus = "saving";
 
-            // Simulasi saving delay for UI feedback
-            setTimeout(() => {
-                try {
-                    // Simpan kuesioner ke localStorage untuk auto-save
-                    localStorage.setItem(
-                        "questionnaire_draft",
-                        JSON.stringify(this.questionnaire)
-                    );
-
-                    // TODO: Implement real API saving
-                    // Jika memiliki API endpoint, bisa di-uncomment:
-                    /*
-          const saveData = async () => {
+            // Simpan kuesioner ke localStorage untuk auto-save
             try {
-              const response = await fetch('/api/questionnaires', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify(this.questionnaire)
-              });
-              
-              if (!response.ok) {
-                throw new Error('Failed to save questionnaire');
-              }
-              
-              const data = await response.json();
-              
-              // Update questionnaire id jika ini kuesioner baru
-              if (!this.questionnaire.id && data.id) {
-                this.questionnaire.id = data.id;
-              }
-              
-              this.saveStatus = 'saved';
-              this.lastSaved = new Date().toISOString();
+                localStorage.setItem(
+                    "questionnaire_draft",
+                    JSON.stringify(this.questionnaire)
+                );
             } catch (error) {
-              console.error('Error saving questionnaire:', error);
-              this.saveStatus = 'error';
+                console.error("Error saving to localStorage:", error);
             }
-          };
-          
-          saveData();
-          */
 
-                    // Untuk sementara, simulasi successful save
-                    this.saveStatus = "saved";
-                    this.lastSaved = new Date().toISOString();
-                } catch (error) {
-                    console.error("Error saving to localStorage:", error);
+            // Persiapkan data untuk dikirim ke server
+            const questionnaireData = {
+                title: this.questionnaire.title,
+                slug: this.questionnaire.slug,
+                description: this.questionnaire.description,
+                status: this.questionnaire.status || "draft",
+                start_date: this.questionnaire.startDate,
+                end_date: this.questionnaire.endDate,
+                settings: JSON.stringify({
+                    showProgressBar: this.questionnaire.showProgressBar,
+                    showPageNumbers: this.questionnaire.showPageNumbers,
+                    requiresLogin: this.questionnaire.requiresLogin,
+                    welcomeScreen: this.questionnaire.welcomeScreen,
+                    thankYouScreen: this.questionnaire.thankYouScreen,
+                }),
+                sections: this.questionnaire.sections.map((section) => ({
+                    id:
+                        section.id &&
+                        (typeof section.id === "number" ||
+                            !section.id.startsWith("temp_"))
+                            ? section.id
+                            : undefined,
+                    title: section.title,
+                    description: section.description,
+                    order: section.order,
+                    questions: section.questions.map((question) => ({
+                        id:
+                            question.id &&
+                            (typeof question.id === "number" ||
+                                !question.id.startsWith("temp_"))
+                                ? question.id
+                                : undefined,
+                        question_type: question.type,
+                        title: question.text,
+                        description: question.helpText,
+                        is_required: question.required,
+                        order: question.order,
+                        settings: JSON.stringify(question.settings || {}),
+                        options: question.options
+                            ? question.options.map((option) => ({
+                                  id:
+                                      option.id &&
+                                      (typeof option.id === "number" ||
+                                          !option.id.startsWith("temp_"))
+                                          ? option.id
+                                          : undefined,
+                                  value: option.value,
+                                  label: option.text,
+                                  order: option.order,
+                              }))
+                            : [],
+                    })),
+                })),
+            };
+
+            // Tentukan apakah ini adalah pembuatan atau pembaruan
+            const isCreate =
+                !this.questionnaire.id ||
+                (typeof this.questionnaire.id === "string" &&
+                    this.questionnaire.id.startsWith("temp_"));
+
+            const url = isCreate
+                ? "/kuesioner"
+                : `/kuesioner/${this.questionnaire.id}`;
+            const method = isCreate ? "post" : "put";
+
+            console.log("Saving questionnaire:", {
+                isCreate,
+                id: this.questionnaire.id,
+                idType: typeof this.questionnaire.id,
+                url,
+                method,
+            });
+
+            // Kirim permintaan ke server
+            return axios({
+                method: method,
+                url: url,
+                data: questionnaireData,
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": document
+                        .querySelector('meta[name="csrf-token"]')
+                        ?.getAttribute("content"),
+                },
+            })
+                .then((response) => {
+                    console.log("Save response:", response.data);
+
+                    if (response.data.success) {
+                        // Update questionnaire ID jika ini adalah pembuatan baru
+                        if (isCreate && response.data.id) {
+                            console.log(
+                                `Updating ID from ${this.questionnaire.id} to ${
+                                    response.data.id
+                                } (${typeof response.data.id})`
+                            );
+                            this.questionnaire.id = response.data.id;
+                        }
+
+                        if (response.data.slug) {
+                            this.questionnaire.slug = response.data.slug;
+                        }
+
+                        this.saveStatus = "saved";
+                        this.lastSaved = new Date().toISOString();
+                        return response.data;
+                    } else {
+                        console.error(
+                            "Failed to save questionnaire:",
+                            response.data.message
+                        );
+                        this.saveStatus = "error";
+                        throw new Error(
+                            response.data.message ||
+                                "Failed to save questionnaire"
+                        );
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error saving questionnaire:", error);
                     this.saveStatus = "error";
-                }
-            }, 500);
+                    throw error;
+                });
         },
 
         setupAutosave() {
@@ -723,20 +805,123 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
         },
 
         publishQuestionnaire() {
-            // TODO: Implement real publishing logic
-            console.log("Publishing questionnaire:", this.questionnaire);
+            // Persiapkan data untuk dikirim ke API
+            const publishData = {
+                start_date: this.questionnaire.startDate || null,
+                end_date: this.questionnaire.endDate || null,
+                slug: this.questionnaire.slug || null,
+                title: this.questionnaire.title || null,
+            };
 
-            // Simulasi successful publish
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    resolve({
-                        success: true,
-                        url: `/kuesioner/${
-                            this.questionnaire.slug || "preview"
-                        }`,
-                    });
-                }, 1000);
+            // Validasi ID
+            const questionnaireId = this.questionnaire.id;
+            if (!questionnaireId) {
+                console.error("Cannot publish: Questionnaire has no ID");
+                return Promise.reject({
+                    success: false,
+                    message:
+                        "Kuesioner belum disimpan. Simpan kuesioner terlebih dahulu.",
+                });
+            }
+
+            // Periksa jika ID masih berupa ID sementara (string yang dimulai dengan 'temp_')
+            if (
+                typeof questionnaireId === "string" &&
+                questionnaireId.startsWith("temp_")
+            ) {
+                console.error(
+                    "Cannot publish: Questionnaire has only temporary ID"
+                );
+                return Promise.reject({
+                    success: false,
+                    message:
+                        "Kuesioner masih dalam draft sementara. Simpan kuesioner terlebih dahulu.",
+                });
+            }
+
+            console.log("Publishing questionnaire:", {
+                id: questionnaireId,
+                idType: typeof questionnaireId,
+                data: publishData,
             });
+
+            // Ambil CSRF token dengan cara yang lebih aman
+            let csrfToken = null;
+            const metaTag = document.querySelector('meta[name="csrf-token"]');
+            if (metaTag) {
+                csrfToken = metaTag.getAttribute("content");
+            } else {
+                console.warn(
+                    "CSRF token meta tag tidak ditemukan. Coba dengan token dari cookie."
+                );
+                // Coba dapatkan dari cookie sebagai fallback
+                const cookies = document.cookie.split(";");
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.startsWith("XSRF-TOKEN=")) {
+                        csrfToken = decodeURIComponent(
+                            cookie.substring("XSRF-TOKEN=".length)
+                        );
+                        break;
+                    }
+                }
+            }
+
+            // Persiapkan headers
+            const headers = {
+                "Content-Type": "application/json",
+            };
+
+            // Tambahkan CSRF token jika ditemukan
+            if (csrfToken) {
+                headers["X-CSRF-TOKEN"] = csrfToken;
+            } else {
+                console.error(
+                    "Tidak dapat menemukan CSRF token. Request mungkin akan gagal."
+                );
+            }
+
+            // Kirim permintaan ke API endpoint
+            return axios
+                .post(`/kuesioner/${questionnaireId}/publish`, publishData, {
+                    headers,
+                })
+                .then((response) => {
+                    console.log("Publish response:", response.data);
+                    if (response.data.success) {
+                        // Jika berhasil, perbarui status kuesioner di state lokal
+                        this.questionnaire.status = "published";
+                        this.questionnaire.is_published = true;
+                        this.questionnaire.is_draft = false;
+
+                        this.saveStatus = "Tersimpan";
+                        return {
+                            success: true,
+                            url: `/kuesioner/${this.questionnaire.id}`,
+                            message:
+                                response.data.message ||
+                                "Kuesioner berhasil dipublikasikan",
+                        };
+                    }
+                    return {
+                        success: false,
+                        message:
+                            response.data.message ||
+                            "Gagal mempublikasikan kuesioner",
+                    };
+                })
+                .catch((error) => {
+                    console.error(
+                        "Error publishing questionnaire:",
+                        error.response?.data || error
+                    );
+                    return {
+                        success: false,
+                        message:
+                            error.response?.data?.message ||
+                            "Terjadi kesalahan saat mempublikasikan kuesioner",
+                    };
+                });
         },
     },
 });
