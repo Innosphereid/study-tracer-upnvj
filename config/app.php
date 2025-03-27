@@ -170,6 +170,7 @@ return [
         App\Providers\RepositoryServiceProvider::class,
         App\Providers\LoggerServiceProvider::class,
         App\Providers\AuthServicesProvider::class,
+        App\Providers\QuestionnaireServiceProvider::class,
     ],
 
 ];
