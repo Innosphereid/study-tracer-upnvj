@@ -26,6 +26,7 @@ class Questionnaire extends Model
         'end_date',
         'is_template',
         'settings',
+        'questionnaire_json',
     ];
 
     /**
@@ -38,6 +39,7 @@ class Questionnaire extends Model
         'end_date' => 'datetime',
         'is_template' => 'boolean',
         'settings' => 'json',
+        'questionnaire_json' => 'json',
     ];
 
     /**
@@ -97,10 +99,46 @@ class Questionnaire extends Model
     }
 
     /**
-     * Get all questions in the questionnaire (across all sections).
+     * Get all questions for the questionnaire directly.
      */
-    public function questions()
+    public function questions(): HasMany
     {
-        return $this->hasManyThrough(Question::class, Section::class);
+        return $this->hasMany(Question::class)->orderBy('order');
+    }
+
+    /**
+     * Get all answer details for the questionnaire.
+     */
+    public function answerDetails(): HasMany
+    {
+        return $this->hasMany(AnswerDetail::class);
+    }
+
+    /**
+     * Store the complete questionnaire structure as JSON.
+     *
+     * @return void
+     */
+    public function storeAsJson(): void
+    {
+        // Load sections with questions and options
+        $this->load(['sections.questions.options']);
+        
+        // Create a complete representation
+        $jsonData = [
+            'id' => $this->id,
+            'title' => $this->title,
+            'slug' => $this->slug,
+            'description' => $this->description,
+            'status' => $this->status,
+            'start_date' => $this->start_date,
+            'end_date' => $this->end_date,
+            'settings' => $this->settings,
+            'sections' => $this->sections->toArray()
+        ];
+        
+        // Store the JSON representation
+        $this->questionnaire_json = $jsonData;
+        $this->save();
     }
 } 
