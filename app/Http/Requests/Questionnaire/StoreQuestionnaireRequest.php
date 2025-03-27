@@ -24,7 +24,7 @@ class StoreQuestionnaireRequest extends FormRequest
      */
     public function rules(): array
     {
-        Log::info('Validating store questionnaire request');
+        Log::info('Validating store questionnaire request', ['data' => $this->all()]);
         
         return [
             'title' => 'required|string|max:255',
@@ -34,21 +34,21 @@ class StoreQuestionnaireRequest extends FormRequest
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'is_template' => 'nullable|boolean',
-            'settings' => 'nullable|json',
+            'settings' => 'nullable',
             'sections' => 'nullable|array',
             'sections.*.title' => 'required|string|max:255',
             'sections.*.description' => 'nullable|string',
             'sections.*.order' => 'nullable|integer|min:0',
             'sections.*.questions' => 'nullable|array',
-            'sections.*.questions.*.question_type' => 'required|string|in:text,textarea,radio,checkbox,dropdown,rating,date,file,matrix',
+            'sections.*.questions.*.question_type' => 'required|string',
             'sections.*.questions.*.title' => 'required|string',
             'sections.*.questions.*.description' => 'nullable|string',
             'sections.*.questions.*.is_required' => 'nullable|boolean',
             'sections.*.questions.*.order' => 'nullable|integer|min:0',
-            'sections.*.questions.*.settings' => 'nullable|json',
+            'sections.*.questions.*.settings' => 'nullable',
             'sections.*.questions.*.options' => 'nullable|array',
-            'sections.*.questions.*.options.*.value' => 'required|string|max:255',
-            'sections.*.questions.*.options.*.label' => 'required|string',
+            'sections.*.questions.*.options.*.value' => 'nullable|string|max:255',
+            'sections.*.questions.*.options.*.label' => 'nullable|string',
             'sections.*.questions.*.options.*.order' => 'nullable|integer|min:0',
         ];
     }
@@ -66,10 +66,7 @@ class StoreQuestionnaireRequest extends FormRequest
             'end_date.after_or_equal' => 'Tanggal selesai harus setelah atau sama dengan tanggal mulai',
             'sections.*.title.required' => 'Judul bagian wajib diisi',
             'sections.*.questions.*.question_type.required' => 'Tipe pertanyaan wajib diisi',
-            'sections.*.questions.*.question_type.in' => 'Tipe pertanyaan tidak valid',
             'sections.*.questions.*.title.required' => 'Judul pertanyaan wajib diisi',
-            'sections.*.questions.*.options.*.value.required' => 'Nilai opsi wajib diisi',
-            'sections.*.questions.*.options.*.label.required' => 'Label opsi wajib diisi',
         ];
     }
     
@@ -78,18 +75,44 @@ class StoreQuestionnaireRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        $data = $this->all();
+        $modified = false;
+        
         // If settings is a string but valid JSON, convert to array
         if ($this->has('settings') && is_string($this->settings)) {
-            $this->merge([
-                'settings' => $this->settings,
-            ]);
+            try {
+                $settingsData = json_decode($this->settings, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $data['settings'] = $settingsData;
+                    $modified = true;
+                    
+                    // Extract sections from settings if they exist
+                    if (isset($settingsData['sections']) && is_array($settingsData['sections']) && !$this->has('sections')) {
+                        $data['sections'] = $settingsData['sections'];
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning('Error decoding settings JSON', ['error' => $e->getMessage()]);
+            }
         }
         
         // Process sections
         if ($this->has('sections') && is_string($this->sections)) {
-            $this->merge([
-                'sections' => json_decode($this->sections, true),
-            ]);
+            try {
+                $sectionsData = json_decode($this->sections, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $data['sections'] = $sectionsData;
+                    $modified = true;
+                }
+            } catch (\Exception $e) {
+                Log::warning('Error decoding sections JSON', ['error' => $e->getMessage()]);
+            }
         }
+        
+        if ($modified) {
+            $this->replace($data);
+        }
+        
+        Log::info('Prepared data for validation', ['data' => $data]);
     }
 }
