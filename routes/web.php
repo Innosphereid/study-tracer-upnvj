@@ -146,6 +146,19 @@ Route::prefix('kuesioner')->middleware(['auth'])->group(function () {
     Route::delete('/{questionnaireId}/responses/{responseId}', 'App\Http\Controllers\Questionnaire\ResponseController@destroy')->name('questionnaires.responses.destroy');
     Route::get('/{questionnaireId}/responses/export', 'App\Http\Controllers\Questionnaire\ResponseController@export')->name('questionnaires.responses.export');
     Route::get('/{questionnaireId}/statistics', 'App\Http\Controllers\Questionnaire\ResponseController@statistics')->name('questionnaires.statistics');
+    
+    // Mengelola answer details
+    Route::get('/answer-details/response/{responseId}', 'App\Http\Controllers\Questionnaire\AnswerDetailController@getByResponse')
+        ->name('answer-details.by-response');
+        
+    Route::get('/answer-details/question/{questionId}', 'App\Http\Controllers\Questionnaire\AnswerDetailController@getByQuestion')
+        ->name('answer-details.by-question');
+        
+    Route::get('/answer-details/questionnaire/{questionnaireId}', 'App\Http\Controllers\Questionnaire\AnswerDetailController@getByQuestionnaire')
+        ->name('answer-details.by-questionnaire');
+        
+    Route::get('/answer-details/response/{responseId}/question/{questionId}', 'App\Http\Controllers\Questionnaire\AnswerDetailController@getByResponseAndQuestion')
+        ->name('answer-details.by-response-and-question');
 });
 
 // Endpoint untuk alumni (tidak perlu login)
