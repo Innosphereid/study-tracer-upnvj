@@ -243,6 +243,11 @@ class QuestionnaireController extends Controller
         // Process sections to ensure each question has the expected structure
         if (isset($previewData['sections']) && is_array($previewData['sections'])) {
             foreach ($previewData['sections'] as &$section) {
+                // Process section settings
+                if (!isset($section['settings']) && isset($section['settings_json'])) {
+                    $section['settings'] = json_decode($section['settings_json'], true);
+                }
+                
                 if (isset($section['questions']) && is_array($section['questions'])) {
                     foreach ($section['questions'] as &$question) {
                         // Ensure each question has a type field matching frontend expectations
