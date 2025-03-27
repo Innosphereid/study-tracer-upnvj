@@ -2,54 +2,31 @@
     <div class="checkbox-question">
         <div class="space-y-2">
             <div
-                v-for="(option, index) in question.options"
+                v-for="(option, index) in normalizedOptions"
                 :key="option.id || index"
                 class="relative flex items-start transition-transform hover:translate-x-1"
             >
                 <div class="flex items-center h-6">
                     <input
                         type="checkbox"
-                        :id="`option-${option.id || index}`"
-                        :value="option.value || option.text"
+                        :id="`option-${option.id || index}-${question.id}`"
+                        :value="option.value"
                         :checked="isOptionSelected(option)"
                         class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer transition-all duration-200"
                         @change="toggleOption(option)"
                     />
                 </div>
-                <div class="ml-3 text-sm">
+                <div class="ml-3 text-sm flex-1">
                     <label
-                        :for="`option-${option.id || index}`"
+                        :for="`option-${option.id || index}-${question.id}`"
                         class="font-medium text-gray-700 cursor-pointer hover:text-indigo-600 transition-colors duration-200"
                     >
                         {{ option.text }}
                     </label>
-                </div>
-            </div>
 
-            <!-- "Other" option if enabled -->
-            <div
-                v-if="question.hasOtherOption"
-                class="mt-3 relative flex items-start transition-transform hover:translate-x-1"
-            >
-                <div class="flex items-center h-6">
+                    <!-- Input field for "Other" option -->
                     <input
-                        type="checkbox"
-                        :id="`option-other-${question.id}`"
-                        value="other"
-                        :checked="otherSelected"
-                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer transition-all duration-200"
-                        @change="toggleOtherOption"
-                    />
-                </div>
-                <div class="ml-3 text-sm flex-1">
-                    <label
-                        :for="`option-other-${question.id}`"
-                        class="font-medium text-gray-700 cursor-pointer hover:text-indigo-600 transition-colors duration-200"
-                    >
-                        Lainnya
-                    </label>
-                    <input
-                        v-if="otherSelected"
+                        v-if="option.value === 'other' && otherSelected"
                         v-model="otherText"
                         type="text"
                         class="mt-2 w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
@@ -69,7 +46,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 
 const props = defineProps({
     question: {
@@ -88,6 +65,18 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue"]);
 
+// Log props for debugging
+onMounted(() => {
+    console.log("CheckboxQuestion mounted with props:", {
+        id: props.question.id,
+        options: props.question.options,
+        allowOther: props.question.allowOther,
+        allowNone: props.question.allowNone,
+        optionsOrder: props.question.optionsOrder,
+        modelValue: props.modelValue,
+    });
+});
+
 // Local state for "other" option
 const otherText = ref(props.modelValue?.otherText || "");
 const selectedValues = ref(props.modelValue?.values || []);
@@ -97,47 +86,114 @@ const otherSelected = computed(() => {
     return props.modelValue?.values?.includes("other");
 });
 
+// Computed property to check if "none" option is selected
+const noneSelected = computed(() => {
+    return props.modelValue?.values?.includes("none");
+});
+
+// Computed property that combines all options, adds "None" and "Other" options if enabled
+const normalizedOptions = computed(() => {
+    let options = [...(props.question.options || [])];
+
+    // Add "None" option if allowed
+    if (props.question.allowNone) {
+        options.push({
+            id: "none",
+            text: "Tidak Ada",
+            value: "none",
+            isSpecial: true,
+        });
+    }
+
+    // Add "Other" option if allowed
+    if (props.question.allowOther) {
+        options.push({
+            id: "other",
+            text: "Lainnya",
+            value: "other",
+            isSpecial: true,
+        });
+    }
+
+    // Sort options if needed
+    if (props.question.optionsOrder === "desc") {
+        // Sort regular options (not special ones)
+        const regularOptions = options.filter((opt) => !opt.isSpecial);
+        const specialOptions = options.filter((opt) => opt.isSpecial);
+
+        regularOptions.sort((a, b) => b.text.localeCompare(a.text));
+
+        options = [...regularOptions, ...specialOptions];
+    }
+
+    return options;
+});
+
 // Helper to check if an option is selected
 const isOptionSelected = (option) => {
-    return props.modelValue?.values?.includes(option.value || option.text);
+    return props.modelValue?.values?.includes(option.value);
 };
 
 // Method to toggle option selection
 const toggleOption = (option) => {
-    const value = option.value || option.text;
+    const value = option.value;
     const values = [...(props.modelValue?.values || [])];
 
+    // Special handling for "none" option
+    if (value === "none") {
+        if (values.includes("none")) {
+            // Unselecting "none" - just remove it
+            values.splice(values.indexOf("none"), 1);
+        } else {
+            // Selecting "none" - clear all other selections
+            values.length = 0;
+            values.push("none");
+        }
+
+        emit("update:modelValue", {
+            values,
+            otherText: "", // Clear other text when "none" is selected
+            labels: values.map((v) => (v === "none" ? "Tidak Ada" : v)),
+        });
+        return;
+    }
+
+    // If selecting an option but "none" is already selected, remove "none"
+    if (values.includes("none")) {
+        values.splice(values.indexOf("none"), 1);
+    }
+
+    // Toggle the option value
     const index = values.indexOf(value);
     if (index > -1) {
         values.splice(index, 1);
+
+        // If this was the "other" option, clear the otherText
+        if (value === "other") {
+            otherText.value = "";
+        }
     } else {
         values.push(value);
     }
 
+    // Create labels array for better tracking
+    const labels = values.map((v) => {
+        if (v === "other") return "Lainnya";
+        if (v === "none") return "Tidak Ada";
+
+        // Find the text for this value
+        const opt = normalizedOptions.value.find((o) => o.value === v);
+        return opt ? opt.text : v;
+    });
+
     emit("update:modelValue", {
         values,
-        otherText: props.modelValue?.otherText || "",
+        otherText:
+            value === "other"
+                ? otherText.value
+                : props.modelValue?.otherText || "",
+        labels,
     });
-};
-
-// Method to toggle "other" option
-const toggleOtherOption = () => {
-    const values = [...(props.modelValue?.values || [])];
-
-    const index = values.indexOf("other");
-    if (index > -1) {
-        values.splice(index, 1);
-        emit("update:modelValue", {
-            values,
-            otherText: "",
-        });
-    } else {
-        values.push("other");
-        emit("update:modelValue", {
-            values,
-            otherText: otherText.value,
-        });
-    }
 };
 
 // Method to update the "other" text
@@ -145,6 +201,14 @@ const updateOtherText = () => {
     emit("update:modelValue", {
         values: props.modelValue?.values || [],
         otherText: otherText.value,
+        labels: props.modelValue?.values?.map((v) => {
+            if (v === "other") return "Lainnya";
+            if (v === "none") return "Tidak Ada";
+
+            // Find the text for this value
+            const opt = normalizedOptions.value.find((o) => o.value === v);
+            return opt ? opt.text : v;
+        }),
     });
 };
 
