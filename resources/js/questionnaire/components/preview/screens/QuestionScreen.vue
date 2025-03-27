@@ -382,12 +382,27 @@ const validateCurrentPageQuestions = () => {
                 case "radio":
                 case "dropdown":
                     questionValid = !!answer?.value;
+                    // Also consider "none" and "other" as valid answers
+                    if (!questionValid && answer?.value === "none") {
+                        questionValid = true;
+                    }
+                    if (
+                        !questionValid &&
+                        answer?.value === "other" &&
+                        answer?.otherText?.trim()
+                    ) {
+                        questionValid = true;
+                    }
                     break;
 
                 case "checkbox":
                     questionValid =
                         Array.isArray(answer?.values) &&
                         answer.values.length > 0;
+                    // For checkbox, "none" is also a valid answer
+                    if (!questionValid && answer?.none) {
+                        questionValid = true;
+                    }
                     break;
 
                 case "rating":
@@ -687,20 +702,93 @@ const normalizeQuestionData = (question) => {
                         questionData.settings.options
                     ) {
                         questionData.options = questionData.settings.options;
+                    } else if (!questionData.options) {
+                        // Default empty options array if none exists
+                        questionData.options = [];
+                    }
+
+                    // Normalize options format - ensure each option has id, text, and value
+                    if (Array.isArray(questionData.options)) {
+                        questionData.options = questionData.options.map(
+                            (option, index) => {
+                                if (typeof option === "string") {
+                                    return {
+                                        id: `option_${option}`,
+                                        text: option,
+                                        value: option,
+                                    };
+                                }
+
+                                const normalizedOption = { ...option };
+
+                                // Ensure option has an id
+                                if (!normalizedOption.id) {
+                                    normalizedOption.id = `option-${index}`;
+                                }
+
+                                // Ensure option has text - fallback to label or value
+                                if (!normalizedOption.text) {
+                                    normalizedOption.text =
+                                        normalizedOption.label ||
+                                        normalizedOption.value ||
+                                        `Option ${index + 1}`;
+                                }
+
+                                // Set value to match text content instead of generic option_N values
+                                if (
+                                    !normalizedOption.value ||
+                                    normalizedOption.value.startsWith("option_")
+                                ) {
+                                    normalizedOption.value =
+                                        normalizedOption.text;
+                                }
+
+                                return normalizedOption;
+                            }
+                        );
+
+                        // Apply options ordering based on optionsOrder setting
+                        if (
+                            questionData.optionsOrder === "desc" ||
+                            (questionData.settings &&
+                                questionData.settings.optionsOrder === "desc")
+                        ) {
+                            // Sort options in descending order (Z to A)
+                            console.log(
+                                `Sorting options for question ${questionData.id} in descending order`
+                            );
+                            questionData.options = [
+                                ...questionData.options,
+                            ].sort((a, b) => {
+                                // Compare text values for sorting
+                                return b.text.localeCompare(a.text);
+                            });
+                        }
+                    }
+
+                    // Handle allowOther flag
+                    if (questionData.settings.allowOther !== undefined) {
+                        questionData.allowOther = Boolean(
+                            questionData.settings.allowOther
+                        );
+                    }
+
+                    // Handle allowNone flag
+                    if (questionData.settings.allowNone !== undefined) {
+                        questionData.allowNone = Boolean(
+                            questionData.settings.allowNone
+                        );
                     }
 
                     // Copy other option-related settings
-                    ["allowOther", "allowNone", "defaultValue"].forEach(
-                        (prop) => {
-                            if (
-                                questionData.settings[prop] !== undefined &&
-                                questionData[prop] === undefined
-                            ) {
-                                questionData[prop] =
-                                    questionData.settings[prop];
-                            }
+                    ["defaultValue"].forEach((prop) => {
+                        if (
+                            questionData.settings[prop] !== undefined &&
+                            questionData[prop] === undefined
+                        ) {
+                            questionData[prop] = questionData.settings[prop];
                         }
-                    );
+                    });
                     break;
 
                 case "matrix":
@@ -713,6 +801,70 @@ const normalizeQuestionData = (question) => {
                             questionData[prop] = questionData.settings[prop];
                         }
                     });
+
+                    // Normalize rows format
+                    if (Array.isArray(questionData.rows)) {
+                        questionData.rows = questionData.rows.map(
+                            (row, index) => {
+                                if (typeof row === "string") {
+                                    return {
+                                        id: `row_${row}`,
+                                        text: row,
+                                        value: row,
+                                    };
+                                }
+
+                                // Ensure row has value
+                                if (!row.value) {
+                                    row.value = row.text;
+                                }
+
+                                return row;
+                            }
+                        );
+
+                        // Apply sorting if rowsOrder is set to 'desc'
+                        if (questionData.rowsOrder === "desc") {
+                            console.log(
+                                `Sorting rows for matrix question ${questionData.id} in descending order`
+                            );
+                            questionData.rows.sort((a, b) =>
+                                b.text.localeCompare(a.text)
+                            );
+                        }
+                    }
+
+                    // Normalize columns format
+                    if (Array.isArray(questionData.columns)) {
+                        questionData.columns = questionData.columns.map(
+                            (column, index) => {
+                                if (typeof column === "string") {
+                                    return {
+                                        id: `column_${column}`,
+                                        text: column,
+                                        value: column,
+                                    };
+                                }
+
+                                // Ensure column has value
+                                if (!column.value) {
+                                    column.value = column.text;
+                                }
+
+                                return column;
+                            }
+                        );
+
+                        // Apply sorting if columnsOrder is set to 'desc'
+                        if (questionData.columnsOrder === "desc") {
+                            console.log(
+                                `Sorting columns for matrix question ${questionData.id} in descending order`
+                            );
+                            questionData.columns.sort((a, b) =>
+                                b.text.localeCompare(a.text)
+                            );
+                        }
+                    }
                     break;
 
                 case "rating":
@@ -785,6 +937,16 @@ const normalizeQuestionData = (question) => {
         questionData.frontendType = frontendType;
     }
 
+    // Debug output to see the normalized data
+    console.log("Normalized question data:", {
+        id: questionData.id,
+        type: questionData.type,
+        options: questionData.options,
+        allowOther: questionData.allowOther,
+        allowNone: questionData.allowNone,
+        optionsOrder: questionData.optionsOrder,
+    });
+
     return questionData;
 };
 
@@ -841,12 +1003,27 @@ const validateAllQuestions = () => {
                     case "radio":
                     case "dropdown":
                         questionValid = !!answer?.value;
+                        // Also consider "none" and "other" as valid answers
+                        if (!questionValid && answer?.value === "none") {
+                            questionValid = true;
+                        }
+                        if (
+                            !questionValid &&
+                            answer?.value === "other" &&
+                            answer?.otherText?.trim()
+                        ) {
+                            questionValid = true;
+                        }
                         break;
 
                     case "checkbox":
                         questionValid =
                             Array.isArray(answer?.values) &&
                             answer.values.length > 0;
+                        // For checkbox, "none" is also a valid answer
+                        if (!questionValid && answer?.none) {
+                            questionValid = true;
+                        }
                         break;
 
                     case "rating":
