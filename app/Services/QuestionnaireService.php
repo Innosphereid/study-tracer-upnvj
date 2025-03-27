@@ -1019,9 +1019,9 @@ class QuestionnaireService implements QuestionnaireServiceInterface
         
         // Handle required
         if (isset($questionData['is_required'])) {
-            $result['is_required'] = $questionData['is_required'];
+            $result['is_required'] = (bool)$questionData['is_required'];
         } elseif (isset($questionData['required'])) {
-            $result['is_required'] = $questionData['required'];
+            $result['is_required'] = (bool)$questionData['required'];
         } else {
             $result['is_required'] = false; // Default to not required
         }
@@ -1071,16 +1071,191 @@ class QuestionnaireService implements QuestionnaireServiceInterface
             $result['options'] = $options;
         }
         
-        // Store all other properties in settings
+        // Build clean settings object - avoiding nested settings
         $settings = [];
+        
+        // Primary settings that should be both in settings JSON and as columns
+        $primarySettings = [
+            'text' => 'text',
+            'helpText' => 'helpText',
+            'required' => 'required',
+            'type' => 'type'
+        ];
+        
+        // First, copy essential fields to the settings
+        foreach ($primarySettings as $frontendField => $settingsField) {
+            if (isset($questionData[$frontendField])) {
+                $settings[$settingsField] = $questionData[$frontendField];
+            }
+        }
+        
+        // Then add the frontend type to settings
+        if (isset($questionData['type'])) {
+            $settings['type'] = $questionData['type'];
+        }
+        
+        // Copy specific field sets based on question type
+        if (isset($questionData['type'])) {
+            switch ($questionData['type']) {
+                case 'radio':
+                case 'checkbox':
+                case 'dropdown':
+                    // These question types have options and option-related settings
+                    $optionFieldSets = ['options', 'allowOther', 'allowNone', 'optionsOrder', 'defaultValue'];
+                    foreach ($optionFieldSets as $field) {
+                        if (isset($questionData[$field])) {
+                            $settings[$field] = $questionData[$field];
+                        }
+                    }
+                    break;
+                    
+                case 'rating':
+                    // Rating specific settings
+                    $ratingFieldSets = ['maxRating', 'showValues', 'icon', 'defaultValue', 'step'];
+                    foreach ($ratingFieldSets as $field) {
+                        if (isset($questionData[$field])) {
+                            $settings[$field] = $questionData[$field];
+                        }
+                    }
+                    break;
+                    
+                case 'matrix':
+                    // Matrix specific settings
+                    $matrixFieldSets = ['matrixType', 'rows', 'columns'];
+                    foreach ($matrixFieldSets as $field) {
+                        if (isset($questionData[$field])) {
+                            $settings[$field] = $questionData[$field];
+                        }
+                    }
+                    break;
+                    
+                case 'file-upload':
+                    // File upload specific settings
+                    $fileFieldSets = ['allowedTypes', 'maxFiles', 'maxSize'];
+                    foreach ($fileFieldSets as $field) {
+                        if (isset($questionData[$field])) {
+                            $settings[$field] = $questionData[$field];
+                        }
+                    }
+                    break;
+                    
+                case 'short-text':
+                case 'long-text':
+                case 'email':
+                case 'phone':
+                case 'number':
+                    // Text input specific settings
+                    $textFieldSets = ['placeholder', 'defaultValue', 'minLength', 'maxLength', 'pattern'];
+                    foreach ($textFieldSets as $field) {
+                        if (isset($questionData[$field])) {
+                            $settings[$field] = $questionData[$field];
+                        }
+                    }
+                    break;
+                    
+                case 'date':
+                    // Date specific settings
+                    $dateFieldSets = ['format', 'min', 'max', 'defaultValue'];
+                    foreach ($dateFieldSets as $field) {
+                        if (isset($questionData[$field])) {
+                            $settings[$field] = $questionData[$field];
+                        }
+                    }
+                    break;
+            }
+        }
+        
+        // Now go through all remaining properties 
         foreach ($questionData as $key => $value) {
-            if (!in_array($key, ['id', 'section_id', 'question_type', 'title', 'description', 'is_required', 'order', 'options', 'text', 'helpText', 'required', 'type']) && !is_null($value)) {
+            // Skip fields that we've already handled or that are reserved backend column names
+            $reservedFields = [
+                'id', 'section_id', 'questionnaire_id', 'question_type', 
+                'title', 'description', 'is_required', 'order', 'options', 
+                'created_at', 'updated_at', 'settings' // Make sure to exclude existing 'settings'
+            ];
+            
+            if (!in_array($key, $reservedFields) && !isset($settings[$key]) && !is_null($value)) {
                 $settings[$key] = $value;
+            }
+        }
+
+        // Make sure settings doesn't have a 'settings' property to avoid nesting
+        if (isset($settings['settings'])) {
+            // If settings contains a settings object, merge it up one level
+            if (is_array($settings['settings'])) {
+                foreach ($settings['settings'] as $key => $value) {
+                    if (!isset($settings[$key])) {
+                        $settings[$key] = $value;
+                    }
+                }
+            }
+            // Remove the nested settings property
+            unset($settings['settings']);
+        }
+        
+        // Check if we received settings directly
+        if (isset($questionData['settings'])) {
+            // If it's a string, try to decode it
+            if (is_string($questionData['settings'])) {
+                try {
+                    $decodedSettings = json_decode($questionData['settings'], true);
+                    if (is_array($decodedSettings)) {
+                        // Check if the decoded settings has a 'settings' property
+                        if (isset($decodedSettings['settings'])) {
+                            if (is_array($decodedSettings['settings'])) {
+                                // Merge up one level
+                                foreach ($decodedSettings['settings'] as $key => $value) {
+                                    if (!isset($settings[$key])) {
+                                        $settings[$key] = $value;
+                                    }
+                                }
+                            } elseif (is_string($decodedSettings['settings'])) {
+                                // It's nested another level, try to decode again
+                                try {
+                                    $doubleDecoded = json_decode($decodedSettings['settings'], true);
+                                    if (is_array($doubleDecoded)) {
+                                        foreach ($doubleDecoded as $key => $value) {
+                                            if (!isset($settings[$key])) {
+                                                $settings[$key] = $value;
+                                            }
+                                        }
+                                    }
+                                } catch (\Exception $e) {
+                                    Log::warning('Failed to decode nested settings string', [
+                                        'error' => $e->getMessage()
+                                    ]);
+                                }
+                            }
+                        } else {
+                            // Just merge the decoded settings
+                            foreach ($decodedSettings as $key => $value) {
+                                if (!isset($settings[$key])) {
+                                    $settings[$key] = $value;
+                                }
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Failed to decode settings string', [
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            } elseif (is_array($questionData['settings'])) {
+                // If it's already an array, merge properties
+                foreach ($questionData['settings'] as $key => $value) {
+                    if (!isset($settings[$key]) && $key !== 'settings') {
+                        $settings[$key] = $value;
+                    }
+                }
             }
         }
         
         if (!empty($settings)) {
             $result['settings'] = json_encode($settings);
+            Log::debug('Settings encoded for question', [
+                'settings_count' => count($settings),
+                'settings_keys' => array_keys($settings)
+            ]);
         }
         
         Log::debug('Normalized question data result', ['result' => $result]);

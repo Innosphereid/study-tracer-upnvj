@@ -126,8 +126,16 @@
                         <div class="pl-9">
                             <component
                                 :is="getQuestionComponent(question.type)"
-                                :question="question"
-                                v-model="answers[question.id]"
+                                :question="normalizeQuestionData(question)"
+                                :modelValue="
+                                    getFormattedAnswer(
+                                        question.id,
+                                        question.type
+                                    )
+                                "
+                                @update:modelValue="
+                                    answers[question.id] = $event
+                                "
                                 :error="errors[question.id]"
                                 class="question-input-component"
                                 :class="{
@@ -383,7 +391,11 @@ const validateCurrentPageQuestions = () => {
                     break;
 
                 case "rating":
-                    questionValid = answer > 0;
+                    questionValid =
+                        answer > 0 ||
+                        (typeof answer === "string" &&
+                            answer !== "" &&
+                            parseInt(answer, 10) > 0);
                     break;
 
                 default:
@@ -453,7 +465,11 @@ const goNext = () => {
                             break;
 
                         case "rating":
-                            questionValid = answer > 0;
+                            questionValid =
+                                answer > 0 ||
+                                (typeof answer === "string" &&
+                                    answer !== "" &&
+                                    parseInt(answer, 10) > 0);
                             break;
 
                         case "matrix":
@@ -598,27 +614,198 @@ const getQuestionComponent = (type) => {
         }
     }
 
-    // Log available components for debugging
-    console.warn("Component not found for type:", type);
-    console.log(
-        "Available components:",
-        Object.keys(questionComponents).map((path) => {
-            const parts = path.split("/");
-            return parts[parts.length - 1].replace(".vue", "");
-        })
-    );
+    // Fallback to a default component if none found
+    console.warn(`No component found for type ${type}, using default`);
+    return questionComponents[Object.keys(questionComponents)[0]].default;
+};
 
-    // Fallback to a simple div if component not found
-    return {
-        template: `<div class="p-4 bg-yellow-50 border border-yellow-100 rounded-md text-sm text-yellow-800">
-      Component for type "${type}" is not available in preview mode.
-      <div class="mt-2 font-mono text-xs">
-        Available types: ${Object.keys(componentMap).join(", ")}
-      </div>
-    </div>`,
-        props: ["question", "modelValue"],
-        emits: ["update:modelValue"],
-    };
+// Ensure question answers use correct types before rendering components
+const normalizeQuestionData = (question) => {
+    // Make a copy to avoid modifying the original
+    const questionData = { ...question };
+
+    // If settings exist and it's a string, parse it
+    if (questionData.settings && typeof questionData.settings === "string") {
+        try {
+            questionData.settings = JSON.parse(questionData.settings);
+            console.log(
+                "Parsed settings for question",
+                questionData.id,
+                questionData.settings
+            );
+        } catch (e) {
+            console.error(
+                "Failed to parse settings JSON for question",
+                questionData.id,
+                e
+            );
+            questionData.settings = {};
+        }
+    }
+
+    // If settings is an object, apply all properties to the question
+    if (questionData.settings && typeof questionData.settings === "object") {
+        // Apply settings properties to question root for direct access
+        Object.entries(questionData.settings).forEach(([key, value]) => {
+            // Only set if the property doesn't already exist
+            if (questionData[key] === undefined) {
+                questionData[key] = value;
+            }
+        });
+
+        // Ensure primary fields are set
+        if (
+            questionData.settings.required !== undefined &&
+            questionData.required === undefined
+        ) {
+            questionData.required = Boolean(questionData.settings.required);
+        }
+
+        if (
+            questionData.settings.text !== undefined &&
+            questionData.text === undefined
+        ) {
+            questionData.text = questionData.settings.text;
+        }
+
+        if (
+            questionData.settings.helpText !== undefined &&
+            questionData.helpText === undefined
+        ) {
+            questionData.helpText = questionData.settings.helpText;
+        }
+
+        // Handle type-specific properties
+        if (questionData.type) {
+            switch (questionData.type) {
+                case "radio":
+                case "checkbox":
+                case "dropdown":
+                    // Ensure options are available
+                    if (
+                        !questionData.options &&
+                        questionData.settings.options
+                    ) {
+                        questionData.options = questionData.settings.options;
+                    }
+
+                    // Copy other option-related settings
+                    ["allowOther", "allowNone", "defaultValue"].forEach(
+                        (prop) => {
+                            if (
+                                questionData.settings[prop] !== undefined &&
+                                questionData[prop] === undefined
+                            ) {
+                                questionData[prop] =
+                                    questionData.settings[prop];
+                            }
+                        }
+                    );
+                    break;
+
+                case "matrix":
+                    // Copy matrix-specific properties
+                    ["matrixType", "rows", "columns"].forEach((prop) => {
+                        if (
+                            questionData.settings[prop] !== undefined &&
+                            questionData[prop] === undefined
+                        ) {
+                            questionData[prop] = questionData.settings[prop];
+                        }
+                    });
+                    break;
+
+                case "rating":
+                    // Copy rating-specific properties
+                    ["maxRating", "showValues", "icon", "defaultValue"].forEach(
+                        (prop) => {
+                            if (
+                                questionData.settings[prop] !== undefined &&
+                                questionData[prop] === undefined
+                            ) {
+                                questionData[prop] =
+                                    questionData.settings[prop];
+                            }
+                        }
+                    );
+
+                    // Ensure maxRating is numeric
+                    if (
+                        questionData.maxRating &&
+                        !Number.isInteger(questionData.maxRating)
+                    ) {
+                        questionData.maxRating =
+                            parseInt(questionData.maxRating, 10) || 5;
+                    } else if (!questionData.maxRating) {
+                        questionData.maxRating = 5; // Default if not set
+                    }
+                    break;
+
+                case "short-text":
+                case "long-text":
+                case "email":
+                case "phone":
+                case "number":
+                    // Copy text input specific properties
+                    [
+                        "placeholder",
+                        "defaultValue",
+                        "minLength",
+                        "maxLength",
+                        "pattern",
+                    ].forEach((prop) => {
+                        if (
+                            questionData.settings[prop] !== undefined &&
+                            questionData[prop] === undefined
+                        ) {
+                            questionData[prop] = questionData.settings[prop];
+                        }
+                    });
+                    break;
+
+                case "date":
+                    // Copy date-specific properties
+                    ["format", "min", "max", "defaultValue"].forEach((prop) => {
+                        if (
+                            questionData.settings[prop] !== undefined &&
+                            questionData[prop] === undefined
+                        ) {
+                            questionData[prop] = questionData.settings[prop];
+                        }
+                    });
+                    break;
+            }
+        }
+    }
+
+    // For database question types, ensure we also check the frontend type
+    if (questionData.settings && questionData.settings.type) {
+        // This handles cases where the database stores 'text' but the actual component needs 'short-text'
+        const frontendType = questionData.settings.type;
+        questionData.frontendType = frontendType;
+    }
+
+    return questionData;
+};
+
+// Normalize answers based on question type to ensure consistent types
+const getFormattedAnswer = (questionId, questionType) => {
+    const answer = props.answers[questionId];
+
+    // If no answer, return empty value based on type
+    if (answer === undefined || answer === null) {
+        return "";
+    }
+
+    // Format based on question type
+    switch (questionType) {
+        case "rating":
+            // Ensure rating is a string for the component
+            return typeof answer === "number" ? answer.toString() : answer;
+
+        default:
+            return answer;
+    }
 };
 
 // Animation effect when the component mounts
@@ -663,7 +850,11 @@ const validateAllQuestions = () => {
                         break;
 
                     case "rating":
-                        questionValid = answer > 0;
+                        questionValid =
+                            answer > 0 ||
+                            (typeof answer === "string" &&
+                                answer !== "" &&
+                                parseInt(answer, 10) > 0);
                         break;
 
                     case "matrix":

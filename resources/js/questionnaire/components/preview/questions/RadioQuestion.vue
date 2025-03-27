@@ -29,7 +29,7 @@
 
             <!-- "Other" option if enabled -->
             <div
-                v-if="question.hasOtherOption"
+                v-if="question.allowOther"
                 class="mt-3 relative flex items-start transition-transform transform hover:translate-x-1"
             >
                 <div class="flex items-center h-6">

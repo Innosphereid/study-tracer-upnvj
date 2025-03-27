@@ -1,12 +1,12 @@
 <template>
     <div class="rating-question">
         <div class="flex flex-wrap justify-between items-center gap-2 mt-2">
-            <template v-for="(n, index) in 5" :key="index">
+            <template v-for="(n, index) in maxRating" :key="index">
                 <button
                     type="button"
                     :class="[
                         'flex justify-center items-center rounded-full w-12 h-12 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2',
-                        modelValue === n.toString()
+                        isSelected(n)
                             ? 'bg-blue-500 text-white hover:bg-blue-600'
                             : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50',
                     ]"
@@ -31,13 +31,16 @@
 </template>
 
 <script setup>
+import { computed } from "vue";
+
 const props = defineProps({
     question: {
         type: Object,
         required: true,
     },
     modelValue: {
-        type: String,
+        // Allow either number or string
+        type: [Number, String],
         default: "",
     },
     error: {
@@ -48,7 +51,29 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue"]);
 
+// Get max rating from question settings or default to 5
+const maxRating = computed(() => {
+    // Ensure maxRating is a number between 3 and 10
+    const max = props.question.maxRating || 5;
+    return typeof max === "number" ? max : Number(max) || 5;
+});
+
+// Check if a rating is selected, handling both string and number values
+const isSelected = (value) => {
+    if (
+        props.modelValue === null ||
+        props.modelValue === undefined ||
+        props.modelValue === ""
+    ) {
+        return false;
+    }
+
+    // Convert both to strings for comparison
+    return value.toString() === props.modelValue.toString();
+};
+
 const selectRating = (value) => {
+    // Always emit as string to be consistent
     emit("update:modelValue", value.toString());
 };
 </script>

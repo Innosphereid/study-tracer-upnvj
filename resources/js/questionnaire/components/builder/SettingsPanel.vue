@@ -241,6 +241,148 @@ const updateQuestionFromComponent = (updatedQuestion) => {
     // Create a copy of the questionnaire structure
     const updatedSections = [...props.questionnaire.sections];
 
+    // Extract all properties that need to be saved in the settings JSON
+    const settingsProps = { ...updatedQuestion };
+
+    // Remove non-setting properties that are stored directly on the question
+    const directDbProps = [
+        "id",
+        "section_id",
+        "questionnaire_id",
+        "question_type",
+        "title",
+        "description",
+        "is_required",
+        "order",
+        "created_at",
+        "updated_at",
+        "settings", // Also remove existing settings to prevent nesting
+    ];
+
+    directDbProps.forEach((prop) => {
+        delete settingsProps[prop];
+    });
+
+    // Track type-specific settings to ensure they're included
+    const typeSpecificSettings = {};
+
+    // Process type-specific settings based on question type
+    if (updatedQuestion.type) {
+        switch (updatedQuestion.type) {
+            case "radio":
+            case "checkbox":
+            case "dropdown":
+                // Option-based question types
+                const optionProps = [
+                    "options",
+                    "allowOther",
+                    "allowNone",
+                    "optionsOrder",
+                    "defaultValue",
+                ];
+                optionProps.forEach((prop) => {
+                    if (updatedQuestion[prop] !== undefined) {
+                        typeSpecificSettings[prop] = updatedQuestion[prop];
+                    }
+                });
+                break;
+
+            case "rating":
+                // Rating question type
+                const ratingProps = [
+                    "maxRating",
+                    "showValues",
+                    "icon",
+                    "defaultValue",
+                    "step",
+                ];
+                ratingProps.forEach((prop) => {
+                    if (updatedQuestion[prop] !== undefined) {
+                        typeSpecificSettings[prop] = updatedQuestion[prop];
+                    }
+                });
+                break;
+
+            case "matrix":
+                // Matrix question type
+                const matrixProps = ["matrixType", "rows", "columns"];
+                matrixProps.forEach((prop) => {
+                    if (updatedQuestion[prop] !== undefined) {
+                        typeSpecificSettings[prop] = updatedQuestion[prop];
+                    }
+                });
+                break;
+
+            case "file-upload":
+                // File upload question type
+                const fileProps = ["allowedTypes", "maxFiles", "maxSize"];
+                fileProps.forEach((prop) => {
+                    if (updatedQuestion[prop] !== undefined) {
+                        typeSpecificSettings[prop] = updatedQuestion[prop];
+                    }
+                });
+                break;
+
+            case "short-text":
+            case "long-text":
+            case "email":
+            case "phone":
+            case "number":
+                // Text input question types
+                const textProps = [
+                    "placeholder",
+                    "defaultValue",
+                    "minLength",
+                    "maxLength",
+                    "pattern",
+                ];
+                textProps.forEach((prop) => {
+                    if (updatedQuestion[prop] !== undefined) {
+                        typeSpecificSettings[prop] = updatedQuestion[prop];
+                    }
+                });
+                break;
+
+            case "date":
+                // Date question type
+                const dateProps = ["format", "min", "max", "defaultValue"];
+                dateProps.forEach((prop) => {
+                    if (updatedQuestion[prop] !== undefined) {
+                        typeSpecificSettings[prop] = updatedQuestion[prop];
+                    }
+                });
+                break;
+
+            case "ranking":
+                // Ranking question type
+                if (updatedQuestion.options !== undefined) {
+                    typeSpecificSettings.options = updatedQuestion.options;
+                }
+                break;
+        }
+    }
+
+    // Create clean settings object without nesting
+    const cleanSettings = {
+        // Primary fields
+        text: updatedQuestion.text || updatedQuestion.title,
+        helpText: updatedQuestion.helpText || updatedQuestion.description,
+        required:
+            updatedQuestion.required === undefined
+                ? updatedQuestion.is_required
+                : updatedQuestion.required,
+        type: updatedQuestion.type || updatedQuestion.question_type,
+        // Add type-specific settings
+        ...typeSpecificSettings,
+        // Add general settings from props
+        ...settingsProps,
+    };
+
+    // Make sure we're not including 'settings' inside settings to prevent nesting
+    if (cleanSettings.settings) {
+        delete cleanSettings.settings;
+    }
+
     // Make sure we're updating both frontend and backend field names
     const questionWithBackendFields = {
         ...updatedQuestion,
@@ -252,18 +394,14 @@ const updateQuestionFromComponent = (updatedQuestion) => {
                 ? updatedQuestion.is_required
                 : updatedQuestion.required,
 
-        // Make sure settings is properly updated for database storage
-        settings: {
-            ...(updatedQuestion.settings || {}),
-            // Include important fields in settings
-            text: updatedQuestion.text || updatedQuestion.title,
-            helpText: updatedQuestion.helpText || updatedQuestion.description,
-            required:
-                updatedQuestion.required === undefined
-                    ? updatedQuestion.is_required
-                    : updatedQuestion.required,
-        },
+        // Set clean settings object without any nesting
+        settings: cleanSettings,
     };
+
+    console.log(
+        "Updating question with clean settings:",
+        questionWithBackendFields.settings
+    );
 
     // Apply the update with backend field mappings
     updatedSections[sectionIndex].questions[questionIndex] =

@@ -289,6 +289,11 @@ class QuestionnaireController extends Controller
                             if (is_string($question['settings'])) {
                                 $questionSettings = json_decode($question['settings'], true);
                                 $question['settings'] = $questionSettings;
+                                Log::debug('Decoded question settings', [
+                                    'question_id' => $question['id'] ?? 'unknown',
+                                    'has_settings' => !empty($questionSettings),
+                                    'settings_keys' => $questionSettings ? array_keys($questionSettings) : []
+                                ]);
                             }
                             
                             // Use settings values if frontend properties are not set
@@ -304,13 +309,79 @@ class QuestionnaireController extends Controller
                                 $question['helpText'] = $question['settings']['helpText'];
                             }
                             
-                            // Special handling for specific question types
-                            if (isset($question['settings']) && is_array($question['settings'])) {
+                            // Handle question type-specific settings
+                            if (isset($question['type']) && isset($question['settings']) && is_array($question['settings'])) {
+                                // Copy all settings to the question root for the frontend
                                 foreach ($question['settings'] as $key => $value) {
-                                    if (!isset($question[$key]) && $key !== 'text' && $key !== 'helpText' && $key !== 'required') {
+                                    // Avoid overriding existing properties and special properties
+                                    $specialKeys = ['text', 'helpText', 'required', 'id', 'question_id', 'section_id', 'order', 'created_at', 'updated_at'];
+                                    if (!isset($question[$key]) && !in_array($key, $specialKeys)) {
                                         $question[$key] = $value;
                                     }
                                 }
+                                
+                                // Type-specific handling
+                                switch ($question['type']) {
+                                    case 'radio':
+                                    case 'checkbox':
+                                    case 'dropdown':
+                                        // Ensure options are available
+                                        if (!isset($question['options']) && isset($question['settings']['options'])) {
+                                            $question['options'] = $question['settings']['options'];
+                                        }
+                                        
+                                        // Handle other option-related settings
+                                        $optionProps = ['allowOther', 'allowNone', 'optionsOrder'];
+                                        foreach ($optionProps as $prop) {
+                                            if (!isset($question[$prop]) && isset($question['settings'][$prop])) {
+                                                $question[$prop] = $question['settings'][$prop];
+                                            }
+                                        }
+                                        break;
+                                        
+                                    case 'rating':
+                                        // Handle rating settings
+                                        $ratingProps = ['maxRating', 'showValues', 'icon'];
+                                        foreach ($ratingProps as $prop) {
+                                            if (!isset($question[$prop]) && isset($question['settings'][$prop])) {
+                                                $question[$prop] = $question['settings'][$prop];
+                                            }
+                                        }
+                                        break;
+                                        
+                                    case 'matrix':
+                                        // Handle matrix settings
+                                        $matrixProps = ['matrixType', 'rows', 'columns'];
+                                        foreach ($matrixProps as $prop) {
+                                            if (!isset($question[$prop]) && isset($question['settings'][$prop])) {
+                                                $question[$prop] = $question['settings'][$prop];
+                                            }
+                                        }
+                                        break;
+                                        
+                                    case 'file-upload':
+                                        // Handle file upload settings
+                                        $fileProps = ['allowedTypes', 'maxFiles', 'maxSize'];
+                                        foreach ($fileProps as $prop) {
+                                            if (!isset($question[$prop]) && isset($question['settings'][$prop])) {
+                                                $question[$prop] = $question['settings'][$prop];
+                                            }
+                                        }
+                                        break;
+                                        
+                                    case 'ranking':
+                                        // Handle ranking settings
+                                        if (!isset($question['options']) && isset($question['settings']['options'])) {
+                                            $question['options'] = $question['settings']['options'];
+                                        }
+                                        break;
+                                }
+                                
+                                Log::debug('Processed question type-specific settings', [
+                                    'question_id' => $question['id'] ?? 'unknown',
+                                    'type' => $question['type'],
+                                    'settings_applied' => array_keys($question)
+                                ]);
                             }
                         }
                     }
