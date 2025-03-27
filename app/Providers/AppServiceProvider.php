@@ -18,6 +18,32 @@ class AppServiceProvider extends ServiceProvider
         
         // Register the rate limiting service provider
         $this->app->register(RateLimitingServiceProvider::class);
+        
+        // Register repositories
+        $this->app->bind(
+            \App\Contracts\Repositories\QuestionnaireRepositoryInterface::class,
+            \App\Repositories\QuestionnaireRepository::class
+        );
+        
+        $this->app->bind(
+            \App\Contracts\Repositories\SectionRepositoryInterface::class,
+            \App\Repositories\SectionRepository::class
+        );
+        
+        $this->app->bind(
+            \App\Contracts\Repositories\QuestionRepositoryInterface::class,
+            \App\Repositories\QuestionRepository::class
+        );
+        
+        $this->app->bind(
+            \App\Contracts\Repositories\ResponseRepositoryInterface::class,
+            \App\Repositories\ResponseRepository::class
+        );
+        
+        $this->app->bind(
+            \App\Contracts\Repositories\AnswerDetailRepositoryInterface::class,
+            \App\Repositories\AnswerDetailRepository::class
+        );
     }
 
     /**
