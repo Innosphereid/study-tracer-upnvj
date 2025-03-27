@@ -113,6 +113,7 @@
                             }"
                             :disabled="isPublishing"
                             @click="publishQuestionnaire"
+                            data-action="publish"
                         >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -339,7 +340,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, inject } from "vue";
 import { useQuestionnaireStore } from "../store/questionnaire";
 import ComponentSidebar from "../components/builder/ComponentSidebar.vue";
 import BuilderCanvas from "../components/builder/BuilderCanvas.vue";
@@ -349,12 +350,12 @@ import { useDragDrop } from "../composables/useDragDrop";
 import { v4 as uuidv4 } from "uuid";
 import { slugify } from "../utils/helpers";
 
-const props = defineProps({
-    initialQuestionnaire: {
-        type: Object,
-        default: () => ({}),
-    },
-});
+// Dapatkan initialData dari provide
+const initialData = inject("initialData", {});
+
+// Log data for debugging
+console.log("Builder component initializing with data:", initialData);
+console.log("ID in Builder:", initialData.id, "Type:", typeof initialData.id);
 
 const store = useQuestionnaireStore();
 const {
@@ -372,7 +373,7 @@ const {
     updateWelcomeScreen: updateWelcomeScreenAction,
     updateThankYouScreen: updateThankYouScreenAction,
     unsavedChanges,
-} = useQuestionnaire(props.initialQuestionnaire);
+} = useQuestionnaire(initialData);
 
 const { isDragging, startDrag, endDrag } = useDragDrop();
 
@@ -483,23 +484,83 @@ const confirmPublish = async () => {
     isPublishing.value = true;
 
     try {
+        // Pastikan kuesioner disimpan terlebih dahulu
+        if (!questionnaire.value.id) {
+            console.log("Saving questionnaire before publishing...");
+            await saveQuestionnaire();
+
+            // Tunggu sebentar agar penyimpanan selesai diproses
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
+            // Jika masih belum ada ID, tampilkan error
+            if (!questionnaire.value.id) {
+                throw new Error("Gagal menyimpan kuesioner. Coba lagi nanti.");
+            }
+        } else if (
+            typeof questionnaire.value.id === "string" &&
+            questionnaire.value.id.startsWith("temp_")
+        ) {
+            // Hanya periksa startsWith jika ID adalah string
+            console.log("Saving temporary questionnaire before publishing...");
+            await saveQuestionnaire();
+
+            // Tunggu sebentar agar penyimpanan selesai diproses
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+
+            // Jika masih ID temporary, tampilkan error
+            if (
+                typeof questionnaire.value.id === "string" &&
+                questionnaire.value.id.startsWith("temp_")
+            ) {
+                throw new Error("Gagal menyimpan kuesioner. Coba lagi nanti.");
+            }
+        }
+
+        // Log data untuk debugging
+        console.log("Questionnaire data before publishing:", {
+            id: questionnaire.value.id,
+            idType: typeof questionnaire.value.id,
+            title: questionnaire.value.title,
+            slug: questionnaire.value.slug,
+            startDate: questionnaire.value.startDate,
+            endDate: questionnaire.value.endDate,
+        });
+
+        // Publikasikan kuesioner
+        console.log(
+            "Publishing questionnaire with ID:",
+            questionnaire.value.id
+        );
         const result = await publishQuestionnaireAction();
 
         if (result.success) {
             showPublishModal.value = false;
 
-            // Show success message or redirect
-            alert(`Kuesioner berhasil diterbitkan! URL: ${result.url}`);
+            // Tampilkan pesan sukses dari server
+            alert(result.message || `Kuesioner berhasil diterbitkan!`);
 
-            // Optional: redirect to the questionnaire list or preview
-            // window.location.href = '/kuesioner';
+            // Redirect ke halaman detail kuesioner
+            window.location.href =
+                result.url || `/kuesioner/${questionnaire.value.id}`;
         } else {
-            // Handle error
-            alert("Gagal menerbitkan kuesioner. Silakan coba lagi.");
+            // Tampilkan pesan error dari server
+            alert(
+                result.message ||
+                    "Gagal menerbitkan kuesioner. Silakan coba lagi."
+            );
         }
     } catch (error) {
+        // Log error lebih detail
         console.error("Error publishing questionnaire:", error);
-        alert("Terjadi kesalahan saat menerbitkan kuesioner.");
+        if (error.response) {
+            console.error("Response data:", error.response.data);
+            console.error("Response status:", error.response.status);
+        }
+
+        alert(
+            error.message ||
+                "Terjadi kesalahan saat menerbitkan kuesioner. Coba simpan kuesioner terlebih dahulu."
+        );
     } finally {
         isPublishing.value = false;
     }
