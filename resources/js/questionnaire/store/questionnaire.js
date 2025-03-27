@@ -643,7 +643,46 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                     requiresLogin: this.questionnaire.requiresLogin,
                     welcomeScreen: this.questionnaire.welcomeScreen,
                     thankYouScreen: this.questionnaire.thankYouScreen,
+                    // Include sections and questions in settings for backup
+                    sections: this.questionnaire.sections.map((section) => ({
+                        id:
+                            section.id &&
+                            (typeof section.id === "number" ||
+                                !section.id.startsWith("temp_"))
+                                ? section.id
+                                : undefined,
+                        title: section.title,
+                        description: section.description,
+                        order: section.order,
+                        questions: section.questions.map((question) => ({
+                            id:
+                                question.id &&
+                                (typeof question.id === "number" ||
+                                    !question.id.startsWith("temp_"))
+                                    ? question.id
+                                    : undefined,
+                            type: question.type,
+                            text: question.text,
+                            helpText: question.helpText,
+                            required: question.required,
+                            order: question.order,
+                            options: question.options
+                                ? question.options.map((option) => ({
+                                      id:
+                                          option.id &&
+                                          (typeof option.id === "number" ||
+                                              !option.id.startsWith("temp_"))
+                                              ? option.id
+                                              : undefined,
+                                      value: option.value,
+                                      text: option.text,
+                                      order: option.order,
+                                  }))
+                                : [],
+                        })),
+                    })),
                 }),
+                // Also include sections directly for proper database storage
                 sections: this.questionnaire.sections.map((section) => ({
                     id:
                         section.id &&
@@ -661,7 +700,7 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                                 !question.id.startsWith("temp_"))
                                 ? question.id
                                 : undefined,
-                        question_type: question.type,
+                        question_type: this.mapQuestionType(question.type),
                         title: question.text,
                         description: question.helpText,
                         is_required: question.required,
@@ -683,6 +722,9 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                     })),
                 })),
             };
+
+            // Log the data being sent
+            console.log("Saving questionnaire data:", questionnaireData);
 
             // Tentukan apakah ini adalah pembuatan atau pembaruan
             const isCreate =
@@ -755,6 +797,30 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                 });
         },
 
+        // Helper method to map frontend question types to backend types
+        mapQuestionType(frontendType) {
+            const typeMap = {
+                "short-text": "text",
+                "long-text": "textarea",
+                radio: "radio",
+                checkbox: "checkbox",
+                dropdown: "dropdown",
+                rating: "rating",
+                date: "date",
+                "file-upload": "file",
+                matrix: "matrix",
+                email: "text",
+                phone: "text",
+                number: "text",
+                "yes-no": "radio",
+                slider: "rating",
+                ranking: "matrix",
+                likert: "matrix",
+            };
+
+            return typeMap[frontendType] || "text"; // Default to text if mapping not found
+        },
+
         setupAutosave() {
             // Hapus interval sebelumnya jika sudah ada
             if (this.autosaveInterval) {
@@ -811,6 +877,90 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                 end_date: this.questionnaire.endDate || null,
                 slug: this.questionnaire.slug || null,
                 title: this.questionnaire.title || null,
+                // Include full questionnaire data to ensure sections and questions are properly saved
+                settings: JSON.stringify({
+                    showProgressBar: this.questionnaire.showProgressBar,
+                    showPageNumbers: this.questionnaire.showPageNumbers,
+                    requiresLogin: this.questionnaire.requiresLogin,
+                    welcomeScreen: this.questionnaire.welcomeScreen,
+                    thankYouScreen: this.questionnaire.thankYouScreen,
+                    sections: this.questionnaire.sections.map((section) => ({
+                        id:
+                            section.id &&
+                            (typeof section.id === "number" ||
+                                !section.id.startsWith("temp_"))
+                                ? section.id
+                                : undefined,
+                        title: section.title,
+                        description: section.description,
+                        order: section.order,
+                        questions: section.questions.map((question) => ({
+                            id:
+                                question.id &&
+                                (typeof question.id === "number" ||
+                                    !question.id.startsWith("temp_"))
+                                    ? question.id
+                                    : undefined,
+                            type: question.type,
+                            text: question.text,
+                            helpText: question.helpText,
+                            required: question.required,
+                            order: question.order,
+                            options: question.options
+                                ? question.options.map((option) => ({
+                                      id:
+                                          option.id &&
+                                          (typeof option.id === "number" ||
+                                              !option.id.startsWith("temp_"))
+                                              ? option.id
+                                              : undefined,
+                                      value: option.value,
+                                      text: option.text,
+                                      order: option.order,
+                                  }))
+                                : [],
+                        })),
+                    })),
+                }),
+                // Include sections directly
+                sections: this.questionnaire.sections.map((section) => ({
+                    id:
+                        section.id &&
+                        (typeof section.id === "number" ||
+                            !section.id.startsWith("temp_"))
+                            ? section.id
+                            : undefined,
+                    title: section.title,
+                    description: section.description,
+                    order: section.order,
+                    questions: section.questions.map((question) => ({
+                        id:
+                            question.id &&
+                            (typeof question.id === "number" ||
+                                !question.id.startsWith("temp_"))
+                                ? question.id
+                                : undefined,
+                        question_type: this.mapQuestionType(question.type),
+                        title: question.text,
+                        description: question.helpText,
+                        is_required: question.required,
+                        order: question.order,
+                        settings: JSON.stringify(question.settings || {}),
+                        options: question.options
+                            ? question.options.map((option) => ({
+                                  id:
+                                      option.id &&
+                                      (typeof option.id === "number" ||
+                                          !option.id.startsWith("temp_"))
+                                          ? option.id
+                                          : undefined,
+                                  value: option.value,
+                                  label: option.text,
+                                  order: option.order,
+                              }))
+                            : [],
+                    })),
+                })),
             };
 
             // Validasi ID
