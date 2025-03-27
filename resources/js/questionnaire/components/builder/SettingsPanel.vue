@@ -241,8 +241,33 @@ const updateQuestionFromComponent = (updatedQuestion) => {
     // Create a copy of the questionnaire structure
     const updatedSections = [...props.questionnaire.sections];
 
-    // Apply the update
-    updatedSections[sectionIndex].questions[questionIndex] = updatedQuestion;
+    // Make sure we're updating both frontend and backend field names
+    const questionWithBackendFields = {
+        ...updatedQuestion,
+        // Map frontend field names to backend field names
+        title: updatedQuestion.text || updatedQuestion.title,
+        description: updatedQuestion.helpText || updatedQuestion.description,
+        is_required:
+            updatedQuestion.required === undefined
+                ? updatedQuestion.is_required
+                : updatedQuestion.required,
+
+        // Make sure settings is properly updated for database storage
+        settings: {
+            ...(updatedQuestion.settings || {}),
+            // Include important fields in settings
+            text: updatedQuestion.text || updatedQuestion.title,
+            helpText: updatedQuestion.helpText || updatedQuestion.description,
+            required:
+                updatedQuestion.required === undefined
+                    ? updatedQuestion.is_required
+                    : updatedQuestion.required,
+        },
+    };
+
+    // Apply the update with backend field mappings
+    updatedSections[sectionIndex].questions[questionIndex] =
+        questionWithBackendFields;
 
     emit("update:questionnaire", {
         ...props.questionnaire,
