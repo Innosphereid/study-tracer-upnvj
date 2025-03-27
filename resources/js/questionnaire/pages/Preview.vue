@@ -474,9 +474,8 @@ const goBack = () => {
 
 const publishQuestionnaire = () => {
     // Redirect to editor with publish modal open
-    window.location.href = `/kuesioner/edit/${
-        props.questionnaire.id || "draft"
-    }?publish=true`;
+    const questionnaireId = props.questionnaire.id || "draft";
+    window.location.href = `/kuesioner/${questionnaireId}/edit?publish=true`;
 };
 
 // Helper to get the correct component for question type
