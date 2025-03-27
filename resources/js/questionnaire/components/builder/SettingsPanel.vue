@@ -285,6 +285,30 @@ const updateQuestionFromComponent = (updatedQuestion) => {
                         typeSpecificSettings[prop] = updatedQuestion[prop];
                     }
                 });
+
+                // Ensure option values match their text if they follow option_X pattern
+                if (
+                    typeSpecificSettings.options &&
+                    Array.isArray(typeSpecificSettings.options)
+                ) {
+                    typeSpecificSettings.options =
+                        typeSpecificSettings.options.map((option) => {
+                            // Make a copy to avoid mutation
+                            const cleanOption = { ...option };
+
+                            // If value follows the option_X pattern, replace it with the text
+                            if (
+                                cleanOption.value &&
+                                (cleanOption.value.match(/^option_\d+$/) ||
+                                    cleanOption.value ===
+                                        "option_" + cleanOption.text)
+                            ) {
+                                cleanOption.value = cleanOption.text;
+                            }
+
+                            return cleanOption;
+                        });
+                }
                 break;
 
             case "rating":
