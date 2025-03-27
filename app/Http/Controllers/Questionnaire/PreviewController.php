@@ -371,8 +371,145 @@ class PreviewController extends Controller
                                             $question['options'] = $question['settings']['options'];
                                         }
                                         
+                                        // Ensure options array exists
+                                        if (!isset($question['options'])) {
+                                            $question['options'] = [];
+                                        }
+                                        
+                                        // Handle special options (Other/None)
+                                        // Handle allowOther option
+                                        if (isset($question['settings']['allowOther'])) {
+                                            $question['allowOther'] = (bool)$question['settings']['allowOther'];
+                                            
+                                            // Check if 'Lainnya' is already in the options
+                                            $hasOtherOption = false;
+                                            if (is_array($question['options'])) {
+                                                foreach ($question['options'] as $opt) {
+                                                    // Check if the required keys exist before accessing them
+                                                    $optValue = $opt['value'] ?? '';
+                                                    $optText = $opt['text'] ?? ($opt['label'] ?? '');
+                                                    $optLabel = $opt['label'] ?? ($opt['text'] ?? '');
+                                                    
+                                                    if (($optValue === 'Lainnya' || $optValue === 'other') && 
+                                                        ($optText === 'Lainnya' || $optLabel === 'Lainnya')) {
+                                                        $hasOtherOption = true;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            
+                                            // If "Other" option is not already in options array, make sure it's available in frontend
+                                            if (!$hasOtherOption && $question['allowOther']) {
+                                                Log::debug('Adding missing "Other" option to frontend', [
+                                                    'question_id' => $question['id'] ?? 'unknown'
+                                                ]);
+                                                
+                                                // Add the "Other" option to the options array
+                                                if (!isset($question['options'])) {
+                                                    $question['options'] = [];
+                                                }
+                                                
+                                                $question['options'][] = [
+                                                    'id' => 'other_option',
+                                                    'text' => 'Lainnya',
+                                                    'value' => 'Lainnya',
+                                                    'isSpecial' => true
+                                                ];
+                                            }
+                                        }
+                                        
+                                        // Handle allowNone option
+                                        if (isset($question['settings']['allowNone'])) {
+                                            $question['allowNone'] = (bool)$question['settings']['allowNone'];
+                                            
+                                            // Check if 'Tidak Ada' is already in the options
+                                            $hasNoneOption = false;
+                                            if (is_array($question['options'])) {
+                                                foreach ($question['options'] as $opt) {
+                                                    // Check if the required keys exist before accessing them
+                                                    $optValue = $opt['value'] ?? '';
+                                                    $optText = $opt['text'] ?? ($opt['label'] ?? '');
+                                                    $optLabel = $opt['label'] ?? ($opt['text'] ?? '');
+                                                    
+                                                    if (($optValue === 'Tidak Ada' || $optValue === 'none') && 
+                                                        ($optText === 'Tidak Ada' || $optLabel === 'Tidak Ada')) {
+                                                        $hasNoneOption = true;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            
+                                            // If "None" option is not already in options array, make sure it's available in frontend
+                                            if (!$hasNoneOption && $question['allowNone']) {
+                                                Log::debug('Adding missing "None" option to frontend', [
+                                                    'question_id' => $question['id'] ?? 'unknown'
+                                                ]);
+                                                
+                                                // Add the "None" option to the options array
+                                                if (!isset($question['options'])) {
+                                                    $question['options'] = [];
+                                                }
+                                                
+                                                $question['options'][] = [
+                                                    'id' => 'none_option',
+                                                    'text' => 'Tidak Ada',
+                                                    'value' => 'Tidak Ada',
+                                                    'isSpecial' => true
+                                                ];
+                                            }
+                                        }
+                                        
+                                        // Normalize options format
+                                        if (is_array($question['options'])) {
+                                            foreach ($question['options'] as &$option) {
+                                                // Ensure each option has required properties
+                                                if (!isset($option['id']) && isset($option['value'])) {
+                                                    $option['id'] = 'option_' . $option['value'];
+                                                } elseif (!isset($option['id'])) {
+                                                    $option['id'] = 'option_' . mt_rand(1000, 9999);
+                                                }
+                                                
+                                                // Ensure option has text
+                                                if (!isset($option['text']) && isset($option['label'])) {
+                                                    $option['text'] = $option['label'];
+                                                } elseif (!isset($option['text']) && isset($option['value'])) {
+                                                    $option['text'] = $option['value'];
+                                                } elseif (!isset($option['text'])) {
+                                                    // Provide a default text if neither label nor value exists
+                                                    $option['text'] = 'Option ' . mt_rand(100, 999);
+                                                }
+                                                
+                                                // Ensure option has value
+                                                if (!isset($option['value']) && isset($option['text'])) {
+                                                    $option['value'] = $option['text'];
+                                                } elseif (!isset($option['value']) && isset($option['label'])) {
+                                                    $option['value'] = $option['label'];
+                                                } elseif (!isset($option['value'])) {
+                                                    // Provide a default value if neither text nor label exists
+                                                    $option['value'] = 'option_' . mt_rand(100, 999);
+                                                }
+                                                
+                                                // If value follows the option_X pattern, replace it with the option text
+                                                if (isset($option['value']) && isset($option['text']) && 
+                                                    preg_match('/^option_\d+$/', $option['value'])) {
+                                                    $option['value'] = $option['text'];
+                                                }
+                                                
+                                                // Ensure option has label
+                                                if (!isset($option['label'])) {
+                                                    if (isset($option['text'])) {
+                                                        $option['label'] = $option['text'];
+                                                    } elseif (isset($option['value'])) {
+                                                        $option['label'] = $option['value'];
+                                                    } else {
+                                                        $option['label'] = 'Option ' . mt_rand(100, 999);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        
                                         // Handle other option-related settings
-                                        $optionProps = ['allowOther', 'allowNone', 'optionsOrder'];
+                                        $optionProps = ['optionsOrder'];
                                         foreach ($optionProps as $prop) {
                                             if (!isset($question[$prop]) && isset($question['settings'][$prop])) {
                                                 $question[$prop] = $question['settings'][$prop];
