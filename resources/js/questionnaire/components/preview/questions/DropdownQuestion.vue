@@ -10,14 +10,11 @@
             >
                 <option value="" disabled selected>Pilih jawaban...</option>
                 <option
-                    v-for="(option, index) in question.options"
+                    v-for="(option, index) in normalizedOptions"
                     :key="option.id || index"
-                    :value="option.value || option.text"
+                    :value="option.value"
                 >
                     {{ option.text }}
-                </option>
-                <option v-if="question.hasOtherOption" value="other">
-                    Lainnya
                 </option>
             </select>
             <div
@@ -55,7 +52,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 
 const props = defineProps({
     question: {
@@ -74,6 +71,18 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue"]);
 
+// Log props for debugging
+onMounted(() => {
+    console.log("DropdownQuestion mounted with props:", {
+        id: props.question.id,
+        options: props.question.options,
+        allowOther: props.question.allowOther,
+        allowNone: props.question.allowNone,
+        optionsOrder: props.question.optionsOrder,
+        modelValue: props.modelValue,
+    });
+});
+
 // Local state
 const otherText = ref(props.modelValue?.otherText || "");
 
@@ -82,12 +91,68 @@ const showOtherInput = computed(() => {
     return props.modelValue?.value === "other";
 });
 
+// Computed property that combines all options, adds "None" and "Other" options if enabled
+const normalizedOptions = computed(() => {
+    let options = [...(props.question.options || [])];
+
+    // Add "None" option if allowed
+    if (props.question.allowNone) {
+        options.push({
+            id: "none",
+            text: "Tidak Ada",
+            value: "none",
+            isSpecial: true,
+        });
+    }
+
+    // Add "Other" option if allowed
+    if (props.question.allowOther) {
+        options.push({
+            id: "other",
+            text: "Lainnya",
+            value: "other",
+            isSpecial: true,
+        });
+    }
+
+    return options;
+});
+
 // Method to handle dropdown change
 const handleChange = (event) => {
     const value = event.target.value;
+
+    // Special handling for "other" option
+    if (value === "other") {
+        emit("update:modelValue", {
+            value: "other",
+            otherText: otherText.value,
+            label: "Lainnya",
+        });
+        return;
+    }
+
+    // Special handling for "none" option
+    if (value === "none") {
+        emit("update:modelValue", {
+            value: "none",
+            otherText: "",
+            label: "Tidak Ada",
+        });
+        return;
+    }
+
+    // Find the selected option to get its text for the label
+    const selectedOption = normalizedOptions.value.find(
+        (opt) => opt.value === value
+    );
+    const label = selectedOption ? selectedOption.text : value;
+
+    // Regular options
     emit("update:modelValue", {
         value,
-        otherText: value === "other" ? otherText.value : "",
+        otherText: "",
+        label,
     });
 };
 
@@ -96,6 +161,7 @@ const updateOtherText = () => {
     emit("update:modelValue", {
         value: "other",
         otherText: otherText.value,
+        label: "Lainnya",
     });
 };
 
@@ -108,9 +174,6 @@ watch(
         }
     }
 );
-
-// Add subtle animation on focus
-const selectElement = ref(null);
 </script>
 
 <style scoped>
