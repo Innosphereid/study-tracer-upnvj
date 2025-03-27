@@ -32,8 +32,11 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
         isDragging: false,
         isEditing: false,
         saveStatus: "idle", // 'idle', 'saving', 'saved', 'error'
+        errorMessage: null, // For storing specific error messages
+        validationErrors: null, // For storing validation errors
         lastSaved: null,
         autosaveInterval: null,
+        originalQuestionnaire: null,
     }),
 
     getters: {
@@ -618,88 +621,64 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
 
         saveQuestionnaire() {
             this.saveStatus = "saving";
+            this.errorMessage = null;
+            this.validationErrors = null;
+            console.log("Saving questionnaire state:", this.questionnaire);
 
-                    // Simpan kuesioner ke localStorage untuk auto-save
+            // Helper function to check if an ID is temporary (either starts with temp_ or is a UUID)
+            const isTemporaryId = (id) => {
+                if (!id) return true;
+                if (typeof id === "string" && id.startsWith("temp_"))
+                    return true;
+                // Check if it's a UUID format (simple check for presence of hyphens and length)
+                if (
+                    typeof id === "string" &&
+                    id.includes("-") &&
+                    id.length > 30
+                )
+                    return true;
+                return false;
+            };
+
+            // Save in localStorage for backup
             try {
-                    localStorage.setItem(
-                        "questionnaire_draft",
-                        JSON.stringify(this.questionnaire)
-                    );
+                localStorage.setItem(
+                    "questionnaire_draft",
+                    JSON.stringify(this.questionnaire)
+                );
             } catch (error) {
-                console.error("Error saving to localStorage:", error);
+                console.error("Failed to save in localStorage:", error);
             }
 
-            // Persiapkan data untuk dikirim ke server
+            // Determine if this is a create or update operation
+            const isCreate =
+                !this.questionnaire.id || isTemporaryId(this.questionnaire.id);
+
+            // Track original values for detecting changes
+            const originalSlug = this.originalQuestionnaire?.slug || null;
+            const currentSlug = this.questionnaire.slug || null;
+
+            // Prepare data for API - only include necessary fields
             const questionnaireData = {
                 title: this.questionnaire.title,
-                slug: this.questionnaire.slug,
-                description: this.questionnaire.description,
-                status: this.questionnaire.status || "draft",
-                start_date: this.questionnaire.startDate,
-                end_date: this.questionnaire.endDate,
+                description: this.questionnaire.description || null,
                 settings: JSON.stringify({
                     showProgressBar: this.questionnaire.showProgressBar,
                     showPageNumbers: this.questionnaire.showPageNumbers,
                     requiresLogin: this.questionnaire.requiresLogin,
                     welcomeScreen: this.questionnaire.welcomeScreen,
                     thankYouScreen: this.questionnaire.thankYouScreen,
-                    // Include sections and questions in settings for backup
-                    sections: this.questionnaire.sections.map((section) => ({
-                        id:
-                            section.id &&
-                            (typeof section.id === "number" ||
-                                !section.id.startsWith("temp_"))
-                                ? section.id
-                                : undefined,
-                        title: section.title,
-                        description: section.description,
-                        order: section.order,
-                        questions: section.questions.map((question) => ({
-                            id:
-                                question.id &&
-                                (typeof question.id === "number" ||
-                                    !question.id.startsWith("temp_"))
-                                    ? question.id
-                                    : undefined,
-                            type: question.type,
-                            text: question.text,
-                            helpText: question.helpText,
-                            required: question.required,
-                            order: question.order,
-                            options: question.options
-                                ? question.options.map((option) => ({
-                                      id:
-                                          option.id &&
-                                          (typeof option.id === "number" ||
-                                              !option.id.startsWith("temp_"))
-                                              ? option.id
-                                              : undefined,
-                                      value: option.value,
-                                      text: option.text,
-                                      order: option.order,
-                                  }))
-                                : [],
-                        })),
-                    })),
                 }),
-                // Also include sections directly for proper database storage
+                // Include sections separately
                 sections: this.questionnaire.sections.map((section) => ({
-                    id:
-                        section.id &&
-                        (typeof section.id === "number" ||
-                            !section.id.startsWith("temp_"))
-                            ? section.id
-                            : undefined,
+                    id: !isTemporaryId(section.id) ? section.id : undefined,
                     title: section.title,
                     description: section.description,
                     order: section.order,
                     questions: section.questions.map((question) => ({
-                        id:
-                            question.id &&
-                            (typeof question.id === "number" ||
-                                !question.id.startsWith("temp_"))
-                                ? question.id
-                                : undefined,
+                        id: !isTemporaryId(question.id)
+                            ? question.id
+                            : undefined,
                         question_type: this.mapQuestionType(question.type),
                         title: question.text,
                         description: question.helpText,
@@ -708,13 +687,10 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                         settings: JSON.stringify(question.settings || {}),
                         options: question.options
                             ? question.options.map((option) => ({
-                                  id:
-                                      option.id &&
-                                      (typeof option.id === "number" ||
-                                          !option.id.startsWith("temp_"))
-                                          ? option.id
-                                          : undefined,
-                                  value: option.value,
+                                  id: !isTemporaryId(option.id)
+                                      ? option.id
+                                      : undefined,
+                                  value: option.value || option.text,
                                   label: option.text,
                                   order: option.order,
                               }))
@@ -723,14 +699,22 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                 })),
             };
 
+            // Only include slug for new questionnaires or if explicitly changed
+            if (isCreate || (currentSlug !== originalSlug && currentSlug)) {
+                questionnaireData.slug = currentSlug;
+                console.log(
+                    `Including slug in request: ${currentSlug} (create: ${isCreate}, changed: ${
+                        currentSlug !== originalSlug
+                    })`
+                );
+            } else {
+                console.log(
+                    `Not including slug in update request (original: ${originalSlug}, current: ${currentSlug})`
+                );
+            }
+
             // Log the data being sent
             console.log("Saving questionnaire data:", questionnaireData);
-
-            // Tentukan apakah ini adalah pembuatan atau pembaruan
-            const isCreate =
-                !this.questionnaire.id ||
-                (typeof this.questionnaire.id === "string" &&
-                    this.questionnaire.id.startsWith("temp_"));
 
             const url = isCreate
                 ? "/kuesioner"
@@ -745,7 +729,7 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                 method,
             });
 
-            // Kirim permintaan ke server
+            // Send request to server
             return axios({
                 method: method,
                 url: url,
@@ -761,7 +745,7 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                     console.log("Save response:", response.data);
 
                     if (response.data.success) {
-                        // Update questionnaire ID jika ini adalah pembuatan baru
+                        // Update questionnaire ID if this is a new creation
                         if (isCreate && response.data.id) {
                             console.log(
                                 `Updating ID from ${this.questionnaire.id} to ${
@@ -769,29 +753,121 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                                 } (${typeof response.data.id})`
                             );
                             this.questionnaire.id = response.data.id;
+
+                            // Store original questionnaire data after successful create
+                            this.originalQuestionnaire = JSON.parse(
+                                JSON.stringify(this.questionnaire)
+                            );
                         }
 
                         if (response.data.slug) {
                             this.questionnaire.slug = response.data.slug;
+                            // Update original slug value when server returns a new one
+                            if (this.originalQuestionnaire) {
+                                this.originalQuestionnaire.slug =
+                                    response.data.slug;
+                            }
                         }
 
-                    this.saveStatus = "saved";
-                    this.lastSaved = new Date().toISOString();
+                        this.saveStatus = "saved";
+                        this.lastSaved = new Date().toISOString();
                         return response.data;
                     } else {
                         console.error(
                             "Failed to save questionnaire:",
-                            response.data.message
+                            response.data.message || "No error message provided"
                         );
-                    this.saveStatus = "error";
-                        throw new Error(
+                        this.errorMessage =
                             response.data.message ||
-                                "Failed to save questionnaire"
-                        );
+                            "Failed to save questionnaire";
+                        this.validationErrors = response.data.errors || null;
+                        this.saveStatus = "error";
+                        throw new Error(this.errorMessage);
                     }
                 })
                 .catch((error) => {
                     console.error("Error saving questionnaire:", error);
+
+                    if (error.response) {
+                        console.error(
+                            "Response status:",
+                            error.response.status
+                        );
+                        console.error(
+                            "Response headers:",
+                            error.response.headers
+                        );
+
+                        if (error.response.data) {
+                            console.error(
+                                "Response data:",
+                                error.response.data
+                            );
+
+                            // Check if there are validation errors
+                            if (error.response.data.errors) {
+                                console.error(
+                                    "Validation errors:",
+                                    JSON.stringify(
+                                        error.response.data.errors,
+                                        null,
+                                        2
+                                    )
+                                );
+                                this.validationErrors =
+                                    error.response.data.errors;
+                                this.errorMessage =
+                                    "Validasi gagal. Periksa data kuesioner.";
+                            } else if (error.response.data.message) {
+                                this.errorMessage = error.response.data.message;
+                                this.validationErrors = null;
+                            }
+
+                            // Check if there are exception details
+                            if (error.response.data.exception) {
+                                console.error(
+                                    "Exception:",
+                                    error.response.data.exception
+                                );
+                                console.error(
+                                    "File:",
+                                    error.response.data.file
+                                );
+                                console.error(
+                                    "Line:",
+                                    error.response.data.line
+                                );
+
+                                // If we have exception details but no user-friendly message yet
+                                if (!this.errorMessage) {
+                                    this.errorMessage =
+                                        "Terjadi kesalahan server. Silakan coba lagi nanti.";
+                                }
+                            }
+                        }
+                    } else if (error.request) {
+                        // Request was made but no response received
+                        console.error("No response received:", error.request);
+                        this.errorMessage =
+                            "Tidak ada respons dari server. Periksa koneksi internet Anda.";
+                        this.validationErrors = null;
+                    } else {
+                        // Error in setting up the request
+                        console.error(
+                            "Error setting up request:",
+                            error.message
+                        );
+                        this.errorMessage =
+                            "Gagal mengirim permintaan: " + error.message;
+                        this.validationErrors = null;
+                    }
+
+                    // If no specific error message has been set, use a default
+                    if (!this.errorMessage) {
+                        this.errorMessage =
+                            "Gagal menyimpan kuesioner. Silakan coba lagi.";
+                    }
+
                     this.saveStatus = "error";
                     throw error;
                 });
@@ -1087,7 +1163,42 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                             error.response?.data?.message ||
                             "Terjadi kesalahan saat mempublikasikan kuesioner",
                     };
-            });
+                });
+        },
+
+        loadQuestionnaire(id) {
+            if (this.autosaveInterval) {
+                clearInterval(this.autosaveInterval);
+                this.autosaveInterval = null;
+            }
+
+            // Reset state
+            this.resetState();
+
+            return axios
+                .get(`/kuesioner/${id}`)
+                .then((response) => {
+                    const data = response.data;
+
+                    if (data.questionnaire) {
+                        this.setQuestionnaire(data.questionnaire);
+
+                        // Store the original questionnaire for tracking changes
+                        this.originalQuestionnaire = JSON.parse(
+                            JSON.stringify(this.questionnaire)
+                        );
+
+                        // Setup autosave for existing questionnaires
+                        this.setupAutosave();
+                        return this.questionnaire;
+                    } else {
+                        throw new Error("Questionnaire data not found");
+                    }
+                })
+                .catch((error) => {
+                    console.error("Failed to load questionnaire:", error);
+                    throw error;
+                });
         },
     },
 });

@@ -243,7 +243,14 @@ const getQuestionComponent = (type) => {
         rating: "RatingQuestion",
         "yes-no": "YesNoQuestion",
         email: "EmailQuestion",
+        phone: "PhoneQuestion",
+        number: "NumberQuestion",
+        date: "DateQuestion",
         "file-upload": "FileUploadQuestion",
+        slider: "SliderQuestion",
+        matrix: "MatrixQuestion",
+        ranking: "RankingQuestion",
+        likert: "LikertQuestion",
     };
 
     // Get the component name based on the type
