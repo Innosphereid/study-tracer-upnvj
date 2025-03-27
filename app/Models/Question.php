@@ -18,6 +18,7 @@ class Question extends Model
      */
     protected $fillable = [
         'section_id',
+        'questionnaire_id',
         'question_type',
         'title',
         'description',
@@ -79,10 +80,42 @@ class Question extends Model
     }
 
     /**
-     * Get the parent questionnaire through the section.
+     * The questionnaire that the question belongs to directly.
      */
-    public function questionnaire()
+    public function questionnaire(): BelongsTo
+    {
+        return $this->belongsTo(Questionnaire::class);
+    }
+
+    /**
+     * The answer details for this question.
+     */
+    public function answerDetails(): HasMany
+    {
+        return $this->hasMany(AnswerDetail::class);
+    }
+
+    /**
+     * Get the parent questionnaire through the section.
+     * 
+     * @deprecated Use the questionnaire() relationship instead
+     */
+    public function getQuestionnaire()
     {
         return $this->section->questionnaire;
+    }
+
+    /**
+     * The "booted" method of the model.
+     *
+     * @return void
+     */
+    protected static function booted()
+    {
+        // When a question is deleted, also delete all its options and logic
+        static::deleting(function ($question) {
+            $question->options()->delete();
+            $question->logic()->delete();
+        });
     }
 } 
