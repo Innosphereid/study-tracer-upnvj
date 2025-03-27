@@ -619,12 +619,12 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
         saveQuestionnaire() {
             this.saveStatus = "saving";
 
-            // Simpan kuesioner ke localStorage untuk auto-save
+                    // Simpan kuesioner ke localStorage untuk auto-save
             try {
-                localStorage.setItem(
-                    "questionnaire_draft",
-                    JSON.stringify(this.questionnaire)
-                );
+                    localStorage.setItem(
+                        "questionnaire_draft",
+                        JSON.stringify(this.questionnaire)
+                    );
             } catch (error) {
                 console.error("Error saving to localStorage:", error);
             }
@@ -775,15 +775,15 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                             this.questionnaire.slug = response.data.slug;
                         }
 
-                        this.saveStatus = "saved";
-                        this.lastSaved = new Date().toISOString();
+                    this.saveStatus = "saved";
+                    this.lastSaved = new Date().toISOString();
                         return response.data;
                     } else {
                         console.error(
                             "Failed to save questionnaire:",
                             response.data.message
                         );
-                        this.saveStatus = "error";
+                    this.saveStatus = "error";
                         throw new Error(
                             response.data.message ||
                                 "Failed to save questionnaire"
@@ -1087,7 +1087,7 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                             error.response?.data?.message ||
                             "Terjadi kesalahan saat mempublikasikan kuesioner",
                     };
-                });
+            });
         },
     },
 });

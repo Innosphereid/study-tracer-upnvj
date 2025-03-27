@@ -109,7 +109,7 @@
                                                     class="text-indigo-600 hover:text-indigo-900">
                                                     Edit
                                                 </a>
-                                                <a href="{{ route('questionnaires.preview', $questionnaire->id) }}"
+                                                <a href="{{ route('preview.index', ['id' => $questionnaire->id]) }}"
                                                     class="text-blue-600 hover:text-blue-900">
                                                     Pratinjau
                                                 </a>

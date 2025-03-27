@@ -58,10 +58,8 @@ export function useQuestionnaire(initialData = {}) {
         // Simpan kuesioner terlebih dahulu
         saveQuestionnaire();
 
-        // Buka preview di tab baru
-        const previewUrl = `/kuesioner/preview/${
-            store.questionnaire.id || "draft"
-        }`;
+        // Buka preview di tab baru dengan URL baru
+        const previewUrl = `/preview?id=${store.questionnaire.id || "draft"}`;
         window.open(previewUrl, "_blank");
     };
 

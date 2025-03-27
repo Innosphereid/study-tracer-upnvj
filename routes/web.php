@@ -237,3 +237,6 @@ Route::prefix('kuesioner')->group(function () {
 Route::get('/vue-test', function() {
     return view('vue-test');
 })->name('vue-test');
+
+// Questionnaire Preview Route
+Route::get('/preview', 'App\Http\Controllers\Questionnaire\PreviewController@index')->name('preview.index');
