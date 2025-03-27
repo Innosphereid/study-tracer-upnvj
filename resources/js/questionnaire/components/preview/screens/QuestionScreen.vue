@@ -37,6 +37,36 @@
                 </p>
             </div>
 
+            <!-- Validation Error Message - Show if any required field is missing -->
+            <div
+                v-if="Object.keys(errors).length > 0"
+                class="p-4 bg-red-50 border border-red-200 rounded-md text-red-700 mb-4 animate__animated animate__headShake"
+            >
+                <div class="flex">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 mr-2 text-red-500"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                    >
+                        <path
+                            fill-rule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                            clip-rule="evenodd"
+                        />
+                    </svg>
+                    <div>
+                        <p class="font-medium">
+                            Ada pertanyaan wajib yang belum dijawab
+                        </p>
+                        <p class="text-sm mt-1">
+                            Silakan lengkapi semua pertanyaan yang ditandai
+                            dengan tanda bintang (*)
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Questions -->
             <div class="space-y-6 questions-container">
                 <TransitionGroup name="question">
@@ -44,18 +74,28 @@
                         v-for="(question, index) in paginatedQuestions"
                         :key="question.id"
                         class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
+                        :class="{
+                            'border-red-300 bg-red-50': errors[question.id],
+                        }"
                     >
                         <!-- Question Number & Text -->
                         <div class="mb-4">
                             <div class="flex items-start">
                                 <span
                                     class="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-800 text-sm font-medium mr-3"
+                                    :class="{
+                                        'bg-red-100 text-red-800':
+                                            errors[question.id],
+                                    }"
                                 >
                                     {{ getQuestionDisplayNumber(index) }}
                                 </span>
                                 <div>
                                     <h3
                                         class="text-lg font-medium text-gray-900 mb-1"
+                                        :class="{
+                                            'text-red-700': errors[question.id],
+                                        }"
                                     >
                                         {{ question.text }}
                                         <span
@@ -70,6 +110,14 @@
                                     >
                                         {{ question.helpText }}
                                     </p>
+
+                                    <!-- Error message -->
+                                    <p
+                                        v-if="errors[question.id]"
+                                        class="mt-1 text-sm text-red-600 font-medium"
+                                    >
+                                        {{ errors[question.id] }}
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -82,6 +130,9 @@
                                 v-model="answers[question.id]"
                                 :error="errors[question.id]"
                                 class="question-input-component"
+                                :class="{
+                                    'error-highlight': errors[question.id],
+                                }"
                             ></component>
                         </div>
                     </div>
@@ -167,7 +218,7 @@
                 v-else
                 type="button"
                 class="btn-submit inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
-                @click="$emit('finish')"
+                @click="finishQuestionnaire"
             >
                 Selesai
                 <svg
@@ -302,13 +353,179 @@ const goBack = () => {
     }
 };
 
+const validateCurrentPageQuestions = () => {
+    let isValid = true;
+    const questionsOnCurrentPage = paginatedQuestions.value;
+
+    // Check each question on the current page
+    for (const question of questionsOnCurrentPage) {
+        if (question.required) {
+            // Check if the answer exists and is valid
+            const answer = props.answers[question.id];
+            let questionValid = false;
+
+            switch (question.type) {
+                case "short-text":
+                case "long-text":
+                case "email":
+                    questionValid = !!answer?.trim();
+                    break;
+
+                case "radio":
+                case "dropdown":
+                    questionValid = !!answer?.value;
+                    break;
+
+                case "checkbox":
+                    questionValid =
+                        Array.isArray(answer?.values) &&
+                        answer.values.length > 0;
+                    break;
+
+                case "rating":
+                    questionValid = answer > 0;
+                    break;
+
+                default:
+                    // Default validation just checks if there's any value
+                    questionValid = !!answer;
+            }
+
+            if (!questionValid) {
+                props.errors[question.id] = "Pertanyaan ini wajib dijawab.";
+                isValid = false;
+            }
+        }
+    }
+
+    return isValid;
+};
+
 const goNext = () => {
+    // Validate current page before proceeding
+    if (!validateCurrentPageQuestions()) {
+        // Show error message and prevent navigation
+        const firstErrorElement = document.querySelector(".error-highlight");
+        if (firstErrorElement) {
+            firstErrorElement.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+            });
+        }
+        return;
+    }
+
     if (currentPage.value < totalPages.value) {
         currentPage.value++;
     } else {
-        emit("next");
-        // Reset page counter when moving to next section
-        currentPage.value = 1;
+        // When going to the next section, validate all questions in the current section
+        // This is needed because we might have skipped some questions due to pagination
+
+        // Clear existing errors first
+        for (const questionId in props.errors) {
+            delete props.errors[questionId];
+        }
+
+        // Check all questions in the section
+        let allValid = true;
+        if (props.currentSection?.questions) {
+            for (const question of props.currentSection.questions) {
+                if (question.required) {
+                    const answer = props.answers[question.id];
+                    let questionValid = false;
+
+                    switch (question.type) {
+                        case "short-text":
+                        case "long-text":
+                        case "email":
+                            questionValid = !!answer?.trim();
+                            break;
+
+                        case "radio":
+                        case "dropdown":
+                            questionValid = !!answer?.value;
+                            break;
+
+                        case "checkbox":
+                            questionValid =
+                                Array.isArray(answer?.values) &&
+                                answer.values.length > 0;
+                            break;
+
+                        case "rating":
+                            questionValid = answer > 0;
+                            break;
+
+                        case "matrix":
+                            if (question.matrixType === "radio") {
+                                // For radio matrix, check if each row has at least one selected option
+                                const responses = answer?.responses || {};
+                                questionValid =
+                                    question.rows &&
+                                    question.rows.every(
+                                        (row) => !!responses[row.id]
+                                    );
+                            } else if (question.matrixType === "checkbox") {
+                                // For checkbox matrix, check if there's at least one checked box
+                                const checkboxResponses =
+                                    answer?.checkboxResponses || {};
+                                questionValid =
+                                    Object.keys(checkboxResponses).length > 0;
+                            } else {
+                                questionValid = !!answer;
+                            }
+                            break;
+
+                        default:
+                            questionValid = !!answer;
+                    }
+
+                    if (!questionValid) {
+                        props.errors[question.id] =
+                            "Pertanyaan ini wajib dijawab.";
+                        allValid = false;
+                    }
+                }
+            }
+        }
+
+        // If validation passes, go to next section
+        if (allValid) {
+            emit("next");
+            // Reset page counter when moving to next section
+            currentPage.value = 1;
+        } else {
+            // Go to the page containing the first error
+            const invalidQuestionIds = Object.keys(props.errors);
+            if (invalidQuestionIds.length > 0) {
+                const firstInvalidQuestion =
+                    props.currentSection.questions.find(
+                        (q) => q.id === invalidQuestionIds[0]
+                    );
+                const questionIndex =
+                    props.currentSection.questions.indexOf(
+                        firstInvalidQuestion
+                    );
+
+                if (questionIndex !== -1 && questionsPerPage.value) {
+                    const pageWithError =
+                        Math.floor(questionIndex / questionsPerPage.value) + 1;
+                    currentPage.value = pageWithError;
+
+                    // After page change, scroll to the error
+                    setTimeout(() => {
+                        const errorElement =
+                            document.querySelector(".error-highlight");
+                        if (errorElement) {
+                            errorElement.scrollIntoView({
+                                behavior: "smooth",
+                                block: "center",
+                            });
+                        }
+                    }, 100);
+                }
+            }
+        }
     }
 };
 
@@ -411,6 +628,128 @@ onMounted(() => {
         animateSection.value = true;
     }, 100);
 });
+
+// Function to validate all questions in the current section
+const validateAllQuestions = () => {
+    // Clear existing errors first
+    for (const questionId in props.errors) {
+        delete props.errors[questionId];
+    }
+
+    // Check all questions in the section
+    let isValid = true;
+    if (props.currentSection?.questions) {
+        for (const question of props.currentSection.questions) {
+            if (question.required) {
+                const answer = props.answers[question.id];
+                let questionValid = false;
+
+                switch (question.type) {
+                    case "short-text":
+                    case "long-text":
+                    case "email":
+                        questionValid = !!answer?.trim();
+                        break;
+
+                    case "radio":
+                    case "dropdown":
+                        questionValid = !!answer?.value;
+                        break;
+
+                    case "checkbox":
+                        questionValid =
+                            Array.isArray(answer?.values) &&
+                            answer.values.length > 0;
+                        break;
+
+                    case "rating":
+                        questionValid = answer > 0;
+                        break;
+
+                    case "matrix":
+                        if (question.matrixType === "radio") {
+                            // For radio matrix, check if each row has at least one selected option
+                            const responses = answer?.responses || {};
+                            questionValid =
+                                question.rows &&
+                                question.rows.every(
+                                    (row) => !!responses[row.id]
+                                );
+                        } else if (question.matrixType === "checkbox") {
+                            // For checkbox matrix, check if there's at least one checked box
+                            const checkboxResponses =
+                                answer?.checkboxResponses || {};
+                            questionValid =
+                                Object.keys(checkboxResponses).length > 0;
+                        } else {
+                            questionValid = !!answer;
+                        }
+                        break;
+
+                    default:
+                        questionValid = !!answer;
+                }
+
+                if (!questionValid) {
+                    props.errors[question.id] = "Pertanyaan ini wajib dijawab.";
+                    isValid = false;
+                }
+            }
+        }
+    }
+
+    return isValid;
+};
+
+// Finish questionnaire button handler
+const finishQuestionnaire = () => {
+    // First validate the current page
+    if (!validateCurrentPageQuestions()) {
+        const firstErrorElement = document.querySelector(".error-highlight");
+        if (firstErrorElement) {
+            firstErrorElement.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+            });
+        }
+        return;
+    }
+
+    // Then validate all questions in the section
+    if (!validateAllQuestions()) {
+        // Go to the page containing the first error
+        const invalidQuestionIds = Object.keys(props.errors);
+        if (invalidQuestionIds.length > 0) {
+            const firstInvalidQuestion = props.currentSection.questions.find(
+                (q) => q.id === invalidQuestionIds[0]
+            );
+            const questionIndex =
+                props.currentSection.questions.indexOf(firstInvalidQuestion);
+
+            if (questionIndex !== -1 && questionsPerPage.value) {
+                const pageWithError =
+                    Math.floor(questionIndex / questionsPerPage.value) + 1;
+                currentPage.value = pageWithError;
+
+                // After page change, scroll to the error
+                setTimeout(() => {
+                    const errorElement =
+                        document.querySelector(".error-highlight");
+                    if (errorElement) {
+                        errorElement.scrollIntoView({
+                            behavior: "smooth",
+                            block: "center",
+                        });
+                    }
+                }, 100);
+            }
+        }
+        return;
+    }
+
+    // If all validation passes, emit finish event
+    emit("finish");
+};
 </script>
 
 <style scoped>
@@ -482,5 +821,45 @@ onMounted(() => {
 /* Question input component transition */
 .question-input-component {
     transition: all 0.2s ease-in-out;
+}
+
+/* Error highlight for invalid inputs */
+.error-highlight input,
+.error-highlight textarea,
+.error-highlight select {
+    border-color: #ef4444 !important;
+    background-color: #fef2f2 !important;
+}
+
+/* Animation for validation error message */
+@keyframes headShake {
+    0% {
+        transform: translateX(0);
+    }
+    6.5% {
+        transform: translateX(-6px) rotateY(-9deg);
+    }
+    18.5% {
+        transform: translateX(5px) rotateY(7deg);
+    }
+    31.5% {
+        transform: translateX(-3px) rotateY(-5deg);
+    }
+    43.5% {
+        transform: translateX(2px) rotateY(3deg);
+    }
+    50% {
+        transform: translateX(0);
+    }
+}
+
+.animate__animated {
+    animation-duration: 1s;
+    animation-fill-mode: both;
+}
+
+.animate__headShake {
+    animation-name: headShake;
+    animation-timing-function: ease-in-out;
 }
 </style>
