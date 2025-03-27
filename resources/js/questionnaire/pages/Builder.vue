@@ -336,6 +336,16 @@
                 </div>
             </div>
         </div>
+
+        <!-- Success Modal -->
+        <SuccessModal
+            :show="showSuccessModal"
+            :questionnaire-url="getPublicUrl()"
+            :questionnaire-id="questionnaire.id"
+            @close="handleSuccessModalClose"
+            @go-to-detail="goToDetailPage"
+            @go-to-list="goToListPage"
+        />
     </div>
 </template>
 
@@ -345,6 +355,7 @@ import { useQuestionnaireStore } from "../store/questionnaire";
 import ComponentSidebar from "../components/builder/ComponentSidebar.vue";
 import BuilderCanvas from "../components/builder/BuilderCanvas.vue";
 import SettingsPanel from "../components/builder/SettingsPanel.vue";
+import SuccessModal from "../components/ui/SuccessModal.vue";
 import { useQuestionnaire } from "../composables/useQuestionnaire";
 import { useDragDrop } from "../composables/useDragDrop";
 import { v4 as uuidv4 } from "uuid";
@@ -384,6 +395,10 @@ const isPublishing = ref(false);
 
 // Referensi ke komponen SettingsPanel
 const settingsPanelRef = ref(null);
+
+// Add state for success modal
+const showSuccessModal = ref(false);
+const publishSuccessResult = ref(null);
 
 // Watch for window close with unsaved changes
 const handleBeforeUnload = (e) => {
@@ -534,14 +549,12 @@ const confirmPublish = async () => {
         const result = await publishQuestionnaireAction();
 
         if (result.success) {
+            // Tutup modal publish
             showPublishModal.value = false;
 
-            // Tampilkan pesan sukses dari server
-            alert(result.message || `Kuesioner berhasil diterbitkan!`);
-
-            // Redirect ke halaman detail kuesioner
-            window.location.href =
-                result.url || `/kuesioner/${questionnaire.value.id}`;
+            // Simpan hasil berhasil dan tampilkan modal sukses
+            publishSuccessResult.value = result;
+            showSuccessModal.value = true;
         } else {
             // Tampilkan pesan error dari server
             alert(
@@ -587,6 +600,36 @@ const handleAddOptions = (payload) => {
             }
         }, 50);
     }
+};
+
+// Helper functions for the success modal
+const getPublicUrl = () => {
+    if (publishSuccessResult.value && publishSuccessResult.value.publicUrl) {
+        // Use the public URL from the server if available
+        return window.location.origin + publishSuccessResult.value.publicUrl;
+    }
+
+    // Create a fallback URL based on questionnaire ID
+    return `${window.location.origin}/form/${questionnaire.value.id}`;
+};
+
+const handleSuccessModalClose = () => {
+    showSuccessModal.value = false;
+    goToDetailPage();
+};
+
+const goToDetailPage = () => {
+    // Navigate to detail page
+    if (publishSuccessResult.value && publishSuccessResult.value.url) {
+        window.location.href = publishSuccessResult.value.url;
+    } else {
+        window.location.href = `/kuesioner/${questionnaire.value.id}`;
+    }
+};
+
+const goToListPage = () => {
+    // Navigate to list page
+    window.location.href = "/kuesioner";
 };
 </script>
 
