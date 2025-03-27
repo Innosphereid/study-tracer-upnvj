@@ -8,7 +8,7 @@
                             class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3"
                         ></th>
                         <th
-                            v-for="(column, colIdx) in question.columns"
+                            v-for="(column, colIdx) in normalizedColumns"
                             :key="colIdx"
                             class="px-4 py-3 bg-gray-50 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
@@ -18,7 +18,7 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     <tr
-                        v-for="(row, rowIdx) in question.rows"
+                        v-for="(row, rowIdx) in normalizedRows"
                         :key="rowIdx"
                         :class="rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'"
                     >
@@ -26,7 +26,7 @@
                             {{ row.text }}
                         </td>
                         <td
-                            v-for="(column, colIdx) in question.columns"
+                            v-for="(column, colIdx) in normalizedColumns"
                             :key="colIdx"
                             class="px-4 py-4 text-center"
                         >
@@ -34,12 +34,9 @@
                                 <input
                                     :type="question.selectionType || 'radio'"
                                     :name="`matrix-${question.id}-row-${rowIdx}`"
-                                    :value="column.value || column.text"
+                                    :value="column.value"
                                     :checked="
-                                        isOptionSelected(
-                                            rowIdx,
-                                            column.value || column.text
-                                        )
+                                        isOptionSelected(rowIdx, column.value)
                                     "
                                     class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 transition-all duration-200"
                                     :class="
@@ -48,10 +45,7 @@
                                             : 'rounded-full'
                                     "
                                     @change="
-                                        handleOptionChange(
-                                            rowIdx,
-                                            column.value || column.text
-                                        )
+                                        handleOptionChange(rowIdx, column.value)
                                     "
                                 />
                             </div>
@@ -70,7 +64,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 
 const props = defineProps({
     question: {
@@ -88,6 +82,67 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:modelValue"]);
+
+// Log props for debugging
+onMounted(() => {
+    console.log("MatrixQuestion mounted with props:", {
+        id: props.question.id,
+        rows: props.question.rows,
+        columns: props.question.columns,
+        rowsOrder: props.question.rowsOrder,
+        columnsOrder: props.question.columnsOrder,
+        selectionType: props.question.selectionType,
+        modelValue: props.modelValue,
+    });
+});
+
+// Computed property to normalize rows with proper sorting
+const normalizedRows = computed(() => {
+    if (!props.question.rows || !Array.isArray(props.question.rows)) {
+        return [];
+    }
+
+    // Create a copy of the rows
+    const rows = [...props.question.rows].map((row) => {
+        // Ensure row has all required properties
+        return {
+            id: row.id || `row_${row.text}`,
+            text: row.text,
+            value: row.value || row.text,
+        };
+    });
+
+    // Sort rows if needed
+    if (props.question.rowsOrder === "desc") {
+        rows.sort((a, b) => b.text.localeCompare(a.text));
+    }
+
+    return rows;
+});
+
+// Computed property to normalize columns with proper sorting
+const normalizedColumns = computed(() => {
+    if (!props.question.columns || !Array.isArray(props.question.columns)) {
+        return [];
+    }
+
+    // Create a copy of the columns
+    const columns = [...props.question.columns].map((column) => {
+        // Ensure column has all required properties
+        return {
+            id: column.id || `column_${column.text}`,
+            text: column.text,
+            value: column.value || column.text,
+        };
+    });
+
+    // Sort columns if needed
+    if (props.question.columnsOrder === "desc") {
+        columns.sort((a, b) => b.text.localeCompare(a.text));
+    }
+
+    return columns;
+});
 
 // Check if an option is selected for a specific row and column
 const isOptionSelected = (rowIndex, columnValue) => {
