@@ -366,52 +366,74 @@ const validateCurrentSection = () => {
     let isValid = true;
     errors.value = {};
 
-    // Skip validation in preview mode
-    return true;
+    if (!currentSection.value) return true;
 
-    /* 
-  // Validation for real form:
-  if (!currentSection.value) return true;
-  
-  // Check each question in the section
-  for (const question of currentSection.value.questions) {
-    if (question.required) {
-      // Different validation based on question type
-      let questionValid = false;
-      
-      switch (question.type) {
-        case 'short-text':
-        case 'long-text':
-        case 'email':
-          questionValid = !!answers.value[question.id]?.trim();
-          break;
-          
-        case 'radio':
-        case 'dropdown':
-          questionValid = !!answers.value[question.id]?.value;
-          break;
-          
-        case 'checkbox':
-          questionValid = Array.isArray(answers.value[question.id]?.values) && 
-                          answers.value[question.id]?.values.length > 0;
-          break;
-          
-        case 'rating':
-          questionValid = !!answers.value[question.id];
-          break;
-          
-        default:
-          // Default validation just checks if there's any value
-          questionValid = !!answers.value[question.id];
-      }
-      
-      if (!questionValid) {
-        errors.value[question.id] = 'Pertanyaan ini wajib dijawab.';
-        isValid = false;
-      }
+    // Check each question in the section
+    for (const question of currentSection.value.questions) {
+        if (question.required) {
+            // Different validation based on question type
+            let questionValid = false;
+
+            switch (question.type) {
+                case "short-text":
+                case "long-text":
+                case "email":
+                    questionValid = !!answers.value[question.id]?.trim();
+                    break;
+
+                case "radio":
+                case "dropdown":
+                    questionValid = !!answers.value[question.id]?.value;
+                    break;
+
+                case "checkbox":
+                    questionValid =
+                        Array.isArray(answers.value[question.id]?.values) &&
+                        answers.value[question.id]?.values.length > 0;
+                    break;
+
+                case "rating":
+                    questionValid = !!answers.value[question.id];
+                    break;
+
+                case "matrix":
+                    if (question.matrixType === "radio") {
+                        // For radio matrix, check if each row has at least one selected option
+                        const responses =
+                            answers.value[question.id]?.responses || {};
+                        questionValid =
+                            question.rows &&
+                            question.rows.every((row) => !!responses[row.id]);
+                    } else if (question.matrixType === "checkbox") {
+                        // For checkbox matrix, check if there's at least one checked box
+                        const checkboxResponses =
+                            answers.value[question.id]?.checkboxResponses || {};
+                        questionValid =
+                            Object.keys(checkboxResponses).length > 0;
+                    } else {
+                        questionValid = !!answers.value[question.id];
+                    }
+                    break;
+
+                default:
+                    // Default validation just checks if there's any value
+                    questionValid = !!answers.value[question.id];
+            }
+
+            if (!questionValid) {
+                console.log(
+                    `Question ${question.id} (${question.text}) failed validation. Type: ${question.type}, Answer:`,
+                    answers.value[question.id]
+                );
+                errors.value[question.id] = "Pertanyaan ini wajib dijawab.";
+                isValid = false;
+            }
+        }
     }
-  }
-  */
+
+    if (!isValid) {
+        console.log("Validation failed with errors:", errors.value);
+    }
 
     return isValid;
 };
