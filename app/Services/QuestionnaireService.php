@@ -455,10 +455,44 @@ class QuestionnaireService implements QuestionnaireServiceInterface
     {
         Log::info('Updating question', ['questionId' => $questionId]);
         
+        // Process settings if provided
+        if (isset($questionData['settings']) && is_array($questionData['settings'])) {
+            // Convert settings to JSON string if it's an array
+            $questionData['settings'] = json_encode($questionData['settings']);
+        }
+        
+        // Make sure is_required is properly set
+        if (isset($questionData['required']) && !isset($questionData['is_required'])) {
+            $questionData['is_required'] = $questionData['required'];
+        }
+        
+        // Make sure title is properly set
+        if (isset($questionData['text']) && !isset($questionData['title'])) {
+            $questionData['title'] = $questionData['text'];
+        }
+        
+        // Make sure description is properly set
+        if (isset($questionData['helpText']) && !isset($questionData['description'])) {
+            $questionData['description'] = $questionData['helpText'];
+        }
+        
         // Remove nested data
         unset($questionData['options']);
         
-        return $this->questionRepository->update($questionId, $questionData);
+        $result = $this->questionRepository->update($questionId, $questionData);
+        
+        // Log the updated question for debugging
+        if ($result) {
+            $updatedQuestion = $this->questionRepository->find($questionId);
+            Log::debug('Question updated successfully', [
+                'id' => $questionId,
+                'title' => $updatedQuestion->title,
+                'is_required' => $updatedQuestion->is_required,
+                'has_settings' => isset($updatedQuestion->settings),
+            ]);
+        }
+        
+        return $result;
     }
     
     /**
