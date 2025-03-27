@@ -1,3 +1,4 @@
+import "../bootstrap";
 import { createApp } from "vue";
 import { createPinia } from "pinia";
 import Builder from "./pages/Builder.vue";
@@ -9,74 +10,107 @@ window.DEBUG_MODE = true;
 
 // Pastikan script ini berjalan setelah DOM selesai dimuat
 document.addEventListener("DOMContentLoaded", () => {
-    // Inisialisasi Pinia (state management)
+    const builderElement = document.getElementById("questionnaire-builder");
+    const previewElement = document.getElementById("questionnaire-preview");
+    const formElement = document.getElementById("questionnaire-form");
+
     const pinia = createPinia();
 
-    // Mount Builder component
-    const builderElement = document.getElementById("questionnaire-builder");
     if (builderElement) {
-        console.log("Builder element found, initializing Vue app..."); // Debug log
+        console.log("Initializing Vue Builder...");
+        const app = createApp(Builder);
+        app.use(pinia);
 
-        // Parse data questionnaire (jika ada)
-        let questionnaireData = {};
+        // Get initial data from the data-questionnaire attribute
+        let initialQuestionnaire = {};
         try {
             if (builderElement.dataset.questionnaire) {
-                questionnaireData = JSON.parse(
+                initialQuestionnaire = JSON.parse(
                     builderElement.dataset.questionnaire
                 );
-                console.log("Questionnaire data parsed:", questionnaireData); // Debug log
+                console.log("Parsed questionnaire data successfully");
+
+                // Ensure ID is properly handled for string operations
+                if (
+                    initialQuestionnaire.id &&
+                    typeof initialQuestionnaire.id !== "string"
+                ) {
+                    console.log(
+                        `Converting ID from ${typeof initialQuestionnaire.id} to string`
+                    );
+                    // Convert ID to string if it's not already a string
+                    // This ensures methods like startsWith can be safely used
+                    initialQuestionnaire.id = String(initialQuestionnaire.id);
+                }
+
+                // Log processed data
+                console.log("Processed questionnaire data:", {
+                    id: initialQuestionnaire.id,
+                    idType: typeof initialQuestionnaire.id,
+                    title: initialQuestionnaire.title,
+                    status: initialQuestionnaire.status,
+                });
+            }
+        } catch (error) {
+            console.error("Error parsing questionnaire data:", error);
+        }
+
+        app.provide("initialData", initialQuestionnaire);
+        app.mount(builderElement);
+    } else if (previewElement) {
+        console.log("Preview element found, initializing preview app...");
+
+        // Parse questionnaire data
+        let questionnaire = {};
+        try {
+            if (previewElement.dataset.questionnaire) {
+                questionnaire = JSON.parse(
+                    previewElement.dataset.questionnaire
+                );
+
+                // Ensure ID is properly handled for string operations
+                if (questionnaire.id && typeof questionnaire.id !== "string") {
+                    console.log(
+                        `Converting ID from ${typeof questionnaire.id} to string`
+                    );
+                    questionnaire.id = String(questionnaire.id);
+                }
             }
         } catch (e) {
             console.error("Error parsing questionnaire data:", e);
         }
 
-        const app = createApp(Builder, {
-            initialQuestionnaire: questionnaireData,
+        const app = createApp(Preview, {
+            questionnaire,
         });
         app.use(pinia);
-        app.mount(builderElement);
-        console.log("Builder app mounted successfully"); // Debug log
-    } else {
-        console.log("No builder element found in the DOM"); // Debug log
-    }
-
-    // Mount Preview component
-    const previewElement = document.getElementById("questionnaire-preview");
-    if (previewElement) {
-        // Parse data questionnaire
-        let questionnaireData = {};
-        try {
-            if (previewElement.dataset.questionnaire) {
-                questionnaireData = JSON.parse(
-                    previewElement.dataset.questionnaire
-                );
-            }
-        } catch (e) {
-            console.error("Error parsing questionnaire data for preview:", e);
-        }
-
-        const app = createApp(Preview, { questionnaire: questionnaireData });
-        app.use(pinia);
         app.mount(previewElement);
-    }
+    } else if (formElement) {
+        console.log("Form element found, initializing form app...");
 
-    // Mount FormView component
-    const formViewElement = document.getElementById("questionnaire-form");
-    if (formViewElement) {
-        // Parse data questionnaire
-        let questionnaireData = {};
+        // Parse questionnaire data
+        let questionnaire = {};
         try {
-            if (formViewElement.dataset.questionnaire) {
-                questionnaireData = JSON.parse(
-                    formViewElement.dataset.questionnaire
-                );
+            if (formElement.dataset.questionnaire) {
+                questionnaire = JSON.parse(formElement.dataset.questionnaire);
+
+                // Ensure ID is properly handled for string operations
+                if (questionnaire.id && typeof questionnaire.id !== "string") {
+                    console.log(
+                        `Converting ID from ${typeof questionnaire.id} to string`
+                    );
+                    questionnaire.id = String(questionnaire.id);
+                }
             }
         } catch (e) {
-            console.error("Error parsing questionnaire data for form:", e);
+            console.error("Error parsing questionnaire data:", e);
         }
 
-        const app = createApp(FormView, { questionnaire: questionnaireData });
+        const app = createApp(FormView, {
+            questionnaire,
+            isPreview: formElement.dataset.preview === "true",
+        });
         app.use(pinia);
-        app.mount(formViewElement);
+        app.mount(formElement);
     }
 });
