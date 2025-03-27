@@ -293,6 +293,48 @@ class PreviewController extends Controller
                             if (is_string($question['settings'])) {
                                 $questionSettings = json_decode($question['settings'], true);
                                 $question['settings'] = $questionSettings;
+                                Log::debug('Decoded question settings', [
+                                    'question_id' => $question['id'] ?? 'unknown',
+                                    'has_settings' => !empty($questionSettings),
+                                    'settings_keys' => $questionSettings ? array_keys($questionSettings) : []
+                                ]);
+                                
+                                // Handle nested settings
+                                if (isset($questionSettings['settings'])) {
+                                    // If we find a settings property within settings, it's a nested structure
+                                    Log::debug('Found nested settings, cleaning up', [
+                                        'question_id' => $question['id'] ?? 'unknown'
+                                    ]);
+                                    
+                                    if (is_string($questionSettings['settings'])) {
+                                        // Try to decode another level
+                                        $nestedSettings = json_decode($questionSettings['settings'], true);
+                                        if (is_array($nestedSettings)) {
+                                            // Merge with outer settings at the same level
+                                            foreach ($nestedSettings as $key => $value) {
+                                                if (!isset($questionSettings[$key])) {
+                                                    $questionSettings[$key] = $value;
+                                                }
+                                            }
+                                        }
+                                    } elseif (is_array($questionSettings['settings'])) {
+                                        // Merge array settings
+                                        foreach ($questionSettings['settings'] as $key => $value) {
+                                            if (!isset($questionSettings[$key])) {
+                                                $questionSettings[$key] = $value;
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Remove the nested settings to avoid duplication
+                                    unset($questionSettings['settings']);
+                                    $question['settings'] = $questionSettings;
+                                    
+                                    Log::debug('Cleaned settings structure', [
+                                        'question_id' => $question['id'] ?? 'unknown',
+                                        'clean_settings_keys' => array_keys($questionSettings)
+                                    ]);
+                                }
                             }
                             
                             // Use settings values if frontend properties are not set
@@ -308,13 +350,89 @@ class PreviewController extends Controller
                                 $question['helpText'] = $question['settings']['helpText'];
                             }
                             
-                            // Special handling for specific question types
-                            if (isset($question['settings']) && is_array($question['settings'])) {
+                            // Handle question type-specific settings
+                            if (isset($question['type']) && isset($question['settings']) && is_array($question['settings'])) {
+                                // Copy all settings to the question root for the frontend
                                 foreach ($question['settings'] as $key => $value) {
-                                    if (!isset($question[$key]) && $key !== 'text' && $key !== 'helpText' && $key !== 'required') {
+                                    // Avoid overriding existing properties and special properties
+                                    $specialKeys = ['text', 'helpText', 'required', 'id', 'question_id', 'section_id', 'order', 'created_at', 'updated_at', 'settings'];
+                                    if (!isset($question[$key]) && !in_array($key, $specialKeys)) {
                                         $question[$key] = $value;
                                     }
                                 }
+                                
+                                // Type-specific handling
+                                switch ($question['type']) {
+                                    case 'radio':
+                                    case 'checkbox':
+                                    case 'dropdown':
+                                        // Ensure options are available
+                                        if (!isset($question['options']) && isset($question['settings']['options'])) {
+                                            $question['options'] = $question['settings']['options'];
+                                        }
+                                        
+                                        // Handle other option-related settings
+                                        $optionProps = ['allowOther', 'allowNone', 'optionsOrder'];
+                                        foreach ($optionProps as $prop) {
+                                            if (!isset($question[$prop]) && isset($question['settings'][$prop])) {
+                                                $question[$prop] = $question['settings'][$prop];
+                                            }
+                                        }
+                                        break;
+                                        
+                                    case 'rating':
+                                        // Handle rating settings
+                                        $ratingProps = ['maxRating', 'showValues', 'icon'];
+                                        foreach ($ratingProps as $prop) {
+                                            if (!isset($question[$prop]) && isset($question['settings'][$prop])) {
+                                                $question[$prop] = $question['settings'][$prop];
+                                            }
+                                        }
+                                        
+                                        // Ensure maxRating is numeric
+                                        if (isset($question['maxRating']) && !is_numeric($question['maxRating'])) {
+                                            $question['maxRating'] = (int)$question['maxRating'];
+                                        }
+                                        
+                                        // Default maxRating for rating questions
+                                        if (!isset($question['maxRating'])) {
+                                            $question['maxRating'] = 5;
+                                        }
+                                        break;
+                                        
+                                    case 'matrix':
+                                        // Handle matrix settings
+                                        $matrixProps = ['matrixType', 'rows', 'columns'];
+                                        foreach ($matrixProps as $prop) {
+                                            if (!isset($question[$prop]) && isset($question['settings'][$prop])) {
+                                                $question[$prop] = $question['settings'][$prop];
+                                            }
+                                        }
+                                        break;
+                                        
+                                    case 'file-upload':
+                                        // Handle file upload settings
+                                        $fileProps = ['allowedTypes', 'maxFiles', 'maxSize'];
+                                        foreach ($fileProps as $prop) {
+                                            if (!isset($question[$prop]) && isset($question['settings'][$prop])) {
+                                                $question[$prop] = $question['settings'][$prop];
+                                            }
+                                        }
+                                        break;
+                                        
+                                    case 'ranking':
+                                        // Handle ranking settings
+                                        if (!isset($question['options']) && isset($question['settings']['options'])) {
+                                            $question['options'] = $question['settings']['options'];
+                                        }
+                                        break;
+                                }
+                                
+                                Log::debug('Processed question type-specific settings', [
+                                    'question_id' => $question['id'] ?? 'unknown',
+                                    'type' => $question['type'],
+                                    'settings_applied' => array_keys($question)
+                                ]);
                             }
                         }
                     }
