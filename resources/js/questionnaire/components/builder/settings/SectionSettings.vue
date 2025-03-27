@@ -115,7 +115,7 @@ const emit = defineEmits(["update", "duplicate", "delete"]);
 const settings = ref({
     title: props.section.title,
     description: props.section.description,
-    questionsPerPage: props.section.questionsPerPage || "all",
+    questionsPerPage: props.section.settings?.questionsPerPage || "all",
 });
 
 // Watch for changes in the section prop
@@ -127,7 +127,7 @@ watch(
         settings.value = {
             title: newSection.title,
             description: newSection.description,
-            questionsPerPage: newSection.questionsPerPage || "all",
+            questionsPerPage: newSection.settings?.questionsPerPage || "all",
         };
     },
     { deep: true }
@@ -135,6 +135,13 @@ watch(
 
 // Update settings
 const updateSettings = () => {
-    emit("update", settings.value);
+    const updatedSection = {
+        ...settings.value,
+        settings: {
+            ...(props.section.settings || {}),
+            questionsPerPage: settings.value.questionsPerPage,
+        },
+    };
+    emit("update", updatedSection);
 };
 </script>
