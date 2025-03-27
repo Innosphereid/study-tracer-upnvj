@@ -191,7 +191,103 @@ class QuestionnaireController extends Controller
         
         abort_if(!$questionnaire, 404, 'Kuesioner tidak ditemukan');
         
-        return view('questionnaire.preview', compact('questionnaire'));
+        // Ensure we have the questionnaire_json data loaded
+        if (empty($questionnaire->questionnaire_json)) {
+            Log::info('Generating JSON representation for preview', ['id' => $id]);
+            $questionnaire->storeAsJson();
+            $questionnaire->refresh();
+        }
+        
+        // Use the JSON representation for the preview as it's more complete
+        $previewData = $questionnaire->questionnaire_json;
+        
+        // Add necessary structure expected by the frontend components
+        if (is_array($previewData) && !isset($previewData['welcomeScreen']) && isset($previewData['settings'])) {
+            // Extract welcome screen from settings if available
+            if (isset($previewData['settings']['welcomeScreen'])) {
+                $previewData['welcomeScreen'] = $previewData['settings']['welcomeScreen'];
+            } else {
+                // Create default welcome screen
+                $previewData['welcomeScreen'] = [
+                    'title' => 'Selamat Datang',
+                    'description' => 'Terima kasih telah berpartisipasi dalam kuesioner ini.'
+                ];
+            }
+            
+            // Extract thank you screen from settings if available
+            if (isset($previewData['settings']['thankYouScreen'])) {
+                $previewData['thankYouScreen'] = $previewData['settings']['thankYouScreen'];
+            } else {
+                // Create default thank you screen
+                $previewData['thankYouScreen'] = [
+                    'title' => 'Terima Kasih',
+                    'description' => 'Terima kasih atas partisipasi Anda.'
+                ];
+            }
+            
+            // Add progress bar setting
+            if (!isset($previewData['showProgressBar']) && isset($previewData['settings']['showProgressBar'])) {
+                $previewData['showProgressBar'] = $previewData['settings']['showProgressBar'];
+            } else {
+                $previewData['showProgressBar'] = true;
+            }
+            
+            // Add page numbers setting
+            if (!isset($previewData['showPageNumbers']) && isset($previewData['settings']['showPageNumbers'])) {
+                $previewData['showPageNumbers'] = $previewData['settings']['showPageNumbers'];
+            } else {
+                $previewData['showPageNumbers'] = true;
+            }
+        }
+        
+        // Process sections to ensure each question has the expected structure
+        if (isset($previewData['sections']) && is_array($previewData['sections'])) {
+            foreach ($previewData['sections'] as &$section) {
+                if (isset($section['questions']) && is_array($section['questions'])) {
+                    foreach ($section['questions'] as &$question) {
+                        // Ensure each question has a type field matching frontend expectations
+                        if (!isset($question['type']) && isset($question['question_type'])) {
+                            // Map backend types to frontend types
+                            $typeMap = [
+                                'text' => 'short-text',
+                                'textarea' => 'long-text',
+                                'radio' => 'radio',
+                                'checkbox' => 'checkbox',
+                                'dropdown' => 'dropdown',
+                                'rating' => 'rating',
+                                'date' => 'date',
+                                'file' => 'file-upload',
+                                'matrix' => 'matrix'
+                            ];
+                            
+                            $question['type'] = $typeMap[$question['question_type']] ?? 'short-text';
+                        }
+                        
+                        // Map title to text for frontend components
+                        if (!isset($question['text']) && isset($question['title'])) {
+                            $question['text'] = $question['title'];
+                        }
+                        
+                        // Map description to helpText for frontend components
+                        if (!isset($question['helpText']) && isset($question['description'])) {
+                            $question['helpText'] = $question['description'];
+                        }
+                        
+                        // Map is_required to required for frontend components
+                        if (!isset($question['required']) && isset($question['is_required'])) {
+                            $question['required'] = (bool)$question['is_required'];
+                        }
+                    }
+                }
+            }
+        }
+        
+        Log::debug('Prepared questionnaire data for preview', [
+            'id' => $id, 
+            'sections_count' => isset($previewData['sections']) ? count($previewData['sections']) : 0
+        ]);
+        
+        return view('questionnaire.preview', ['questionnaire' => $previewData]);
     }
     
     /**

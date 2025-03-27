@@ -44,7 +44,25 @@ class PreviewController extends Controller
                 ]);
             }
             
-            return view('questionnaire.standalone-preview', compact('questionnaire'));
+            // Ensure we have the questionnaire_json data loaded
+            if (empty($questionnaire->questionnaire_json)) {
+                Log::info('Generating JSON representation for standalone preview', ['id' => $questionnaireId]);
+                $questionnaire->storeAsJson();
+                $questionnaire->refresh();
+            }
+            
+            // Use the JSON representation for the preview as it's more complete
+            $previewData = $questionnaire->questionnaire_json;
+            
+            // Transform the data to match frontend expectations
+            $previewData = $this->transformQuestionnaireData($previewData);
+            
+            Log::debug('Prepared standalone preview data', [
+                'id' => $questionnaireId, 
+                'sections_count' => isset($previewData['sections']) ? count($previewData['sections']) : 0
+            ]);
+            
+            return view('questionnaire.standalone-preview', ['questionnaire' => $previewData]);
         }
         
         // Otherwise load a sample questionnaire for demonstration
@@ -177,5 +195,97 @@ class PreviewController extends Controller
                 ]
             ]
         ];
+    }
+
+    /**
+     * Transform questionnaire data to match frontend component expectations
+     *
+     * @param array $data
+     * @return array
+     */
+    private function transformQuestionnaireData(array $data): array
+    {
+        // Add necessary structure expected by the frontend components
+        if (!isset($data['welcomeScreen']) && isset($data['settings'])) {
+            // Extract welcome screen from settings if available
+            if (isset($data['settings']['welcomeScreen'])) {
+                $data['welcomeScreen'] = $data['settings']['welcomeScreen'];
+            } else {
+                // Create default welcome screen
+                $data['welcomeScreen'] = [
+                    'title' => 'Selamat Datang',
+                    'description' => 'Terima kasih telah berpartisipasi dalam kuesioner ini.'
+                ];
+            }
+            
+            // Extract thank you screen from settings if available
+            if (isset($data['settings']['thankYouScreen'])) {
+                $data['thankYouScreen'] = $data['settings']['thankYouScreen'];
+            } else {
+                // Create default thank you screen
+                $data['thankYouScreen'] = [
+                    'title' => 'Terima Kasih',
+                    'description' => 'Terima kasih atas partisipasi Anda.'
+                ];
+            }
+            
+            // Add progress bar setting
+            if (!isset($data['showProgressBar']) && isset($data['settings']['showProgressBar'])) {
+                $data['showProgressBar'] = $data['settings']['showProgressBar'];
+            } else {
+                $data['showProgressBar'] = true;
+            }
+            
+            // Add page numbers setting
+            if (!isset($data['showPageNumbers']) && isset($data['settings']['showPageNumbers'])) {
+                $data['showPageNumbers'] = $data['settings']['showPageNumbers'];
+            } else {
+                $data['showPageNumbers'] = true;
+            }
+        }
+        
+        // Process sections to ensure each question has the expected structure
+        if (isset($data['sections']) && is_array($data['sections'])) {
+            foreach ($data['sections'] as &$section) {
+                if (isset($section['questions']) && is_array($section['questions'])) {
+                    foreach ($section['questions'] as &$question) {
+                        // Ensure each question has a type field matching frontend expectations
+                        if (!isset($question['type']) && isset($question['question_type'])) {
+                            // Map backend types to frontend types
+                            $typeMap = [
+                                'text' => 'short-text',
+                                'textarea' => 'long-text',
+                                'radio' => 'radio',
+                                'checkbox' => 'checkbox',
+                                'dropdown' => 'dropdown',
+                                'rating' => 'rating',
+                                'date' => 'date',
+                                'file' => 'file-upload',
+                                'matrix' => 'matrix'
+                            ];
+                            
+                            $question['type'] = $typeMap[$question['question_type']] ?? 'short-text';
+                        }
+                        
+                        // Map title to text for frontend components
+                        if (!isset($question['text']) && isset($question['title'])) {
+                            $question['text'] = $question['title'];
+                        }
+                        
+                        // Map description to helpText for frontend components
+                        if (!isset($question['helpText']) && isset($question['description'])) {
+                            $question['helpText'] = $question['description'];
+                        }
+                        
+                        // Map is_required to required for frontend components
+                        if (!isset($question['required']) && isset($question['is_required'])) {
+                            $question['required'] = (bool)$question['is_required'];
+                        }
+                    }
+                }
+            }
+        }
+        
+        return $data;
     }
 } 

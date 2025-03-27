@@ -233,8 +233,12 @@ const hasNextSection = () => {
 
 // Helper to dynamically get the correct component for question type
 const getQuestionComponent = (type) => {
-    // Map question types to component names
+    console.log("Trying to get component for question type:", type);
+
+    // Map backend question types to component names
+    // This is critical - the backend stores types like 'text' but components are named like 'ShortTextQuestion'
     const componentMap = {
+        // Frontend types (from builder)
         "short-text": "ShortTextQuestion",
         "long-text": "LongTextQuestion",
         radio: "RadioQuestion",
@@ -251,22 +255,42 @@ const getQuestionComponent = (type) => {
         matrix: "MatrixQuestion",
         ranking: "RankingQuestion",
         likert: "LikertQuestion",
+
+        // Backend types (from database)
+        text: "ShortTextQuestion",
+        textarea: "LongTextQuestion",
+        file: "FileUploadQuestion",
     };
 
     // Get the component name based on the type
     const componentName = componentMap[type] || "ShortTextQuestion";
+    console.log("Mapped to component name:", componentName);
 
     // Try to find the component in the dynamically imported modules
     for (const path in questionComponents) {
         if (path.includes(componentName)) {
+            console.log("Found component at path:", path);
             return questionComponents[path].default;
         }
     }
+
+    // Log available components for debugging
+    console.warn("Component not found for type:", type);
+    console.log(
+        "Available components:",
+        Object.keys(questionComponents).map((path) => {
+            const parts = path.split("/");
+            return parts[parts.length - 1].replace(".vue", "");
+        })
+    );
 
     // Fallback to a simple div if component not found
     return {
         template: `<div class="p-4 bg-yellow-50 border border-yellow-100 rounded-md text-sm text-yellow-800">
       Component for type "${type}" is not available in preview mode.
+      <div class="mt-2 font-mono text-xs">
+        Available types: ${Object.keys(componentMap).join(", ")}
+      </div>
     </div>`,
         props: ["question", "modelValue"],
         emits: ["update:modelValue"],

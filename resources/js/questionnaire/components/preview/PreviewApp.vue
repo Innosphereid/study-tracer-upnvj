@@ -163,6 +163,12 @@ const scrollToTop = () => {
 
 // Initialize on component mount
 onMounted(() => {
+    // Log the incoming questionnaire data
+    console.log("Raw questionnaire data:", props.questionnaire);
+
+    // Process the questionnaire data to ensure it's in the expected format
+    processQuestionnaireData();
+
     // Simulate loading for visual effect
     setTimeout(() => {
         loading.value = false;
@@ -171,6 +177,117 @@ onMounted(() => {
         initializeAnswers();
     }, 800);
 });
+
+// Process the questionnaire data to ensure it matches the expected structure
+const processQuestionnaireData = () => {
+    console.log("Processing questionnaire data");
+
+    // Map backend question types to frontend types
+    const questionTypeMap = {
+        text: "short-text",
+        textarea: "long-text",
+        radio: "radio",
+        checkbox: "checkbox",
+        dropdown: "dropdown",
+        rating: "rating",
+        date: "date",
+        file: "file-upload",
+        matrix: "matrix",
+    };
+
+    // If the questionnaire has sections, ensure each section's questions have the expected structure
+    if (props.questionnaire.sections) {
+        console.log(
+            `Processing ${props.questionnaire.sections.length} sections`
+        );
+
+        props.questionnaire.sections.forEach((section, sectionIndex) => {
+            console.log(
+                `Processing section ${sectionIndex + 1}: ${section.title}`
+            );
+
+            // Ensure the section has a valid ID
+            if (!section.id) {
+                section.id = `section-${sectionIndex}`;
+            }
+
+            // If the section has questions, process each question
+            if (section.questions && section.questions.length > 0) {
+                console.log(
+                    `Processing ${
+                        section.questions.length
+                    } questions in section ${sectionIndex + 1}`
+                );
+
+                section.questions.forEach((question, questionIndex) => {
+                    // Map backend question_type to frontend type
+                    if (
+                        question.question_type &&
+                        questionTypeMap[question.question_type]
+                    ) {
+                        question.type = questionTypeMap[question.question_type];
+                        console.log(
+                            `Mapped question type from ${question.question_type} to ${question.type}`
+                        );
+                    } else if (!question.type) {
+                        // If no type mapping exists, default to short-text
+                        question.type = "short-text";
+                        console.log(
+                            `No type found for question, defaulting to short-text`
+                        );
+                    }
+
+                    // Ensure the question has an ID
+                    if (!question.id) {
+                        question.id = `question-${sectionIndex}-${questionIndex}`;
+                    }
+
+                    // Map title to text if needed
+                    if (question.title && !question.text) {
+                        question.text = question.title;
+                    }
+
+                    // Map description to helpText if needed
+                    if (question.description && !question.helpText) {
+                        question.helpText = question.description;
+                    }
+
+                    // Map is_required to required if needed
+                    if (
+                        question.is_required !== undefined &&
+                        question.required === undefined
+                    ) {
+                        question.required = question.is_required;
+                    }
+
+                    // Process options if they exist
+                    if (question.options && question.options.length > 0) {
+                        question.options.forEach((option, optionIndex) => {
+                            // Map label to text if needed
+                            if (option.label && !option.text) {
+                                option.text = option.label;
+                            }
+
+                            // Ensure the option has an ID
+                            if (!option.id) {
+                                option.id = `option-${sectionIndex}-${questionIndex}-${optionIndex}`;
+                            }
+                        });
+                    }
+                });
+            } else {
+                console.warn(
+                    `No questions found in section ${sectionIndex + 1}`
+                );
+            }
+        });
+    } else {
+        console.warn("No sections found in questionnaire");
+    }
+
+    // Log the processed questionnaire data
+    console.log("Processed questionnaire data:", props.questionnaire);
+};
 
 const initializeAnswers = () => {
     if (props.questionnaire.sections) {
