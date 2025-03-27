@@ -249,6 +249,7 @@ class QuestionRepository extends BaseRepository implements QuestionRepositoryInt
             // Check for allowOther and allowNone flags in settings
             $hasOtherOption = false;
             $hasNoneOption = false;
+            $hasSelectAllOption = false;
             $settings = null;
             
             if ($question->settings) {
@@ -261,6 +262,7 @@ class QuestionRepository extends BaseRepository implements QuestionRepositoryInt
                 if (is_array($settings)) {
                     $hasOtherOption = isset($settings['allowOther']) && $settings['allowOther'] === true;
                     $hasNoneOption = isset($settings['allowNone']) && $settings['allowNone'] === true;
+                    $hasSelectAllOption = isset($settings['allowSelectAll']) && $settings['allowSelectAll'] === true;
                 }
             }
             
@@ -292,6 +294,21 @@ class QuestionRepository extends BaseRepository implements QuestionRepositoryInt
                     'order' => $maxOrder,
                     'value' => 'Tidak Ada',
                     'label' => 'Tidak Ada'
+                ]);
+                
+                $maxOrder++;
+            }
+            
+            // Add "Select All" option if this is a checkbox question and allowSelectAll is enabled
+            if ($question->question_type === 'checkbox' && $hasSelectAllOption) {
+                Log::info('Adding "Select All" option to database', [
+                    'question_id' => $question->id
+                ]);
+                
+                $question->options()->create([
+                    'order' => $maxOrder,
+                    'value' => 'Pilih Semua',
+                    'label' => 'Pilih Semua'
                 ]);
             }
             
