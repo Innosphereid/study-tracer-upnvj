@@ -200,7 +200,18 @@ class QuestionRepository extends BaseRepository implements QuestionRepositoryInt
                 
                 // Handle value field (required)
                 if (isset($option['value'])) {
-                    $optionData['value'] = $option['value'];
+                    // If value follows the option_X pattern and we have text/label, use the text/label as value
+                    if (preg_match('/^option_\d+$/', $option['value'])) {
+                        if (isset($option['text'])) {
+                            $optionData['value'] = $option['text'];
+                        } elseif (isset($option['label'])) {
+                            $optionData['value'] = $option['label'];
+                        } else {
+                            $optionData['value'] = $option['value'];
+                        }
+                    } else {
+                        $optionData['value'] = $option['value'];
+                    }
                 } elseif (isset($option['id'])) {
                     // Use id as fallback for value if needed
                     $optionData['value'] = (string) $option['id']; 
@@ -233,6 +244,55 @@ class QuestionRepository extends BaseRepository implements QuestionRepositoryInt
                 
                 // Create the option
                 $question->options()->create($optionData);
+            }
+            
+            // Check for allowOther and allowNone flags in settings
+            $hasOtherOption = false;
+            $hasNoneOption = false;
+            $settings = null;
+            
+            if ($question->settings) {
+                if (is_string($question->settings)) {
+                    $settings = json_decode($question->settings, true);
+                } else {
+                    $settings = $question->settings;
+                }
+                
+                if (is_array($settings)) {
+                    $hasOtherOption = isset($settings['allowOther']) && $settings['allowOther'] === true;
+                    $hasNoneOption = isset($settings['allowNone']) && $settings['allowNone'] === true;
+                }
+            }
+            
+            // Get the highest order
+            $maxOrder = count($options);
+            
+            // Add "Other" option if enabled
+            if ($hasOtherOption) {
+                Log::info('Adding "Other" option to database', [
+                    'question_id' => $question->id
+                ]);
+                
+                $question->options()->create([
+                    'order' => $maxOrder,
+                    'value' => 'Lainnya',
+                    'label' => 'Lainnya'
+                ]);
+                
+                $maxOrder++;
+            }
+            
+            // Add "None" option if enabled
+            if ($hasNoneOption) {
+                Log::info('Adding "None" option to database', [
+                    'question_id' => $question->id
+                ]);
+                
+                $question->options()->create([
+                    'order' => $maxOrder,
+                    'value' => 'Tidak Ada',
+                    'label' => 'Tidak Ada'
+                ]);
             }
             
             return true;
