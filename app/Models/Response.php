@@ -18,11 +18,13 @@ class Response extends Model
      */
     protected $fillable = [
         'questionnaire_id',
-        'respondent_identifier',
+        'user_id',
+        'respondent_name',
+        'respondent_email',
+        'response_data',
+        'completed_at',
         'ip_address',
         'user_agent',
-        'started_at',
-        'completed_at',
     ];
 
     /**
@@ -31,12 +33,12 @@ class Response extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'started_at' => 'datetime',
+        'response_data' => 'json',
         'completed_at' => 'datetime',
     ];
 
     /**
-     * The questionnaire that this response belongs to.
+     * Get the questionnaire that this response is for.
      */
     public function questionnaire(): BelongsTo
     {
@@ -44,11 +46,30 @@ class Response extends Model
     }
 
     /**
-     * The answers submitted in this response.
+     * Get the user who submitted this response.
      */
-    public function answers(): HasMany
+    public function user(): BelongsTo
     {
-        return $this->hasMany(AnswerData::class);
+        return $this->belongsTo(User::class);
+    }
+    
+    /**
+     * Get the answer details for this response.
+     */
+    public function answerDetails(): HasMany
+    {
+        return $this->hasMany(AnswerDetail::class);
+    }
+    
+    /**
+     * Get a specific answer for a question.
+     *
+     * @param int $questionId
+     * @return AnswerDetail|null
+     */
+    public function getAnswerForQuestion(int $questionId): ?AnswerDetail
+    {
+        return $this->answerDetails()->where('question_id', $questionId)->first();
     }
 
     /**
