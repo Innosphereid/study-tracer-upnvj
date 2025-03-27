@@ -1,8 +1,31 @@
 <template>
     <div class="checkbox-question">
+        <!-- Info message about "None" option when selected -->
+        <div
+            v-if="noneSelected"
+            class="mb-3 text-sm rounded-md p-3 flex items-center bg-gray-50 text-gray-700 border border-gray-200"
+        >
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 mr-2 flex-shrink-0 text-gray-500"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+            >
+                <path
+                    fill-rule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                    clip-rule="evenodd"
+                />
+            </svg>
+            <span>
+                Anda memilih <span class="font-semibold">Tidak Ada</span>.
+                Validasi jumlah minimum pilihan tidak berlaku.
+            </span>
+        </div>
+
         <!-- Info message about selection requirements -->
         <div
-            v-if="showSelectionRequirements"
+            v-else-if="showSelectionRequirements"
             class="mb-3 text-sm rounded-md p-3 flex items-center"
             :class="[
                 isValidSelection
@@ -45,6 +68,12 @@
                 v-for="(option, index) in normalizedOptions"
                 :key="option.id || index"
                 class="relative flex items-start transition-transform hover:translate-x-1"
+                :class="{
+                    'opacity-50':
+                        noneSelected &&
+                        !isNoneOption(option) &&
+                        !isOptionSelected(option),
+                }"
             >
                 <div class="flex items-center h-6">
                     <input
@@ -54,12 +83,27 @@
                         :checked="isOptionSelected(option)"
                         class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer transition-all duration-200"
                         @change="toggleOption(option)"
+                        :disabled="noneSelected && !isNoneOption(option)"
+                        :class="{
+                            'border-indigo-600': isOptionSelected(option),
+                            'bg-gray-100':
+                                noneSelected && !isNoneOption(option),
+                        }"
                     />
                 </div>
                 <div class="ml-3 text-sm flex-1">
                     <label
                         :for="`option-${option.id || index}-${question.id}`"
                         class="font-medium text-gray-700 cursor-pointer hover:text-indigo-600 transition-colors duration-200"
+                        :class="{
+                            'text-gray-500':
+                                noneSelected &&
+                                !isNoneOption(option) &&
+                                !isOptionSelected(option),
+                            'font-bold':
+                                isNoneOption(option) ||
+                                isSelectAllOption(option),
+                        }"
                     >
                         {{ option.text }}
                     </label>
@@ -241,9 +285,15 @@ const currentSelectionCount = computed(() => {
 
 // Check if selection is valid
 const isValidSelection = computed(() => {
+    const values = props.modelValue?.values || [];
     const count = currentSelectionCount.value;
     const min = minSelectionCount.value;
     const max = maxSelectionCount.value;
+
+    // If "None" is selected, always consider valid regardless of min
+    if (values.some((v) => v === "none" || v === "Tidak Ada")) {
+        return true;
+    }
 
     if (min > 0 && count < min) {
         return false;
@@ -258,6 +308,11 @@ const isValidSelection = computed(() => {
 
 // Should we show selection requirements?
 const showSelectionRequirements = computed(() => {
+    const values = props.modelValue?.values || [];
+    // Don't show requirements if "None" is selected
+    if (values.some((v) => v === "none" || v === "Tidak Ada")) {
+        return false;
+    }
     return minSelectionCount.value > 0 || maxSelectionCount.value > 0;
 });
 
@@ -344,7 +399,8 @@ const toggleOption = (option) => {
                 values.indexOf(values.includes("none") ? "none" : "Tidak Ada"),
                 1
             );
-            // When unchecking "None", we need to validate min selection again
+
+            // After removing "None", check if we meet the minimum requirements
             if (
                 minSelectionCount.value > 0 &&
                 values.length < minSelectionCount.value
@@ -354,12 +410,10 @@ const toggleOption = (option) => {
                 localValidationError.value = "";
             }
         } else {
-            // Selecting "none" - clear all other selections
+            // Selecting "none" - clear all other selections and consider valid
             values.length = 0;
             values.push(value); // Keep the original value format
-
-            // "None" option is always valid, even if it doesn't meet min selection
-            localValidationError.value = "";
+            localValidationError.value = ""; // Always valid when "None" is selected
         }
 
         emit("update:modelValue", {
@@ -373,7 +427,7 @@ const toggleOption = (option) => {
         return;
     }
 
-    // If selecting an option but "none" is already selected, remove "none"
+    // If selecting a regular option but "none" is already selected, remove "none"
     if (values.includes("none") || values.includes("Tidak Ada")) {
         const noneIndex = values.findIndex(
             (v) => v === "none" || v === "Tidak Ada"
@@ -500,6 +554,12 @@ watch(
         if (newValues) {
             selectedValues.value = newValues;
 
+            // If "None" is selected, always valid
+            if (newValues.some((v) => v === "none" || v === "Tidak Ada")) {
+                localValidationError.value = "";
+                return;
+            }
+
             // Validate minimum selection
             if (
                 minSelectionCount.value > 0 &&
@@ -518,6 +578,15 @@ watch(
     },
     { immediate: true }
 );
+
+// Helper to check if an option is the "None" option
+const isNoneOption = (option) => {
+    return (
+        option.value === "none" ||
+        option.value === "Tidak Ada" ||
+        option.text === "Tidak Ada"
+    );
+};
 </script>
 
 <style scoped>
