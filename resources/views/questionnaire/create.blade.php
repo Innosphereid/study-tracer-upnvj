@@ -21,6 +21,20 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Page loaded');
     console.log('Builder element exists:', !!document.getElementById('questionnaire-builder'));
+    console.log('CSRF token exists:', !!document.querySelector('meta[name="csrf-token"]'));
+    console.log('CSRF token value:', document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
+    
+    // Log data questionnaire
+    const element = document.getElementById('questionnaire-builder');
+    if (element && element.dataset.questionnaire) {
+        try {
+            const data = JSON.parse(element.dataset.questionnaire);
+            console.log('Initial data loaded:', data);
+            console.log('ID type:', typeof data.id);
+        } catch (e) {
+            console.error('Error parsing questionnaire data:', e);
+        }
+    }
 
     // Cek apakah Vite dan JS sudah dimuat dengan benar
     console.log('Vite injected scripts:', document.querySelectorAll('script[type="module"]').length);
