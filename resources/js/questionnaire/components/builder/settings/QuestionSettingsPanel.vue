@@ -152,6 +152,17 @@ const updateQuestion = () => {
         text: questionData.value.text,
         helpText: questionData.value.helpText,
         required: questionData.value.required,
+        // Update settings object to make sure it's saved to the database
+        settings: {
+            ...(props.question.settings || {}),
+            text: questionData.value.text,
+            helpText: questionData.value.helpText,
+            required: questionData.value.required,
+        },
+        // Also update backend field names for proper database storage
+        title: questionData.value.text,
+        description: questionData.value.helpText,
+        is_required: questionData.value.required,
     });
 };
 </script>
