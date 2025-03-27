@@ -148,94 +148,131 @@ class QuestionnaireService implements QuestionnaireServiceInterface
      */
     public function updateQuestionnaire(int $id, array $data): bool
     {
-        Log::info('Updating questionnaire', ['id' => $id]);
+        Log::info('Updating questionnaire', ['id' => $id, 'data_keys' => array_keys($data)]);
         
-        // Remove sections and questions from the data as they will be handled separately
-        $sectionData = $data['sections'] ?? null;
-        unset($data['sections']);
-        
-        $updated = $this->questionnaireRepository->update($id, $data);
-        
-        // Update sections if provided
-        if ($sectionData && is_array($sectionData)) {
-            // Get existing sections
-            $existingSections = $this->sectionRepository->getByQuestionnaireId($id);
-            $existingSectionIds = $existingSections->pluck('id')->toArray();
-            $updatedSectionIds = [];
+        try {
+            // Validate that the questionnaire exists
+            $questionnaire = $this->questionnaireRepository->find($id);
+            if (!$questionnaire) {
+                Log::error('Cannot update: Questionnaire not found', ['id' => $id]);
+                return false;
+            }
             
-            foreach ($sectionData as $order => $section) {
-                if (isset($section['id']) && in_array($section['id'], $existingSectionIds)) {
-                    // Update existing section
-                    $section['order'] = $order;
-                    $this->updateSection($section['id'], $section);
-                    $updatedSectionIds[] = $section['id'];
+            $updateData = [];
+            
+            // Update basic fields if provided
+            if (isset($data['title'])) {
+                $updateData['title'] = $data['title'];
+                Log::debug('Updating questionnaire title', ['title' => $data['title']]);
+            }
+            
+            if (isset($data['description'])) {
+                $updateData['description'] = $data['description'];
+            }
+            
+            if (isset($data['slug'])) {
+                $updateData['slug'] = $data['slug'];
+            }
+            
+            if (isset($data['status'])) {
+                $updateData['status'] = $data['status'];
+            }
+            
+            if (isset($data['start_date'])) {
+                $updateData['start_date'] = $data['start_date'];
+            }
+            
+            if (isset($data['end_date'])) {
+                $updateData['end_date'] = $data['end_date'];
+            }
+            
+            if (isset($data['is_template'])) {
+                $updateData['is_template'] = $data['is_template'];
+            }
+            
+            if (isset($data['settings'])) {
+                $updateData['settings'] = is_string($data['settings']) 
+                    ? $data['settings'] 
+                    : json_encode($data['settings']);
+                Log::debug('Updating questionnaire settings');
+            }
+            
+            // Update questionnaire with basic data first
+            if (!empty($updateData)) {
+                Log::debug('Updating questionnaire basic data', ['update_data' => $updateData]);
+                $updated = $this->questionnaireRepository->update($id, $updateData);
+                if (!$updated) {
+                    Log::error('Failed to update questionnaire basic data', ['id' => $id]);
+                    return false;
+                }
+            } else {
+                $updated = true;
+            }
+            
+            // Process sections and their questions if provided
+            if (isset($data['sections']) && is_array($data['sections'])) {
+                Log::info('Processing sections for update', [
+                    'questionnaire_id' => $id,
+                    'section_count' => count($data['sections'])
+                ]);
+                
+                // Log the first section structure to help with debugging
+                if (!empty($data['sections'])) {
+                    Log::debug('First section data structure', [
+                        'first_section' => $data['sections'][0],
+                        'has_questions' => isset($data['sections'][0]['questions']),
+                        'question_count' => isset($data['sections'][0]['questions']) ? count($data['sections'][0]['questions']) : 0
+                    ]);
                     
-                    // Update questions if provided
-                    if (isset($section['questions']) && is_array($section['questions'])) {
-                        $existingQuestions = $this->questionRepository->getBySectionId($section['id']);
-                        $existingQuestionIds = $existingQuestions->pluck('id')->toArray();
-                        $updatedQuestionIds = [];
-                        
-                        foreach ($section['questions'] as $qOrder => $question) {
-                            $question['order'] = $qOrder;
-                            
-                            if (isset($question['id']) && in_array($question['id'], $existingQuestionIds)) {
-                                // Update existing question
-                                $this->updateQuestion($question['id'], $question);
-                                $updatedQuestionIds[] = $question['id'];
-                                
-                                // Update options if provided
-                                if (isset($question['options']) && is_array($question['options'])) {
-                                    $this->setQuestionOptions($question['id'], $question['options']);
-                                }
-                            } else {
-                                // Add new question
-                                $newQuestion = $this->addQuestion($section['id'], $question);
-                                
-                                // Add options if provided
-                                if (isset($question['options']) && is_array($question['options'])) {
-                                    $this->setQuestionOptions($newQuestion->id, $question['options']);
-                                }
-                            }
-                        }
-                        
-                        // Delete questions that were not updated
-                        $questionsToDelete = array_diff($existingQuestionIds, $updatedQuestionIds);
-                        foreach ($questionsToDelete as $questionId) {
-                            $this->deleteQuestion($questionId);
-                        }
+                    // Log the first question if available
+                    if (isset($data['sections'][0]['questions']) && !empty($data['sections'][0]['questions'])) {
+                        Log::debug('First question data structure', [
+                            'first_question' => $data['sections'][0]['questions'][0]
+                        ]);
                     }
-                } else {
-                    // Add new section
-                    $section['order'] = $order;
-                    $section['questionnaire_id'] = $id;
-                    $newSection = $this->addSection($id, $section);
-                    
-                    // Add questions if provided
-                    if (isset($section['questions']) && is_array($section['questions'])) {
-                        foreach ($section['questions'] as $qOrder => $question) {
-                            $question['order'] = $qOrder;
-                            $newQuestion = $this->addQuestion($newSection->id, $question);
-                            
-                            // Add options if provided
-                            if (isset($question['options']) && is_array($question['options'])) {
-                                $this->setQuestionOptions($newQuestion->id, $question['options']);
-                            }
-                        }
-                    }
+                }
+                
+                try {
+                    // Process sections and questions
+                    $this->processAndSaveSections($id, $data['sections']);
+                } catch (\Exception $e) {
+                    Log::error('Error processing sections', [
+                        'exception' => get_class($e),
+                        'message' => $e->getMessage(),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    return false;
                 }
             }
             
-            // Delete sections that were not updated
-            $sectionsToDelete = array_diff($existingSectionIds, $updatedSectionIds);
-            foreach ($sectionsToDelete as $sectionId) {
-                $this->deleteSection($sectionId);
+            // Always update the JSON representation after any changes
+            try {
+                $questionnaire->refresh();
+                $questionnaire->storeAsJson();
+                Log::info('Successfully updated JSON representation for questionnaire', ['id' => $id]);
+            } catch (\Exception $e) {
+                Log::error('Error updating JSON representation', [
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]);
+                // Don't fail the entire update if only JSON storage fails
             }
+            
+            return $updated;
+        } catch (\Exception $e) {
+            Log::error('Unhandled exception in updateQuestionnaire', [
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return false;
         }
-        
-        Log::info('Questionnaire updated successfully', ['id' => $id]);
-        
-        return $updated;
     }
     
     /**
@@ -334,27 +371,81 @@ class QuestionnaireService implements QuestionnaireServiceInterface
      */
     public function addQuestion(int $sectionId, array $questionData): Question
     {
-        Log::info('Adding question to section', ['sectionId' => $sectionId]);
+        Log::info('Adding question to section', [
+            'sectionId' => $sectionId,
+            'question_type' => $questionData['question_type'] ?? 'unknown'
+        ]);
         
-        // Dapatkan questionnaire_id dari section
-        $section = $this->sectionRepository->find($sectionId);
-        if (!$section) {
-            Log::error('Cannot add question: Section not found', ['sectionId' => $sectionId]);
-            throw new \Exception('Section not found');
+        try {
+            // Get section to verify it exists and to get questionnaire_id
+            $section = $this->sectionRepository->find($sectionId);
+            if (!$section) {
+                Log::error('Cannot add question: Section not found', ['sectionId' => $sectionId]);
+                throw new \Exception('Section not found');
+            }
+            
+            // Ensure section_id and questionnaire_id are set
+            $questionData['section_id'] = $sectionId;
+            $questionData['questionnaire_id'] = $section->questionnaire_id;
+            
+            // Log the data we're about to pass to the repository
+            Log::debug('Creating question with data', [
+                'question_data' => array_diff_key($questionData, ['options' => []]),
+                'has_options' => isset($questionData['options'])
+            ]);
+            
+            // Remove options from question data to avoid conflicts
+            $options = isset($questionData['options']) ? $questionData['options'] : null;
+            unset($questionData['options']);
+            
+            /** @var Question $question */
+            $question = $this->questionRepository->create($questionData);
+            
+            // Handle options if present
+            if ($options && is_array($options) && !empty($options)) {
+                Log::debug('Setting options for new question', [
+                    'question_id' => $question->id,
+                    'option_count' => count($options)
+                ]);
+                
+                $this->setQuestionOptions($question->id, $options);
+            }
+            
+            // Update JSON representation
+            if ($section->questionnaire) {
+                try {
+                    $section->questionnaire->storeAsJson();
+                    Log::debug('Updated questionnaire JSON representation', [
+                        'questionnaire_id' => $section->questionnaire_id
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to update JSON representation', [
+                        'questionnaire_id' => $section->questionnaire_id,
+                        'exception' => get_class($e),
+                        'message' => $e->getMessage()
+                    ]);
+                    // Don't fail the entire operation if only JSON storage fails
+                }
+            }
+            
+            Log::info('Question created successfully', [
+                'question_id' => $question->id,
+                'section_id' => $sectionId,
+                'question_type' => $question->question_type
+            ]);
+            
+            return $question;
+        } catch (\Exception $e) {
+            Log::error('Error creating question', [
+                'section_id' => $sectionId,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
         }
-        
-        $questionData['section_id'] = $sectionId;
-        $questionData['questionnaire_id'] = $section->questionnaire_id;
-        
-        /** @var Question $question */
-        $question = $this->questionRepository->create($questionData);
-        
-        // Update JSON representation
-        if ($section->questionnaire) {
-            $section->questionnaire->storeAsJson();
-        }
-        
-        return $question;
     }
     
     /**
@@ -504,49 +595,139 @@ class QuestionnaireService implements QuestionnaireServiceInterface
             'section_count' => count($sectionsData)
         ]);
         
-        // Get existing sections to determine which ones to update vs create
-        $existingSections = $this->sectionRepository->getByQuestionnaireId($questionnaireId);
-        $existingSectionIds = $existingSections->pluck('id')->toArray();
-        $updatedSectionIds = [];
-        
-        foreach ($sectionsData as $order => $sectionData) {
-            // Determine if we need to update or create
-            $sectionId = null;
-            if (isset($sectionData['id']) && is_numeric($sectionData['id']) && in_array($sectionData['id'], $existingSectionIds)) {
-                // Update existing section
-                $sectionId = $sectionData['id'];
-                $sectionData['order'] = $order;
-                $this->updateSection($sectionId, $sectionData);
-                $updatedSectionIds[] = $sectionId;
+        try {
+            // Get existing sections to determine which ones to update vs create
+            $existingSections = $this->sectionRepository->getByQuestionnaireId($questionnaireId);
+            $existingSectionIds = $existingSections->pluck('id')->toArray();
+            Log::debug('Existing section IDs', ['ids' => $existingSectionIds]);
+            
+            $updatedSectionIds = [];
+            
+            foreach ($sectionsData as $order => $sectionData) {
+                // Log the section data to help with debugging
+                Log::debug('Processing section', [
+                    'order' => $order, 
+                    'has_id' => isset($sectionData['id']),
+                    'id_type' => isset($sectionData['id']) ? gettype($sectionData['id']) : 'not set',
+                    'id_value' => isset($sectionData['id']) ? $sectionData['id'] : 'not set'
+                ]);
                 
-                Log::info('Updated existing section', ['section_id' => $sectionId]);
-            } else {
-                // Create new section
-                $sectionData['order'] = $order;
-                $section = $this->addSection($questionnaireId, $sectionData);
-                $sectionId = $section->id;
-                $updatedSectionIds[] = $sectionId;
+                // Determine if we need to update or create
+                $sectionId = null;
+                if (isset($sectionData['id']) && is_numeric($sectionData['id']) && in_array($sectionData['id'], $existingSectionIds)) {
+                    // Update existing section
+                    $sectionId = $sectionData['id'];
+                    $sectionData['order'] = $order;
+                    
+                    Log::debug('Updating existing section', ['section_id' => $sectionId, 'section_data' => array_diff_key($sectionData, ['questions' => ''])]);
+                    
+                    try {
+                        $this->updateSection($sectionId, $sectionData);
+                        $updatedSectionIds[] = $sectionId;
+                        Log::info('Updated existing section', ['section_id' => $sectionId]);
+                    } catch (\Exception $e) {
+                        Log::error('Failed to update section', [
+                            'section_id' => $sectionId,
+                            'exception' => get_class($e),
+                            'message' => $e->getMessage(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine()
+                        ]);
+                        // Continue processing other sections even if one fails
+                    }
+                } else {
+                    // Create new section
+                    $sectionData['order'] = $order;
+                    
+                    Log::debug('Creating new section', ['section_data' => array_diff_key($sectionData, ['questions' => ''])]);
+                    
+                    try {
+                        $section = $this->addSection($questionnaireId, $sectionData);
+                        $sectionId = $section->id;
+                        $updatedSectionIds[] = $sectionId;
+                        Log::info('Created new section', ['section_id' => $sectionId]);
+                    } catch (\Exception $e) {
+                        Log::error('Failed to create section', [
+                            'exception' => get_class($e),
+                            'message' => $e->getMessage(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine()
+                        ]);
+                        // Continue processing other sections even if one fails
+                        continue;
+                    }
+                }
                 
-                Log::info('Created new section', ['section_id' => $sectionId]);
+                // Process questions for this section
+                if (isset($sectionData['questions']) && is_array($sectionData['questions'])) {
+                    Log::debug('Processing questions for section', [
+                        'section_id' => $sectionId,
+                        'question_count' => count($sectionData['questions'])
+                    ]);
+                    
+                    try {
+                        $this->processAndSaveQuestions($sectionId, $sectionData['questions']);
+                        Log::info('Successfully processed questions for section', ['section_id' => $sectionId]);
+                    } catch (\Exception $e) {
+                        Log::error('Error processing questions for section', [
+                            'section_id' => $sectionId,
+                            'exception' => get_class($e),
+                            'message' => $e->getMessage(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine()
+                        ]);
+                        // Continue processing other sections even if one fails
+                    }
+                } else {
+                    Log::debug('No questions to process for section', ['section_id' => $sectionId]);
+                }
             }
             
-            // Process questions for this section
-            if (isset($sectionData['questions']) && is_array($sectionData['questions'])) {
-                $this->processAndSaveQuestions($sectionId, $sectionData['questions']);
+            // Remove sections that weren't updated (they've been deleted in the UI)
+            $sectionsToDelete = array_diff($existingSectionIds, $updatedSectionIds);
+            Log::debug('Sections to delete', ['ids' => $sectionsToDelete]);
+            
+            foreach ($sectionsToDelete as $sectionIdToDelete) {
+                try {
+                    $this->deleteSection($sectionIdToDelete);
+                    Log::info('Deleted section that was not in updated data', ['section_id' => $sectionIdToDelete]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to delete section', [
+                        'section_id' => $sectionIdToDelete,
+                        'exception' => get_class($e),
+                        'message' => $e->getMessage(),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine()
+                    ]);
+                }
             }
-        }
-        
-        // Remove sections that weren't updated (they've been deleted in the UI)
-        $sectionsToDelete = array_diff($existingSectionIds, $updatedSectionIds);
-        foreach ($sectionsToDelete as $sectionIdToDelete) {
-            $this->deleteSection($sectionIdToDelete);
-            Log::info('Deleted section that was not in updated data', ['section_id' => $sectionIdToDelete]);
-        }
-        
-        // Generate JSON representation after processing all sections
-        $questionnaire = $this->questionnaireRepository->find($questionnaireId);
-        if ($questionnaire) {
-            $questionnaire->storeAsJson();
+            
+            // Generate JSON representation after processing all sections
+            $questionnaire = $this->questionnaireRepository->find($questionnaireId);
+            if ($questionnaire) {
+                try {
+                    $questionnaire->storeAsJson();
+                    Log::info('Updated JSON representation after processing sections', ['questionnaire_id' => $questionnaireId]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to update JSON representation after processing sections', [
+                        'questionnaire_id' => $questionnaireId,
+                        'exception' => get_class($e),
+                        'message' => $e->getMessage(),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine()
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Unhandled exception in processAndSaveSections', [
+                'questionnaire_id' => $questionnaireId,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e; // Re-throw to be caught by the caller
         }
     }
     
@@ -563,7 +744,7 @@ class QuestionnaireService implements QuestionnaireServiceInterface
         $section = $this->sectionRepository->find($sectionId);
         if (!$section) {
             Log::error('Cannot process questions: Section not found', ['sectionId' => $sectionId]);
-            return;
+            throw new \Exception('Section not found with ID: ' . $sectionId);
         }
         
         $questionnaireId = $section->questionnaire_id;
@@ -574,51 +755,146 @@ class QuestionnaireService implements QuestionnaireServiceInterface
             'question_count' => count($questionsData)
         ]);
         
+        // Log structure of first question to help with debugging
+        if (!empty($questionsData)) {
+            Log::debug('First question data structure', [
+                'first_question' => $questionsData[0]
+            ]);
+        }
+        
         // Get existing questions to determine which ones to update vs create
         $existingQuestions = $this->questionRepository->getBySectionId($sectionId);
         $existingQuestionIds = $existingQuestions->pluck('id')->toArray();
+        Log::debug('Existing question IDs', ['ids' => $existingQuestionIds]);
+        
         $updatedQuestionIds = [];
         
-        foreach ($questionsData as $order => $questionData) {
-            // Convert data from frontend format to backend format
-            $questionData = $this->normalizeQuestionData($questionData, $order);
-            
-            // Add questionnaire_id to the question data
-            $questionData['questionnaire_id'] = $questionnaireId;
-            
-            // Determine if we need to update or create
-            if (isset($questionData['id']) && is_numeric($questionData['id']) && in_array($questionData['id'], $existingQuestionIds)) {
-                // Update existing question
-                $questionId = $questionData['id'];
-                $this->updateQuestion($questionId, $questionData);
-                $updatedQuestionIds[] = $questionId;
+        try {
+            foreach ($questionsData as $order => $questionData) {
+                Log::debug('Processing question at order', [
+                    'order' => $order,
+                    'has_id' => isset($questionData['id']),
+                    'id_type' => isset($questionData['id']) ? gettype($questionData['id']) : 'not set',
+                    'id_value' => isset($questionData['id']) ? $questionData['id'] : 'not set'
+                ]);
                 
-                // Update options if provided
-                if (isset($questionData['options']) && is_array($questionData['options'])) {
-                    $this->setQuestionOptions($questionId, $questionData['options']);
+                // Convert data from frontend format to backend format
+                $questionData = $this->normalizeQuestionData($questionData, $order);
+                
+                // Add questionnaire_id and section_id to the question data
+                $questionData['questionnaire_id'] = $questionnaireId;
+                $questionData['section_id'] = $sectionId;
+                
+                // Determine if we need to update or create
+                if (isset($questionData['id']) && is_numeric($questionData['id']) && in_array($questionData['id'], $existingQuestionIds)) {
+                    // Update existing question
+                    $questionId = $questionData['id'];
+                    Log::debug('Updating existing question', [
+                        'question_id' => $questionId,
+                        'question_data' => array_diff_key($questionData, ['options' => []])
+                    ]);
+                    
+                    try {
+                        $success = $this->updateQuestion($questionId, $questionData);
+                        if (!$success) {
+                            Log::error('Failed to update question', [
+                                'question_id' => $questionId
+                            ]);
+                            continue;
+                        }
+                        
+                        $updatedQuestionIds[] = $questionId;
+                        
+                        // Update options if provided
+                        if (isset($questionData['options']) && is_array($questionData['options'])) {
+                            Log::debug('Updating question options', [
+                                'question_id' => $questionId,
+                                'option_count' => count($questionData['options'])
+                            ]);
+                            
+                            $this->setQuestionOptions($questionId, $questionData['options']);
+                        }
+                        
+                        Log::info('Updated existing question', ['question_id' => $questionId]);
+                    } catch (\Exception $e) {
+                        Log::error('Error updating question', [
+                            'question_id' => $questionId,
+                            'exception' => get_class($e),
+                            'message' => $e->getMessage(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine()
+                        ]);
+                        // Continue with other questions
+                    }
+                } else {
+                    // Create new question
+                    try {
+                        Log::debug('Creating new question', [
+                            'section_id' => $sectionId,
+                            'question_data' => array_diff_key($questionData, ['options' => []])
+                        ]);
+                        
+                        $question = $this->addQuestion($sectionId, $questionData);
+                        $questionId = $question->id;
+                        $updatedQuestionIds[] = $questionId;
+                        
+                        // Create options if provided
+                        if (isset($questionData['options']) && is_array($questionData['options'])) {
+                            Log::debug('Setting options for new question', [
+                                'question_id' => $questionId,
+                                'option_count' => count($questionData['options'])
+                            ]);
+                            
+                            $this->setQuestionOptions($questionId, $questionData['options']);
+                        }
+                        
+                        Log::info('Created new question', [
+                            'question_id' => $questionId,
+                            'question_type' => $questionData['question_type']
+                        ]);
+                    } catch (\Exception $e) {
+                        Log::error('Error creating question', [
+                            'exception' => get_class($e),
+                            'message' => $e->getMessage(),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine()
+                        ]);
+                        // Continue with other questions
+                    }
                 }
-                
-                Log::info('Updated existing question', ['question_id' => $questionId]);
-            } else {
-                // Create new question
-                $question = $this->addQuestion($sectionId, $questionData);
-                $questionId = $question->id;
-                $updatedQuestionIds[] = $questionId;
-                
-                // Create options if provided
-                if (isset($questionData['options']) && is_array($questionData['options'])) {
-                    $this->setQuestionOptions($questionId, $questionData['options']);
-                }
-                
-                Log::info('Created new question', ['question_id' => $questionId]);
             }
-        }
-        
-        // Remove questions that weren't updated (they've been deleted in the UI)
-        $questionsToDelete = array_diff($existingQuestionIds, $updatedQuestionIds);
-        foreach ($questionsToDelete as $questionIdToDelete) {
-            $this->deleteQuestion($questionIdToDelete);
-            Log::info('Deleted question that was not in updated data', ['question_id' => $questionIdToDelete]);
+            
+            // Remove questions that weren't updated (they've been deleted in the UI)
+            $questionsToDelete = array_diff($existingQuestionIds, $updatedQuestionIds);
+            Log::debug('Questions to delete', ['ids' => $questionsToDelete]);
+            
+            foreach ($questionsToDelete as $questionIdToDelete) {
+                try {
+                    $this->deleteQuestion($questionIdToDelete);
+                    Log::info('Deleted question that was not in updated data', [
+                        'question_id' => $questionIdToDelete
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Error deleting question', [
+                        'question_id' => $questionIdToDelete,
+                        'exception' => get_class($e),
+                        'message' => $e->getMessage(),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine()
+                    ]);
+                    // Continue with other deletions
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Unhandled exception in processAndSaveQuestions', [
+                'section_id' => $sectionId,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
         }
     }
     
@@ -631,18 +907,34 @@ class QuestionnaireService implements QuestionnaireServiceInterface
      */
     private function normalizeQuestionData(array $questionData, int $order): array
     {
+        // Log the raw data coming in to help with debugging
+        Log::debug('Normalizing question data', [
+            'raw_data' => $questionData,
+            'order' => $order,
+            'id_type' => isset($questionData['id']) ? gettype($questionData['id']) : 'not set',
+            'id_value' => isset($questionData['id']) ? $questionData['id'] : 'not set'
+        ]);
+        
         $result = [
             'order' => $order
         ];
         
-        // Handle ID (only take numeric IDs, ignore UUIDs from frontend)
-        if (isset($questionData['id']) && is_numeric($questionData['id'])) {
-            $result['id'] = $questionData['id'];
+        // Handle ID - only take numeric IDs, ignore UUIDs from frontend
+        if (isset($questionData['id'])) {
+            // Check if it's a numeric ID (from database)
+            if (is_numeric($questionData['id'])) {
+                $result['id'] = $questionData['id'];
+                Log::debug('Using existing numeric ID', ['id' => $questionData['id']]);
+            } else {
+                // It's a UUID or other temporary ID - log but don't include
+                Log::debug('Ignoring temporary ID', ['id' => $questionData['id']]);
+            }
         }
         
         // Handle question type
         if (isset($questionData['question_type'])) {
             $result['question_type'] = $questionData['question_type'];
+            Log::debug('Using question_type from data', ['type' => $questionData['question_type']]);
         } elseif (isset($questionData['type'])) {
             // Map Vue component question types to database question types
             $typeMap = [
@@ -663,7 +955,15 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                 'likert' => 'matrix'
             ];
             
-            $result['question_type'] = $typeMap[$questionData['type']] ?? 'text';
+            $frontendType = $questionData['type'];
+            $result['question_type'] = isset($typeMap[$frontendType]) ? $typeMap[$frontendType] : 'text';
+            Log::debug('Mapped frontend type to backend type', [
+                'frontend_type' => $frontendType,
+                'backend_type' => $result['question_type']
+            ]);
+        } else {
+            Log::warning('No question type provided, defaulting to text');
+            $result['question_type'] = 'text';
         }
         
         // Handle title/text
@@ -671,6 +971,9 @@ class QuestionnaireService implements QuestionnaireServiceInterface
             $result['title'] = $questionData['title'];
         } elseif (isset($questionData['text'])) {
             $result['title'] = $questionData['text'];
+        } else {
+            $result['title'] = 'Untitled Question'; // Provide a default
+            Log::warning('No title provided for question, using default');
         }
         
         // Handle description/helpText
@@ -685,12 +988,20 @@ class QuestionnaireService implements QuestionnaireServiceInterface
             $result['is_required'] = $questionData['is_required'];
         } elseif (isset($questionData['required'])) {
             $result['is_required'] = $questionData['required'];
+        } else {
+            $result['is_required'] = false; // Default to not required
         }
         
         // Handle options
         if (isset($questionData['options']) && is_array($questionData['options'])) {
             $options = [];
             foreach ($questionData['options'] as $optionOrder => $option) {
+                // Log option structure
+                Log::debug('Processing option', [
+                    'option_data' => $option,
+                    'option_order' => $optionOrder
+                ]);
+                
                 $normalizedOption = [
                     'order' => $optionOrder
                 ];
@@ -700,9 +1011,12 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                     $normalizedOption['id'] = $option['id'];
                 }
                 
-                // Handle value
-                if (isset($option['value'])) {
+                // Handle value - ensure it's not empty
+                if (isset($option['value']) && !empty($option['value'])) {
                     $normalizedOption['value'] = $option['value'];
+                } elseif (isset($option['text'])) {
+                    // If no value but text exists, use that as the value
+                    $normalizedOption['value'] = $option['text'];
                 }
                 
                 // Handle label/text
@@ -710,9 +1024,15 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                     $normalizedOption['label'] = $option['label'];
                 } elseif (isset($option['text'])) {
                     $normalizedOption['label'] = $option['text'];
+                } elseif (isset($normalizedOption['value'])) {
+                    // If no label but value exists, use that as the label
+                    $normalizedOption['label'] = $normalizedOption['value'];
                 }
                 
-                $options[] = $normalizedOption;
+                // Only add options that have at least a value or label
+                if (!empty($normalizedOption['value']) || !empty($normalizedOption['label'])) {
+                    $options[] = $normalizedOption;
+                }
             }
             $result['options'] = $options;
         }
@@ -728,6 +1048,8 @@ class QuestionnaireService implements QuestionnaireServiceInterface
         if (!empty($settings)) {
             $result['settings'] = json_encode($settings);
         }
+        
+        Log::debug('Normalized question data result', ['result' => $result]);
         
         return $result;
     }
