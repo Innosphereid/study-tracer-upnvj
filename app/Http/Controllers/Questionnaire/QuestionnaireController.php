@@ -282,6 +282,37 @@ class QuestionnaireController extends Controller
                         if (!isset($question['required']) && isset($question['is_required'])) {
                             $question['required'] = (bool)$question['is_required'];
                         }
+                        
+                        // Process question settings
+                        if (isset($question['settings'])) {
+                            // If settings is a string, decode it
+                            if (is_string($question['settings'])) {
+                                $questionSettings = json_decode($question['settings'], true);
+                                $question['settings'] = $questionSettings;
+                            }
+                            
+                            // Use settings values if frontend properties are not set
+                            if (isset($question['settings']['required']) && !isset($question['required'])) {
+                                $question['required'] = (bool)$question['settings']['required'];
+                            }
+                            
+                            if (isset($question['settings']['text']) && !isset($question['text'])) {
+                                $question['text'] = $question['settings']['text'];
+                            }
+                            
+                            if (isset($question['settings']['helpText']) && !isset($question['helpText'])) {
+                                $question['helpText'] = $question['settings']['helpText'];
+                            }
+                            
+                            // Special handling for specific question types
+                            if (isset($question['settings']) && is_array($question['settings'])) {
+                                foreach ($question['settings'] as $key => $value) {
+                                    if (!isset($question[$key]) && $key !== 'text' && $key !== 'helpText' && $key !== 'required') {
+                                        $question[$key] = $value;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
