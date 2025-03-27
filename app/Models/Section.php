@@ -38,4 +38,19 @@ class Section extends Model
     {
         return $this->hasMany(Question::class)->orderBy('order');
     }
+
+    /**
+     * The "booted" method of the model.
+     *
+     * @return void
+     */
+    protected static function booted()
+    {
+        // When a section is deleted, also delete all its questions
+        static::deleting(function ($section) {
+            $section->questions()->get()->each(function ($question) {
+                $question->delete();
+            });
+        });
+    }
 } 
