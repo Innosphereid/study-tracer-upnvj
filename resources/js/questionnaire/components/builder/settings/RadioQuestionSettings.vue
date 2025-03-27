@@ -23,10 +23,19 @@
                                 <input
                                     type="text"
                                     :id="`option-${index}`"
-                                    v-model="option.text"
+                                    :value="option.text"
                                     class="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                                     placeholder="Teks Opsi"
-                                    @change="updateQuestion"
+                                    @input="
+                                        (e) => (option.text = e.target.value)
+                                    "
+                                    @change="
+                                        (e) =>
+                                            updateOptionText(
+                                                index,
+                                                e.target.value
+                                            )
+                                    "
                                 />
                             </div>
 
@@ -180,10 +189,11 @@ watch(
 
 // Add a new option
 const addOption = () => {
+    const optionText = `Opsi ${localOptions.value.length + 1}`;
     const newOption = {
         id: uuidv4(),
-        text: `Opsi ${localOptions.value.length + 1}`,
-        value: `option_${localOptions.value.length + 1}`,
+        text: optionText,
+        value: optionText,
     };
 
     localOptions.value.push(newOption);
@@ -218,5 +228,20 @@ const updateQuestion = () => {
         allowNone: localAllowNone.value,
         optionsOrder: localOptionsOrder.value,
     });
+};
+
+// Add a function to update option text and value when option text changes
+const updateOptionText = (index, newText) => {
+    const option = localOptions.value[index];
+
+    // Update the text
+    option.text = newText;
+
+    // Update the value to match the text if it followed the "option_X" pattern
+    if (option.value.match(/^option_\d+$/)) {
+        option.value = newText;
+    }
+
+    updateQuestion();
 };
 </script>
