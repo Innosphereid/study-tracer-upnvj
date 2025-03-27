@@ -161,7 +161,7 @@ class QuestionRepository extends BaseRepository implements QuestionRepositoryInt
      */
     public function setOptions(int $questionId, array $options): bool
     {
-        Log::info('Setting options for question', ['questionId' => $questionId]);
+        Log::info('Setting options for question', ['questionId' => $questionId, 'options_count' => count($options)]);
         
         /** @var Question|null $question */
         $question = $this->find($questionId);
@@ -185,15 +185,54 @@ class QuestionRepository extends BaseRepository implements QuestionRepositoryInt
             // Delete existing options
             $question->options()->delete();
             
+            Log::info('Deleted existing options, creating new options', [
+                'question_id' => $question->id,
+                'options_count' => count($options)
+            ]);
+            
             // Create new options
             foreach ($options as $order => $option) {
-                if (!isset($option['value']) || !isset($option['label'])) {
-                    Log::warning('Invalid option data', ['option' => $option]);
-                    continue;
+                // Normalize option data
+                $optionData = [];
+                
+                // Set order
+                $optionData['order'] = is_numeric($order) ? $order : (isset($option['order']) ? $option['order'] : 0);
+                
+                // Handle value field (required)
+                if (isset($option['value'])) {
+                    $optionData['value'] = $option['value'];
+                } elseif (isset($option['id'])) {
+                    // Use id as fallback for value if needed
+                    $optionData['value'] = (string) $option['id']; 
+                } else {
+                    // Generate a simple value if none provided
+                    $optionData['value'] = 'option_' . ($order + 1);
                 }
                 
-                $option['order'] = $order;
-                $question->options()->create($option);
+                // Handle label field (required)
+                if (isset($option['label'])) {
+                    $optionData['label'] = $option['label'];
+                } elseif (isset($option['text'])) {
+                    $optionData['label'] = $option['text'];
+                } else {
+                    // Use value as fallback for label
+                    $optionData['label'] = $optionData['value'];
+                }
+                
+                // Additional fields can be included
+                foreach ($option as $key => $value) {
+                    if (!in_array($key, ['order', 'value', 'label', 'text']) && !is_null($value)) {
+                        $optionData[$key] = $value;
+                    }
+                }
+                
+                Log::info('Creating option', [
+                    'question_id' => $question->id,
+                    'option_data' => $optionData
+                ]);
+                
+                // Create the option
+                $question->options()->create($optionData);
             }
             
             return true;
