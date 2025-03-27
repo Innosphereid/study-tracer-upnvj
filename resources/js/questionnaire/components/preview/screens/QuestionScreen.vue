@@ -41,7 +41,7 @@
             <div class="space-y-6 questions-container">
                 <TransitionGroup name="question">
                     <div
-                        v-for="(question, index) in currentSection.questions"
+                        v-for="(question, index) in paginatedQuestions"
                         :key="question.id"
                         class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
                     >
@@ -51,7 +51,7 @@
                                 <span
                                     class="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-800 text-sm font-medium mr-3"
                                 >
-                                    {{ index + 1 }}
+                                    {{ getQuestionDisplayNumber(index) }}
                                 </span>
                                 <div>
                                     <h3
@@ -87,6 +87,26 @@
                     </div>
                 </TransitionGroup>
             </div>
+
+            <!-- Question Pagination - Only show if section has pagination -->
+            <div
+                v-if="shouldShowPagination"
+                class="flex justify-center mt-6 space-x-2"
+            >
+                <button
+                    v-for="page in totalPages"
+                    :key="`page-${page}`"
+                    class="px-3 py-1 rounded-md text-sm"
+                    :class="
+                        page === currentPage
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                    "
+                    @click="currentPage = page"
+                >
+                    {{ page }}
+                </button>
+            </div>
         </div>
 
         <!-- Navigation Buttons -->
@@ -94,11 +114,12 @@
             class="mt-10 flex justify-between items-center navigation-container"
             :class="{ 'animate-fade-in-delayed': animateSection }"
         >
+            <!-- Previous button - Show if on a page beyond first OR in previous section -->
             <button
-                v-if="hasPreviousSection()"
+                v-if="canGoBack"
                 type="button"
                 class="btn-prev inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
-                @click="$emit('previous')"
+                @click="goBack"
             >
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -118,11 +139,12 @@
             </button>
             <div v-else></div>
 
+            <!-- Next/Finish button - Show "Next" if more pages or sections, "Finish" if on last page of last section -->
             <button
-                v-if="hasNextSection()"
+                v-if="hasMoreContent"
                 type="button"
                 class="btn-next inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
-                @click="$emit('next')"
+                @click="goNext"
             >
                 Selanjutnya
                 <svg
@@ -200,10 +222,95 @@ const props = defineProps({
     },
 });
 
-defineEmits(["next", "previous", "finish"]);
+const emit = defineEmits(["next", "previous", "finish"]);
 
 // UI State
 const animateSection = ref(false);
+const currentPage = ref(1);
+
+// Get questions per page setting from section settings
+const questionsPerPage = computed(() => {
+    if (props.currentSection?.settings?.questionsPerPage) {
+        const value = props.currentSection.settings.questionsPerPage;
+        return value === "all" ? null : parseInt(value);
+    }
+    return null; // No pagination if setting not found
+});
+
+// Check if we should show pagination
+const shouldShowPagination = computed(() => {
+    return (
+        !!questionsPerPage.value &&
+        props.currentSection?.questions?.length > questionsPerPage.value
+    );
+});
+
+// Calculate total number of pages
+const totalPages = computed(() => {
+    if (!questionsPerPage.value || !props.currentSection?.questions) {
+        return 1;
+    }
+    return Math.ceil(
+        props.currentSection.questions.length / questionsPerPage.value
+    );
+});
+
+// Paginate questions based on settings
+const paginatedQuestions = computed(() => {
+    const allQuestions = props.currentSection?.questions || [];
+    if (!questionsPerPage.value) {
+        return allQuestions; // Return all if no pagination
+    }
+
+    const startIndex = (currentPage.value - 1) * questionsPerPage.value;
+    const endIndex = startIndex + questionsPerPage.value;
+    return allQuestions.slice(startIndex, endIndex);
+});
+
+// Calculate question display number (considering pagination)
+const getQuestionDisplayNumber = (indexOnPage) => {
+    if (!questionsPerPage.value) {
+        return indexOnPage + 1; // No pagination, just use index
+    }
+
+    // Calculate actual question index based on pagination
+    return (currentPage.value - 1) * questionsPerPage.value + indexOnPage + 1;
+};
+
+// Can navigate back (previous page or section)
+const canGoBack = computed(() => {
+    if (currentPage.value > 1) {
+        return true; // Can go to previous page within section
+    }
+    return hasPreviousSection(); // Or to previous section
+});
+
+// Has more content (more pages in section or more sections)
+const hasMoreContent = computed(() => {
+    if (currentPage.value < totalPages.value) {
+        return true; // Has more pages within section
+    }
+    return hasNextSection(); // Or has more sections
+});
+
+// Navigation methods
+const goBack = () => {
+    if (currentPage.value > 1) {
+        currentPage.value--;
+    } else {
+        emit("previous");
+    }
+};
+
+const goNext = () => {
+    if (currentPage.value < totalPages.value) {
+        currentPage.value++;
+    } else {
+        emit("next");
+        // Reset page counter when moving to next section
+        currentPage.value = 1;
+    }
+};
 
 // Computed methods for section navigation
 const getCurrentSectionNumber = () => {
