@@ -83,20 +83,39 @@ const selectedValues = ref(props.modelValue?.values || []);
 
 // Computed property to check if "other" option is selected
 const otherSelected = computed(() => {
-    return props.modelValue?.values?.includes("other");
+    return props.modelValue?.values?.some(
+        (v) => v === "other" || v === "Lainnya"
+    );
 });
 
 // Computed property to check if "none" option is selected
 const noneSelected = computed(() => {
-    return props.modelValue?.values?.includes("none");
+    return props.modelValue?.values?.some(
+        (v) => v === "none" || v === "Tidak Ada"
+    );
 });
 
 // Computed property that combines all options, adds "None" and "Other" options if enabled
 const normalizedOptions = computed(() => {
     let options = [...(props.question.options || [])];
 
-    // Add "None" option if allowed
-    if (props.question.allowNone) {
+    // Check if options already contain "None" and "Other"
+    const hasNoneOption = options.some(
+        (opt) =>
+            opt.value === "none" ||
+            opt.value === "Tidak Ada" ||
+            opt.text === "Tidak Ada"
+    );
+
+    const hasOtherOption = options.some(
+        (opt) =>
+            opt.value === "other" ||
+            opt.value === "Lainnya" ||
+            opt.text === "Lainnya"
+    );
+
+    // Add "None" option if allowed and not already present
+    if (props.question.allowNone && !hasNoneOption) {
         options.push({
             id: "none",
             text: "Tidak Ada",
@@ -105,8 +124,8 @@ const normalizedOptions = computed(() => {
         });
     }
 
-    // Add "Other" option if allowed
-    if (props.question.allowOther) {
+    // Add "Other" option if allowed and not already present
+    if (props.question.allowOther && !hasOtherOption) {
         options.push({
             id: "other",
             text: "Lainnya",
@@ -134,33 +153,114 @@ const isOptionSelected = (option) => {
     return props.modelValue?.values?.includes(option.value);
 };
 
-// Method to toggle option selection
+// Helper to check if an option is the "Select All" option
+const isSelectAllOption = (option) => {
+    return (
+        option.value === "Pilih Semua" ||
+        option.isSelectAll === true ||
+        option.value === "selectAll"
+    );
+};
+
+// Method to handle "Select All" option
+const handleSelectAllOption = (option) => {
+    if (isSelectAllOption(option)) {
+        const isCurrentlySelected = isOptionSelected(option);
+        const regularOptions = normalizedOptions.value.filter(
+            (opt) =>
+                !isSelectAllOption(opt) &&
+                opt.value !== "Tidak Ada" &&
+                opt.value !== "Lainnya"
+        );
+
+        const newValues = [];
+
+        // If "Select All" was just checked, select all regular options
+        if (!isCurrentlySelected) {
+            // Add all regular options to the selection
+            regularOptions.forEach((opt) => {
+                newValues.push(opt.value);
+            });
+
+            // Also select the "Select All" option itself
+            newValues.push(option.value);
+        }
+
+        // Create labels array for better tracking
+        const labels = newValues.map((v) => {
+            if (v === "other") return "Lainnya";
+            if (v === "none") return "Tidak Ada";
+            if (v === "Pilih Semua") return "Pilih Semua";
+
+            // Find the text for this value
+            const opt = normalizedOptions.value.find((o) => o.value === v);
+            return opt ? opt.text : v;
+        });
+
+        emit("update:modelValue", {
+            values: newValues,
+            otherText: props.modelValue?.otherText || "",
+            labels,
+        });
+
+        return true;
+    }
+
+    return false;
+};
+
+// Method to toggle option selection - updated to handle "Select All"
 const toggleOption = (option) => {
+    // Handle "Select All" option specially
+    if (handleSelectAllOption(option)) {
+        return;
+    }
+
     const value = option.value;
     const values = [...(props.modelValue?.values || [])];
 
-    // Special handling for "none" option
-    if (value === "none") {
-        if (values.includes("none")) {
-            // Unselecting "none" - just remove it
-            values.splice(values.indexOf("none"), 1);
+    // Handle "none" option (both "none" and "Tidak Ada" values)
+    if (value === "none" || value === "Tidak Ada") {
+        if (values.includes("none") || values.includes("Tidak Ada")) {
+            // Remove both possible values for "none"
+            values.splice(
+                values.indexOf(values.includes("none") ? "none" : "Tidak Ada"),
+                1
+            );
         } else {
             // Selecting "none" - clear all other selections
             values.length = 0;
-            values.push("none");
+            values.push(value); // Keep the original value format
         }
 
         emit("update:modelValue", {
             values,
             otherText: "", // Clear other text when "none" is selected
-            labels: values.map((v) => (v === "none" ? "Tidak Ada" : v)),
+            labels: values.map((v) => {
+                if (v === "none" || v === "Tidak Ada") return "Tidak Ada";
+                return v;
+            }),
         });
         return;
     }
 
     // If selecting an option but "none" is already selected, remove "none"
-    if (values.includes("none")) {
-        values.splice(values.indexOf("none"), 1);
+    if (values.includes("none") || values.includes("Tidak Ada")) {
+        const noneIndex = values.findIndex(
+            (v) => v === "none" || v === "Tidak Ada"
+        );
+        if (noneIndex > -1) {
+            values.splice(noneIndex, 1);
+        }
+    }
+
+    // If "Select All" is selected and we're unchecking a regular option,
+    // we should also uncheck the "Select All" option
+    const selectAllIndex = values.findIndex(
+        (v) => v === "Pilih Semua" || v === "selectAll"
+    );
+    if (selectAllIndex > -1 && !isSelectAllOption(option)) {
+        values.splice(selectAllIndex, 1);
     }
 
     // Toggle the option value
@@ -169,7 +269,7 @@ const toggleOption = (option) => {
         values.splice(index, 1);
 
         // If this was the "other" option, clear the otherText
-        if (value === "other") {
+        if (value === "other" || value === "Lainnya") {
             otherText.value = "";
         }
     } else {
@@ -178,8 +278,9 @@ const toggleOption = (option) => {
 
     // Create labels array for better tracking
     const labels = values.map((v) => {
-        if (v === "other") return "Lainnya";
-        if (v === "none") return "Tidak Ada";
+        if (v === "other" || v === "Lainnya") return "Lainnya";
+        if (v === "none" || v === "Tidak Ada") return "Tidak Ada";
+        if (v === "Pilih Semua" || v === "selectAll") return "Pilih Semua";
 
         // Find the text for this value
         const opt = normalizedOptions.value.find((o) => o.value === v);
@@ -189,7 +290,7 @@ const toggleOption = (option) => {
     emit("update:modelValue", {
         values,
         otherText:
-            value === "other"
+            value === "other" || value === "Lainnya"
                 ? otherText.value
                 : props.modelValue?.otherText || "",
         labels,
@@ -202,8 +303,9 @@ const updateOtherText = () => {
         values: props.modelValue?.values || [],
         otherText: otherText.value,
         labels: props.modelValue?.values?.map((v) => {
-            if (v === "other") return "Lainnya";
-            if (v === "none") return "Tidak Ada";
+            if (v === "other" || v === "Lainnya") return "Lainnya";
+            if (v === "none" || v === "Tidak Ada") return "Tidak Ada";
+            if (v === "Pilih Semua" || v === "selectAll") return "Pilih Semua";
 
             // Find the text for this value
             const opt = normalizedOptions.value.find((o) => o.value === v);
