@@ -383,8 +383,10 @@ class PreviewController extends Controller
                                             
                                             // Check if 'Lainnya' is already in the options
                                             $hasOtherOption = false;
+                                            $otherOptionIndex = -1;
+                                            
                                             if (is_array($question['options'])) {
-                                                foreach ($question['options'] as $opt) {
+                                                foreach ($question['options'] as $index => $opt) {
                                                     // Check if the required keys exist before accessing them
                                                     $optValue = $opt['value'] ?? '';
                                                     $optText = $opt['text'] ?? ($opt['label'] ?? '');
@@ -393,6 +395,7 @@ class PreviewController extends Controller
                                                     if (($optValue === 'Lainnya' || $optValue === 'other') && 
                                                         ($optText === 'Lainnya' || $optLabel === 'Lainnya')) {
                                                         $hasOtherOption = true;
+                                                        $otherOptionIndex = $index;
                                                         break;
                                                     }
                                                 }
@@ -415,6 +418,9 @@ class PreviewController extends Controller
                                                     'value' => 'Lainnya',
                                                     'isSpecial' => true
                                                 ];
+                                            } else if ($hasOtherOption && !$question['allowOther'] && $otherOptionIndex >= 0) {
+                                                // Remove the option if allowOther is false but option exists
+                                                array_splice($question['options'], $otherOptionIndex, 1);
                                             }
                                         }
                                         
@@ -424,8 +430,10 @@ class PreviewController extends Controller
                                             
                                             // Check if 'Tidak Ada' is already in the options
                                             $hasNoneOption = false;
+                                            $noneOptionIndex = -1;
+                                            
                                             if (is_array($question['options'])) {
-                                                foreach ($question['options'] as $opt) {
+                                                foreach ($question['options'] as $index => $opt) {
                                                     // Check if the required keys exist before accessing them
                                                     $optValue = $opt['value'] ?? '';
                                                     $optText = $opt['text'] ?? ($opt['label'] ?? '');
@@ -434,6 +442,7 @@ class PreviewController extends Controller
                                                     if (($optValue === 'Tidak Ada' || $optValue === 'none') && 
                                                         ($optText === 'Tidak Ada' || $optLabel === 'Tidak Ada')) {
                                                         $hasNoneOption = true;
+                                                        $noneOptionIndex = $index;
                                                         break;
                                                     }
                                                 }
@@ -456,11 +465,93 @@ class PreviewController extends Controller
                                                     'value' => 'Tidak Ada',
                                                     'isSpecial' => true
                                                 ];
+                                            } else if ($hasNoneOption && !$question['allowNone'] && $noneOptionIndex >= 0) {
+                                                // Remove the option if allowNone is false but option exists
+                                                array_splice($question['options'], $noneOptionIndex, 1);
+                                            }
+                                        }
+                                        
+                                        // Handle allowSelectAll option for checkbox questions
+                                        if ($question['type'] === 'checkbox' && isset($question['settings']['allowSelectAll'])) {
+                                            $question['allowSelectAll'] = (bool)$question['settings']['allowSelectAll'];
+                                            
+                                            // Check if 'Pilih Semua' is already in the options
+                                            $hasSelectAllOption = false;
+                                            $selectAllOptionIndex = -1;
+                                            
+                                            if (is_array($question['options'])) {
+                                                foreach ($question['options'] as $index => $opt) {
+                                                    // Check if the required keys exist before accessing them
+                                                    $optValue = $opt['value'] ?? '';
+                                                    $optText = $opt['text'] ?? ($opt['label'] ?? '');
+                                                    $optLabel = $opt['label'] ?? ($opt['text'] ?? '');
+                                                    
+                                                    if (($optValue === 'Pilih Semua' || $optValue === 'selectAll') && 
+                                                        ($optText === 'Pilih Semua' || $optLabel === 'Pilih Semua')) {
+                                                        $hasSelectAllOption = true;
+                                                        $selectAllOptionIndex = $index;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            
+                                            // If "Select All" option is not already in options array, make sure it's available in frontend
+                                            if (!$hasSelectAllOption && $question['allowSelectAll']) {
+                                                Log::debug('Adding "Select All" option to frontend', [
+                                                    'question_id' => $question['id'] ?? 'unknown'
+                                                ]);
+                                                
+                                                // Add the "Select All" option to the options array
+                                                if (!isset($question['options'])) {
+                                                    $question['options'] = [];
+                                                }
+                                                
+                                                // Insert Select All at the beginning of the array
+                                                array_unshift($question['options'], [
+                                                    'id' => 'select_all_option',
+                                                    'text' => 'Pilih Semua',
+                                                    'value' => 'Pilih Semua',
+                                                    'isSpecial' => true,
+                                                    'isSelectAll' => true
+                                                ]);
+                                            } else if ($hasSelectAllOption && !$question['allowSelectAll'] && $selectAllOptionIndex >= 0) {
+                                                // Remove the option if allowSelectAll is false but option exists
+                                                array_splice($question['options'], $selectAllOptionIndex, 1);
                                             }
                                         }
                                         
                                         // Normalize options format
                                         if (is_array($question['options'])) {
+                                            $uniqueOptionsByValue = [];
+                                            $specialValues = ['Lainnya', 'other', 'Tidak Ada', 'none', 'Pilih Semua', 'selectAll'];
+                                            
+                                            foreach ($question['options'] as $option) {
+                                                $optValue = $option['value'] ?? '';
+                                                $optId = $option['id'] ?? '';
+                                                
+                                                // For special options, only keep one instance
+                                                if (in_array($optValue, $specialValues)) {
+                                                    // If we already have this special option, skip this one
+                                                    if (isset($uniqueOptionsByValue[$optValue])) {
+                                                        continue;
+                                                    }
+                                                    
+                                                    // If this is a database option (has numeric ID), prefer it
+                                                    if (is_numeric($optId) && isset($uniqueOptionsByValue[$optValue])) {
+                                                        // Replace the existing option with this one from DB
+                                                        $uniqueOptionsByValue[$optValue] = $option;
+                                                        continue;
+                                                    }
+                                                }
+                                                
+                                                // Add this option to our unique collection
+                                                $uniqueOptionsByValue[$optValue] = $option;
+                                            }
+                                            
+                                            // Replace options with deduplicated array
+                                            $question['options'] = array_values($uniqueOptionsByValue);
+                                            
+                                            // Now normalize each option to ensure they have all required properties
                                             foreach ($question['options'] as &$option) {
                                                 // Ensure each option has required properties
                                                 if (!isset($option['id']) && isset($option['value'])) {
