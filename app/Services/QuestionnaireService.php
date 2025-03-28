@@ -109,7 +109,7 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                     $sectionsData = $settingsData['sections'];
                     // Remove sections from settings to avoid duplication
                     unset($settingsData['sections']);
-                    $data['settings'] = json_encode($settingsData);
+                    $data['settings'] = json_encode($settingsData, JSON_UNESCAPED_SLASHES);
                 }
             } elseif (is_array($settings) && isset($settings['sections'])) {
                 $sectionsData = $settings['sections'];
@@ -193,7 +193,7 @@ class QuestionnaireService implements QuestionnaireServiceInterface
             if (isset($data['settings'])) {
                 $updateData['settings'] = is_string($data['settings']) 
                     ? $data['settings'] 
-                    : json_encode($data['settings']);
+                    : json_encode($data['settings'], JSON_UNESCAPED_SLASHES);
                 Log::debug('Updating questionnaire settings');
             }
             
@@ -419,7 +419,7 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                                     'text' => $questionData['title'] ?? 'Default Statement'
                                 ]
                             ]
-                        ]);
+                        ], JSON_UNESCAPED_SLASHES);
                         
                         Log::info('Created default settings for likert question', [
                             'settings' => $questionData['settings']
@@ -448,7 +448,7 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                             ];
                         }
                         
-                        $questionData['settings'] = json_encode($settings);
+                        $questionData['settings'] = json_encode($settings, JSON_UNESCAPED_SLASHES);
                         
                         Log::info('Normalized settings for likert question', [
                             'settings' => $questionData['settings']
@@ -463,7 +463,7 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                             'type' => 'yes-no',
                             'yesLabel' => 'Ya',
                             'noLabel' => 'Tidak'
-                        ]);
+                        ], JSON_UNESCAPED_SLASHES);
                         
                         Log::info('Created default settings for yes-no question', [
                             'settings' => $questionData['settings']
@@ -481,7 +481,7 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                             $settings['noLabel'] = 'Tidak';
                         }
                         
-                        $questionData['settings'] = json_encode($settings);
+                        $questionData['settings'] = json_encode($settings, JSON_UNESCAPED_SLASHES);
                         
                         Log::info('Normalized settings for yes-no question', [
                             'settings' => $questionData['settings']
@@ -503,7 +503,7 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                                 '0' => 'Minimum',
                                 '100' => 'Maximum'
                             ]
-                        ]);
+                        ], JSON_UNESCAPED_SLASHES);
                         
                         Log::info('Created default settings for slider question', [
                             'settings' => $questionData['settings']
@@ -540,7 +540,7 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                             ];
                         }
                         
-                        $questionData['settings'] = json_encode($settings);
+                        $questionData['settings'] = json_encode($settings, JSON_UNESCAPED_SLASHES);
                         
                         Log::info('Normalized settings for slider question', [
                             'settings' => $questionData['settings']
@@ -558,7 +558,7 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                                 ['id' => 'item-' . uniqid(), 'text' => 'Item 2'],
                                 ['id' => 'item-' . uniqid(), 'text' => 'Item 3']
                             ]
-                        ]);
+                        ], JSON_UNESCAPED_SLASHES);
                         
                         Log::info('Created default settings for ranking question', [
                             'settings' => $questionData['settings']
@@ -576,7 +576,7 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                             ];
                         }
                         
-                        $questionData['settings'] = json_encode($settings);
+                        $questionData['settings'] = json_encode($settings, JSON_UNESCAPED_SLASHES);
                         
                         Log::info('Normalized settings for ranking question', [
                             'settings' => $questionData['settings']
@@ -654,8 +654,17 @@ class QuestionnaireService implements QuestionnaireServiceInterface
         
         // Process settings if provided
         if (isset($questionData['settings']) && is_array($questionData['settings'])) {
-            // Convert settings to JSON string if it's an array
-            $questionData['settings'] = json_encode($questionData['settings']);
+            // Special handling for allowedTypes with */*
+            if (isset($questionData['settings']['allowedTypes']) && is_array($questionData['settings']['allowedTypes'])) {
+                if (in_array('*/*', $questionData['settings']['allowedTypes'])) {
+                    Log::info('Found */* in allowedTypes, ensuring proper JSON encoding');
+                    // Force to exactly ['*/*'] to prevent mixed types
+                    $questionData['settings']['allowedTypes'] = ['*/*'];
+                }
+            }
+            
+            // Tambahkan JSON_UNESCAPED_SLASHES untuk mencegah escape pada "*/*"
+            $questionData['settings'] = json_encode($questionData['settings'], JSON_UNESCAPED_SLASHES);
         }
         
         // Make sure is_required is properly set
@@ -760,7 +769,7 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                 
                 // Hapus sections dari settings untuk menghindari duplikasi
                 unset($settings['sections']);
-                $publishData['settings'] = is_string($publishData['settings']) ? json_encode($settings) : $settings;
+                $publishData['settings'] = is_string($publishData['settings']) ? json_encode($settings, JSON_UNESCAPED_SLASHES) : $settings;
             }
         }
         
@@ -800,7 +809,7 @@ class QuestionnaireService implements QuestionnaireServiceInterface
         if (isset($publishData['settings'])) {
             $updateData['settings'] = is_string($publishData['settings']) 
                 ? $publishData['settings'] 
-                : json_encode($publishData['settings']);
+                : json_encode($publishData['settings'], JSON_UNESCAPED_SLASHES);
         }
         
         // Update questionnaire and create JSON representation
@@ -1100,7 +1109,7 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                                 Log::debug('Encoding likert settings from array to JSON', [
                                     'settings_keys' => array_keys($questionData['settings'])
                                 ]);
-                                $questionData['settings'] = json_encode($questionData['settings']);
+                                $questionData['settings'] = json_encode($questionData['settings'], JSON_UNESCAPED_SLASHES);
                             }
                             
                             // Ensure we have a minimum valid structure in settings if not provided
@@ -1123,7 +1132,7 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                                     ]
                                 ];
                                 
-                                $questionData['settings'] = json_encode($defaultSettings);
+                                $questionData['settings'] = json_encode($defaultSettings, JSON_UNESCAPED_SLASHES);
                             }
                         }
                         
@@ -1699,11 +1708,24 @@ class QuestionnaireService implements QuestionnaireServiceInterface
         }
         
         if (!empty($settings)) {
-            $result['settings'] = json_encode($settings);
+            $result['settings'] = json_encode($settings, JSON_UNESCAPED_SLASHES);
             Log::debug('Settings encoded for question', [
                 'settings_count' => count($settings),
                 'settings_keys' => array_keys($settings)
             ]);
+        }
+        
+        // Process file-upload specific settings
+        if ($questionData['question_type'] === 'file' || $questionData['question_type'] === 'file-upload') {
+            // Check if settings exist
+            if (isset($settings['allowedTypes']) && is_array($settings['allowedTypes'])) {
+                // Special handling for */* to ensure it's not escaped
+                if (in_array('*/*', $settings['allowedTypes'])) {
+                    Log::info('Normalizing question data with */* in allowedTypes');
+                    // Force to exactly ['*/*'] to prevent mixed types
+                    $settings['allowedTypes'] = ['*/*'];
+                }
+            }
         }
         
         Log::debug('Normalized question data result', ['result' => $result]);
