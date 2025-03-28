@@ -422,6 +422,96 @@ const validateCurrentPageQuestions = () => {
                     questionValid = !!answer && answer.trim() !== "";
                     break;
 
+                case "matrix":
+                    if (question.matrixType === "radio") {
+                        // For radio matrix, check if each row has at least one selected option
+                        let responses = answer?.responses || {};
+
+                        // If we have answers format but not responses format, convert
+                        if (
+                            answer?.answers &&
+                            Object.keys(answer.answers).length > 0 &&
+                            Object.keys(responses).length === 0
+                        ) {
+                            // Convert from component format to validation format
+                            Object.entries(answer.answers).forEach(
+                                ([rowIndex, columnValue]) => {
+                                    const rowIdx = parseInt(rowIndex);
+                                    if (
+                                        question.rows &&
+                                        rowIdx < question.rows.length
+                                    ) {
+                                        const rowId = question.rows[rowIdx].id;
+                                        responses[rowId] = columnValue;
+                                    }
+                                }
+                            );
+
+                            // Save the converted format back to answers for future use
+                            props.answers[question.id] = {
+                                ...answer,
+                                responses,
+                            };
+                        }
+
+                        questionValid =
+                            question.rows &&
+                            question.rows.every((row) => !!responses[row.id]);
+                    } else if (question.matrixType === "checkbox") {
+                        // For checkbox matrix, check if there's at least one checked box
+                        let checkboxResponses = answer?.checkboxResponses || {};
+
+                        // If we have answers format but not checkboxResponses format, convert
+                        if (
+                            answer?.answers &&
+                            Object.keys(answer.answers).length > 0 &&
+                            Object.keys(checkboxResponses).length === 0
+                        ) {
+                            // Convert from component format to validation format
+                            Object.entries(answer.answers).forEach(
+                                ([rowIndex, columnValues]) => {
+                                    if (!Array.isArray(columnValues)) return;
+
+                                    const rowIdx = parseInt(rowIndex);
+                                    if (
+                                        question.rows &&
+                                        rowIdx < question.rows.length
+                                    ) {
+                                        const rowId = question.rows[rowIdx].id;
+                                        checkboxResponses[rowId] = {};
+
+                                        columnValues.forEach((value) => {
+                                            // Find column that matches this value
+                                            const column =
+                                                question.columns.find(
+                                                    (col) =>
+                                                        col.value === value ||
+                                                        col.id === value
+                                                );
+                                            if (column) {
+                                                checkboxResponses[rowId][
+                                                    column.id
+                                                ] = true;
+                                            }
+                                        });
+                                    }
+                                }
+                            );
+
+                            // Save the converted format back to answers for future use
+                            props.answers[question.id] = {
+                                ...answer,
+                                checkboxResponses,
+                            };
+                        }
+
+                        questionValid =
+                            Object.keys(checkboxResponses).length > 0;
+                    } else {
+                        questionValid = !!answer;
+                    }
+                    break;
+
                 default:
                     // Default validation just checks if there's any value
                     questionValid = !!answer;
@@ -995,6 +1085,83 @@ const normalizeQuestionData = (question) => {
                             questionData.settings?.noLabel || "Tidak";
                     }
                     break;
+
+                case "matrix":
+                    // Ensure matrix questions have consistent property naming
+                    // Map matrixType to selectionType for the component
+                    if (
+                        questionData.matrixType &&
+                        !questionData.selectionType
+                    ) {
+                        questionData.selectionType = questionData.matrixType;
+                    } else if (
+                        questionData.selectionType &&
+                        !questionData.matrixType
+                    ) {
+                        questionData.matrixType = questionData.selectionType;
+                    } else if (
+                        !questionData.matrixType &&
+                        !questionData.selectionType
+                    ) {
+                        // Default to radio if neither is specified
+                        questionData.matrixType = "radio";
+                        questionData.selectionType = "radio";
+                    }
+
+                    // Normalize rows and columns format
+                    if (questionData.rows && Array.isArray(questionData.rows)) {
+                        questionData.rows = questionData.rows.map(
+                            (row, index) => {
+                                if (typeof row === "string") {
+                                    return {
+                                        id: `row_${index}`,
+                                        text: row,
+                                        value: row,
+                                    };
+                                }
+                                return {
+                                    id: row.id || `row_${index}`,
+                                    text:
+                                        row.text ||
+                                        row.label ||
+                                        `Row ${index + 1}`,
+                                    value:
+                                        row.value ||
+                                        row.text ||
+                                        `Row ${index + 1}`,
+                                };
+                            }
+                        );
+                    }
+
+                    if (
+                        questionData.columns &&
+                        Array.isArray(questionData.columns)
+                    ) {
+                        questionData.columns = questionData.columns.map(
+                            (column, index) => {
+                                if (typeof column === "string") {
+                                    return {
+                                        id: `column_${index}`,
+                                        text: column,
+                                        value: column,
+                                    };
+                                }
+                                return {
+                                    id: column.id || `column_${index}`,
+                                    text:
+                                        column.text ||
+                                        column.label ||
+                                        `Column ${index + 1}`,
+                                    value:
+                                        column.value ||
+                                        column.text ||
+                                        `Column ${index + 1}`,
+                                };
+                            }
+                        );
+                    }
+                    break;
             }
         }
     }
@@ -1069,6 +1236,76 @@ const getFormattedAnswer = (questionId, questionType) => {
         case "rating":
             // Ensure rating is a string for the component
             return typeof answer === "number" ? answer.toString() : answer;
+
+        case "matrix":
+            // Handle matrix response format
+            // If we have a response in the format expected by the component, use it
+            if (answer.answers) {
+                return answer;
+            }
+
+            // If we have responses in the format expected by validation, convert it
+            if (answer.responses) {
+                // Convert from validation format to component format
+                const convertedAnswer = { answers: {} };
+
+                // Get the question
+                const question = props.currentSection.questions.find(
+                    (q) => q.id === questionId
+                );
+                if (!question || !question.rows) return { answers: {} };
+
+                // Map each row's response to the expected format
+                question.rows.forEach((row, index) => {
+                    if (answer.responses[row.id]) {
+                        convertedAnswer.answers[index] =
+                            answer.responses[row.id];
+                    }
+                });
+
+                return convertedAnswer;
+            }
+
+            // If we have checkbox responses, convert them
+            if (answer.checkboxResponses) {
+                // Convert from validation format to component format
+                const convertedAnswer = { answers: {} };
+
+                // Get the question
+                const question = props.currentSection.questions.find(
+                    (q) => q.id === questionId
+                );
+                if (!question || !question.rows) return { answers: {} };
+
+                // Map each row's checkbox responses to the expected format
+                question.rows.forEach((row, index) => {
+                    if (answer.checkboxResponses[row.id]) {
+                        const selectedValues = [];
+
+                        // Add selected values
+                        if (question.columns) {
+                            question.columns.forEach((column) => {
+                                if (
+                                    answer.checkboxResponses[row.id][column.id]
+                                ) {
+                                    selectedValues.push(
+                                        column.value || column.id
+                                    );
+                                }
+                            });
+                        }
+
+                        if (selectedValues.length > 0) {
+                            convertedAnswer.answers[index] = selectedValues;
+                        }
+                    }
+                });
+
+                return convertedAnswer;
+            }
+
+            // Default to empty structure
+            return { answers: {} };
 
         default:
             return answer;
@@ -1247,7 +1484,36 @@ const validateAllQuestions = () => {
                     case "matrix":
                         if (question.matrixType === "radio") {
                             // For radio matrix, check if each row has at least one selected option
-                            const responses = answer?.responses || {};
+                            let responses = answer?.responses || {};
+
+                            // If we have answers format but not responses format, convert
+                            if (
+                                answer?.answers &&
+                                Object.keys(answer.answers).length > 0 &&
+                                Object.keys(responses).length === 0
+                            ) {
+                                // Convert from component format to validation format
+                                Object.entries(answer.answers).forEach(
+                                    ([rowIndex, columnValue]) => {
+                                        const rowIdx = parseInt(rowIndex);
+                                        if (
+                                            question.rows &&
+                                            rowIdx < question.rows.length
+                                        ) {
+                                            const rowId =
+                                                question.rows[rowIdx].id;
+                                            responses[rowId] = columnValue;
+                                        }
+                                    }
+                                );
+
+                                // Save the converted format back to answers for future use
+                                props.answers[question.id] = {
+                                    ...answer,
+                                    responses,
+                                };
+                            }
+
                             questionValid =
                                 question.rows &&
                                 question.rows.every(
@@ -1255,8 +1521,56 @@ const validateAllQuestions = () => {
                                 );
                         } else if (question.matrixType === "checkbox") {
                             // For checkbox matrix, check if there's at least one checked box
-                            const checkboxResponses =
+                            let checkboxResponses =
                                 answer?.checkboxResponses || {};
+
+                            // If we have answers format but not checkboxResponses format, convert
+                            if (
+                                answer?.answers &&
+                                Object.keys(answer.answers).length > 0 &&
+                                Object.keys(checkboxResponses).length === 0
+                            ) {
+                                // Convert from component format to validation format
+                                Object.entries(answer.answers).forEach(
+                                    ([rowIndex, columnValues]) => {
+                                        if (!Array.isArray(columnValues))
+                                            return;
+
+                                        const rowIdx = parseInt(rowIndex);
+                                        if (
+                                            question.rows &&
+                                            rowIdx < question.rows.length
+                                        ) {
+                                            const rowId =
+                                                question.rows[rowIdx].id;
+                                            checkboxResponses[rowId] = {};
+
+                                            columnValues.forEach((value) => {
+                                                // Find column that matches this value
+                                                const column =
+                                                    question.columns.find(
+                                                        (col) =>
+                                                            col.value ===
+                                                                value ||
+                                                            col.id === value
+                                                    );
+                                                if (column) {
+                                                    checkboxResponses[rowId][
+                                                        column.id
+                                                    ] = true;
+                                                }
+                                            });
+                                        }
+                                    }
+                                );
+
+                                // Save the converted format back to answers for future use
+                                props.answers[question.id] = {
+                                    ...answer,
+                                    checkboxResponses,
+                                };
+                            }
+
                             questionValid =
                                 Object.keys(checkboxResponses).length > 0;
                         } else {
