@@ -275,6 +275,7 @@
                                                 type="text"
                                                 id="publish-slug"
                                                 v-model="questionnaire.slug"
+                                                @blur="formatSlug"
                                                 class="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-r-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border-gray-300"
                                             />
                                         </div>
@@ -541,6 +542,11 @@ const confirmPublish = async () => {
             endDate: questionnaire.value.endDate,
         });
 
+        // Ensure slug is slugified before publishing
+        if (questionnaire.value.slug) {
+            questionnaire.value.slug = slugify(questionnaire.value.slug);
+        }
+
         // Publikasikan kuesioner
         console.log(
             "Publishing questionnaire with ID:",
@@ -609,8 +615,14 @@ const getPublicUrl = () => {
         return window.location.origin + publishSuccessResult.value.publicUrl;
     }
 
-    // Create a fallback URL based on questionnaire ID
-    return `${window.location.origin}/form/${questionnaire.value.id}`;
+    // Create a fallback URL based on questionnaire slug if available, otherwise use ID
+    if (questionnaire.value.slug) {
+        // Make sure the slug is properly formatted
+        const formattedSlug = slugify(questionnaire.value.slug);
+        return `${window.location.origin}/kuesioner/${formattedSlug}`;
+    } else {
+        return `${window.location.origin}/kuesioner/${questionnaire.value.id}`;
+    }
 };
 
 const handleSuccessModalClose = () => {
@@ -630,6 +642,18 @@ const goToDetailPage = () => {
 const goToListPage = () => {
     // Navigate to list page
     window.location.href = "/kuesioner";
+};
+
+const formatSlug = () => {
+    if (questionnaire.value.slug) {
+        // Only slugify the existing value, don't replace with title
+        questionnaire.value.slug = slugify(questionnaire.value.slug);
+    } else {
+        // If slug is empty, generate from title
+        questionnaire.value.slug = slugify(
+            questionnaire.value.title || "kuesioner"
+        );
+    }
 };
 </script>
 

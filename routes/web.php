@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\SuperAdmin\DashboardController as SuperAdminDashboardController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 
 /*
 |--------------------------------------------------------------------------
@@ -70,7 +71,7 @@ Route::post('/security/report', [SecurityController::class, 'submitReport'])
 
 // Dashboard Routes - Shared route for both admin and superadmin
 Route::get('/dashboard', function () {
-    if (auth()->user()->role === 'superadmin') {
+    if (Auth::user()->role === 'superadmin') {
         return app()->make(SuperAdminDashboardController::class)->index();
     }
     return app()->make(AdminDashboardController::class)->index();
@@ -87,7 +88,7 @@ Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])
 
 // Fallback route
 Route::fallback(function () {
-    if (auth()->check()) {
+    if (Auth::check()) {
         return redirect()->route('dashboard');
     }
     
@@ -129,7 +130,7 @@ Route::prefix('kuesioner')->middleware(['auth'])->group(function () {
     Route::delete('/{id}', 'App\Http\Controllers\Questionnaire\QuestionnaireController@destroy')->name('questionnaires.destroy');
     
     // Melihat preview kuesioner
-    Route::get('/{id}/preview', 'App\Http\Controllers\Questionnaire\QuestionnaireController@preview')->name('questionnaires.preview');
+    Route::get('/preview', 'App\Http\Controllers\Questionnaire\PreviewController@index')->name('preview.index');
     
     // Mempublikasikan kuesioner
     Route::post('/{id}/publish', 'App\Http\Controllers\Questionnaire\QuestionnaireController@publish')->name('questionnaires.publish');
@@ -173,80 +174,20 @@ Route::prefix('kuesioner')->middleware(['auth'])->group(function () {
 
 // Endpoint untuk alumni (tidak perlu login)
 Route::prefix('kuesioner')->group(function () {
-    // Mengisi kuesioner
-    Route::get('/{slug}', function($slug) {
-        $questionnaire = [
-            'id' => 'demo-' . $slug,
-            'title' => 'Kuesioner ' . ucfirst($slug),
-            'description' => 'Ini adalah kuesioner untuk diisi oleh alumni',
-            'slug' => $slug,
-            'requires_login' => false,
-            'showProgressBar' => true,
-            'showPageNumbers' => true,
-            'sections' => [
-                [
-                    'id' => 'section1',
-                    'title' => 'Informasi Umum',
-                    'description' => 'Bagian ini berisi pertanyaan tentang informasi umum responden',
-                    'questions' => [
-                        [
-                            'id' => 'q1',
-                            'type' => 'short-text',
-                            'text' => 'Nama Lengkap',
-                            'helpText' => 'Masukkan nama lengkap Anda sesuai ijazah',
-                            'required' => true,
-                            'placeholder' => 'Masukkan nama lengkap Anda'
-                        ],
-                        [
-                            'id' => 'q2',
-                            'type' => 'radio',
-                            'text' => 'Jenis Kelamin',
-                            'helpText' => '',
-                            'required' => true,
-                            'options' => [
-                                ['id' => 'opt1', 'text' => 'Laki-laki', 'value' => 'male'],
-                                ['id' => 'opt2', 'text' => 'Perempuan', 'value' => 'female']
-                            ]
-                        ]
-                    ]
-                ],
-                [
-                    'id' => 'section2',
-                    'title' => 'Riwayat Pendidikan',
-                    'description' => 'Informasi mengenai pendidikan setelah lulus',
-                    'questions' => [
-                        [
-                            'id' => 'q3',
-                            'type' => 'long-text',
-                            'text' => 'Ceritakan pengalaman pendidikan Anda setelah lulus',
-                            'required' => false,
-                            'placeholder' => 'Tulis pengalaman Anda di sini'
-                        ]
-                    ]
-                ]
-            ],
-            'welcomeScreen' => [
-                'title' => 'Selamat Datang di Kuesioner Alumni',
-                'description' => 'Terima kasih telah berpartisipasi dalam tracer study kami. Data yang Anda berikan sangat berharga untuk pengembangan program studi ke depan.'
-            ],
-            'thankYouScreen' => [
-                'title' => 'Terima Kasih',
-                'description' => 'Terima kasih atas partisipasi Anda dalam tracer study ini. Data yang Anda berikan akan digunakan untuk meningkatkan kualitas pembelajaran.'
-            ]
-        ];
-        
-        return view('questionnaire.show', compact('questionnaire'));
-    })->name('form.show');
+    // New route: Access questionnaire by slug
+    Route::get('/{slug}', 'App\Http\Controllers\Questionnaire\FormController@show')
+        ->where('slug', '[a-z0-9-]+')
+        ->name('form.show');
     
-    // Submit jawaban kuesioner (dummy endpoint)
-    Route::post('/submit', function() {
-        return response()->json(['success' => true]);
-    })->name('form.submit');
+    // Submit jawaban kuesioner
+    Route::post('/submit', 'App\Http\Controllers\Questionnaire\FormController@store')
+        ->name('form.submit');
+    
+    // Thank you page after submission
+    Route::get('/{slug}/thank-you', 'App\Http\Controllers\Questionnaire\FormController@thankYou')
+        ->name('form.thank-you');
 });
 
 Route::get('/vue-test', function() {
     return view('vue-test');
 })->name('vue-test');
-
-// Questionnaire Preview Route
-Route::get('/preview', 'App\Http\Controllers\Questionnaire\PreviewController@index')->name('preview.index');

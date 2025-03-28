@@ -450,12 +450,12 @@ const submitQuestionnaire = async () => {
     try {
         // Prepare submission data
         const submissionData = {
-            questionnaireId: props.questionnaire.id,
+            slug: props.questionnaire.slug || props.questionnaire.id, // Use slug or fallback to ID
             answers: answers.value,
         };
 
         // Send to server
-        const response = await fetch("/api/questionnaire/submit", {
+        const response = await fetch("/kuesioner/submit", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

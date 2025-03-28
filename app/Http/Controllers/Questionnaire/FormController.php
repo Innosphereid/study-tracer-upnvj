@@ -46,7 +46,18 @@ class FormController extends Controller
     {
         Log::info('Displaying questionnaire form', ['slug' => $slug]);
         
-        $questionnaire = $this->questionnaireService->getQuestionnaireBySlug($slug);
+        // Try to determine if this is an ID or a slug
+        $questionnaire = null;
+        
+        if (is_numeric($slug)) {
+            // If it's numeric, try to fetch by ID first
+            $questionnaire = $this->questionnaireService->getQuestionnaireById((int)$slug);
+        }
+        
+        // If not found by ID or not numeric, try by slug
+        if (!$questionnaire) {
+            $questionnaire = $this->questionnaireService->getQuestionnaireBySlug($slug);
+        }
         
         abort_if(!$questionnaire, 404, 'Kuesioner tidak ditemukan');
         abort_if($questionnaire->status !== 'published', 403, 'Kuesioner tidak tersedia');
@@ -61,14 +72,24 @@ class FormController extends Controller
      * Store a response for the questionnaire.
      *
      * @param SubmitResponseRequest $request
-     * @param string $slug
      * @return JsonResponse|RedirectResponse
      */
-    public function submit(SubmitResponseRequest $request, string $slug): JsonResponse|RedirectResponse
+    public function store(SubmitResponseRequest $request): JsonResponse|RedirectResponse
     {
+        $slug = $request->input('slug');
         Log::info('Submitting questionnaire response', ['slug' => $slug]);
         
-        $questionnaire = $this->questionnaireService->getQuestionnaireBySlug($slug);
+        $questionnaire = null;
+        
+        if (is_numeric($slug)) {
+            // If it's numeric, try to fetch by ID first
+            $questionnaire = $this->questionnaireService->getQuestionnaireById((int)$slug);
+        }
+        
+        // If not found by ID or not numeric, try by slug
+        if (!$questionnaire) {
+            $questionnaire = $this->questionnaireService->getQuestionnaireBySlug($slug);
+        }
         
         if (!$questionnaire) {
             if ($request->expectsJson()) {
@@ -106,7 +127,7 @@ class FormController extends Controller
         }
         
         if ($saved && $completed) {
-            return redirect()->route('form.thank-you', $slug)
+            return redirect()->route('form.thank-you', $questionnaire->slug)
                 ->with('success', 'Terima kasih atas partisipasi Anda!');
         } else {
             return redirect()->back()->withErrors(['error' => 'Gagal menyimpan jawaban']);

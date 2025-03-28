@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
+import { slugify } from "../utils/helpers"; // Import the slugify function
 
 export const useQuestionnaireStore = defineStore("questionnaire", {
     state: () => ({
@@ -1177,8 +1178,17 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                             detailUrl = `/kuesioner/${this.questionnaire.id}/${slug}`;
                         }
 
-                        // URL untuk akses publik ke kuesioner
-                        const publicPath = `/form/${this.questionnaire.id}`;
+                        // URL untuk akses publik ke kuesioner (using slug instead of ID)
+                        let publicPath = `/kuesioner/${this.questionnaire.id}`;
+                        if (
+                            response.data.questionnaire &&
+                            response.data.questionnaire.slug
+                        ) {
+                            const slug = this.slugify(
+                                response.data.questionnaire.slug
+                            );
+                            publicPath = `/kuesioner/${slug}`;
+                        }
 
                         return {
                             success: true,
@@ -1267,6 +1277,10 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                     question.settings.allowedTypes = ["*/*"];
                 }
             }
+        },
+
+        slugify(text) {
+            return slugify(text);
         },
     },
 });

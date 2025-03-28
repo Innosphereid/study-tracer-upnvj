@@ -23,9 +23,10 @@ class SubmitResponseRequest extends FormRequest
      */
     public function rules(): array
     {
-        Log::info('Validating submit response request', ['questionnaire' => $this->route('questionnaire')]);
+        Log::info('Validating submit response request', ['data' => $this->all()]);
         
         return [
+            'slug' => 'required|string',
             'respondent_identifier' => 'nullable|string|max:255',
             'answers' => 'required|array',
             'answers.*.question_id' => 'required|integer|exists:questions,id',

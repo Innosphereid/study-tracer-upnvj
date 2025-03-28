@@ -12,6 +12,7 @@ use App\Models\Section;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class QuestionnaireService implements QuestionnaireServiceInterface
 {
@@ -803,7 +804,8 @@ class QuestionnaireService implements QuestionnaireServiceInterface
         }
         
         if (isset($publishData['slug']) && $publishData['slug']) {
-            $updateData['slug'] = $publishData['slug'];
+            // Ensure slug is properly formatted
+            $updateData['slug'] = Str::slug($publishData['slug']);
         }
         
         if (isset($publishData['settings'])) {
