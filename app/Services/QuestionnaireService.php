@@ -389,7 +389,7 @@ class QuestionnaireService implements QuestionnaireServiceInterface
             $questionData['questionnaire_id'] = $section->questionnaire_id;
             
             // Validate question_type to ensure it's one of the allowed enum values
-            $allowedTypes = ['text', 'textarea', 'radio', 'checkbox', 'dropdown', 'rating', 'date', 'file', 'matrix', 'likert'];
+            $allowedTypes = ['text', 'textarea', 'radio', 'checkbox', 'dropdown', 'rating', 'date', 'file', 'matrix', 'likert', 'yes-no', 'slider', 'ranking'];
             
             if (isset($questionData['question_type'])) {
                 if (!in_array($questionData['question_type'], $allowedTypes)) {
@@ -451,6 +451,134 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                         $questionData['settings'] = json_encode($settings);
                         
                         Log::info('Normalized settings for likert question', [
+                            'settings' => $questionData['settings']
+                        ]);
+                    }
+                }
+                // Special handling for yes-no questions
+                else if ($questionData['question_type'] === 'yes-no') {
+                    // Ensure settings contains type=yes-no
+                    if (!isset($questionData['settings'])) {
+                        $questionData['settings'] = json_encode([
+                            'type' => 'yes-no',
+                            'yesLabel' => 'Ya',
+                            'noLabel' => 'Tidak'
+                        ]);
+                        
+                        Log::info('Created default settings for yes-no question', [
+                            'settings' => $questionData['settings']
+                        ]);
+                    } else if (is_array($questionData['settings'])) {
+                        // If settings is an array, ensure it has the required structure and encode as JSON
+                        $settings = $questionData['settings'];
+                        $settings['type'] = 'yes-no';
+                        
+                        if (!isset($settings['yesLabel'])) {
+                            $settings['yesLabel'] = 'Ya';
+                        }
+                        
+                        if (!isset($settings['noLabel'])) {
+                            $settings['noLabel'] = 'Tidak';
+                        }
+                        
+                        $questionData['settings'] = json_encode($settings);
+                        
+                        Log::info('Normalized settings for yes-no question', [
+                            'settings' => $questionData['settings']
+                        ]);
+                    }
+                }
+                // Special handling for slider questions
+                else if ($questionData['question_type'] === 'slider') {
+                    // Ensure settings contains type=slider
+                    if (!isset($questionData['settings'])) {
+                        $questionData['settings'] = json_encode([
+                            'type' => 'slider',
+                            'min' => 0,
+                            'max' => 100,
+                            'step' => 1,
+                            'showTicks' => true,
+                            'showLabels' => true,
+                            'labels' => [
+                                '0' => 'Minimum',
+                                '100' => 'Maximum'
+                            ]
+                        ]);
+                        
+                        Log::info('Created default settings for slider question', [
+                            'settings' => $questionData['settings']
+                        ]);
+                    } else if (is_array($questionData['settings'])) {
+                        // If settings is an array, ensure it has the required structure and encode as JSON
+                        $settings = $questionData['settings'];
+                        $settings['type'] = 'slider';
+                        
+                        if (!isset($settings['min'])) {
+                            $settings['min'] = 0;
+                        }
+                        
+                        if (!isset($settings['max'])) {
+                            $settings['max'] = 100;
+                        }
+                        
+                        if (!isset($settings['step'])) {
+                            $settings['step'] = 1;
+                        }
+                        
+                        if (!isset($settings['showTicks'])) {
+                            $settings['showTicks'] = true;
+                        }
+                        
+                        if (!isset($settings['showLabels'])) {
+                            $settings['showLabels'] = true;
+                        }
+                        
+                        if (!isset($settings['labels'])) {
+                            $settings['labels'] = [
+                                $settings['min'] => 'Minimum',
+                                $settings['max'] => 'Maximum'
+                            ];
+                        }
+                        
+                        $questionData['settings'] = json_encode($settings);
+                        
+                        Log::info('Normalized settings for slider question', [
+                            'settings' => $questionData['settings']
+                        ]);
+                    }
+                }
+                // Special handling for ranking questions
+                else if ($questionData['question_type'] === 'ranking') {
+                    // Ensure settings contains type=ranking
+                    if (!isset($questionData['settings'])) {
+                        $questionData['settings'] = json_encode([
+                            'type' => 'ranking',
+                            'options' => [
+                                ['id' => 'item-' . uniqid(), 'text' => 'Item 1'],
+                                ['id' => 'item-' . uniqid(), 'text' => 'Item 2'],
+                                ['id' => 'item-' . uniqid(), 'text' => 'Item 3']
+                            ]
+                        ]);
+                        
+                        Log::info('Created default settings for ranking question', [
+                            'settings' => $questionData['settings']
+                        ]);
+                    } else if (is_array($questionData['settings'])) {
+                        // If settings is an array, ensure it has the required structure and encode as JSON
+                        $settings = $questionData['settings'];
+                        $settings['type'] = 'ranking';
+                        
+                        if (!isset($settings['options']) || !is_array($settings['options']) || empty($settings['options'])) {
+                            $settings['options'] = [
+                                ['id' => 'item-' . uniqid(), 'text' => 'Item 1'],
+                                ['id' => 'item-' . uniqid(), 'text' => 'Item 2'],
+                                ['id' => 'item-' . uniqid(), 'text' => 'Item 3']
+                            ];
+                        }
+                        
+                        $questionData['settings'] = json_encode($settings);
+                        
+                        Log::info('Normalized settings for ranking question', [
                             'settings' => $questionData['settings']
                         ]);
                     }
@@ -1135,8 +1263,9 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                 'email' => 'text',
                 'phone' => 'text',
                 'number' => 'text',
-                'yes-no' => 'radio',
-                'slider' => 'rating',
+                'yes-no' => 'yes-no',
+                'slider' => 'slider',
+                'ranking' => 'ranking',
                 'likert' => 'likert'
             ];
             
@@ -1343,6 +1472,103 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                             $settings[$field] = $questionData[$field];
                         }
                     }
+                    break;
+                
+                case 'yes-no':
+                    // Yes-No specific settings
+                    $yesNoFieldSets = ['yesLabel', 'noLabel', 'defaultValue'];
+                    foreach ($yesNoFieldSets as $field) {
+                        if (isset($questionData[$field])) {
+                            $settings[$field] = $questionData[$field];
+                        }
+                    }
+                    
+                    // Ensure default labels if not provided
+                    if (!isset($settings['yesLabel'])) {
+                        $settings['yesLabel'] = 'Ya';
+                    }
+                    if (!isset($settings['noLabel'])) {
+                        $settings['noLabel'] = 'Tidak';
+                    }
+                    
+                    // Add explicit type field
+                    $settings['type'] = 'yes-no';
+                    
+                    Log::info('Normalized yes-no question data', [
+                        'yes_label' => $settings['yesLabel'], 
+                        'no_label' => $settings['noLabel'],
+                        'question_type' => $result['question_type']
+                    ]);
+                    break;
+                
+                case 'slider':
+                    // Slider specific settings
+                    $sliderFieldSets = ['min', 'max', 'step', 'showTicks', 'showLabels', 'labels', 'defaultValue'];
+                    foreach ($sliderFieldSets as $field) {
+                        if (isset($questionData[$field])) {
+                            $settings[$field] = $questionData[$field];
+                        }
+                    }
+                    
+                    // Ensure required values
+                    if (!isset($settings['min'])) {
+                        $settings['min'] = 0;
+                    }
+                    if (!isset($settings['max'])) {
+                        $settings['max'] = 100;
+                    }
+                    if (!isset($settings['step'])) {
+                        $settings['step'] = 1;
+                    }
+                    if (!isset($settings['showTicks'])) {
+                        $settings['showTicks'] = true;
+                    }
+                    if (!isset($settings['showLabels'])) {
+                        $settings['showLabels'] = true;
+                    }
+                    if (!isset($settings['labels'])) {
+                        $settings['labels'] = [
+                            $settings['min'] => 'Minimum',
+                            $settings['max'] => 'Maximum'
+                        ];
+                    }
+                    
+                    // Add explicit type field
+                    $settings['type'] = 'slider';
+                    
+                    Log::info('Normalized slider question data', [
+                        'min' => $settings['min'],
+                        'max' => $settings['max'],
+                        'step' => $settings['step'],
+                        'question_type' => $result['question_type']
+                    ]);
+                    break;
+                
+                case 'ranking':
+                    // Ranking specific settings
+                    $rankingFieldSets = ['options'];
+                    foreach ($rankingFieldSets as $field) {
+                        if (isset($questionData[$field])) {
+                            $settings[$field] = $questionData[$field];
+                        }
+                    }
+                    
+                    // Ensure we have options
+                    if (!isset($settings['options']) || !is_array($settings['options']) || empty($settings['options'])) {
+                        $settings['options'] = [
+                            ['id' => 'item-' . uniqid(), 'text' => 'Item 1'],
+                            ['id' => 'item-' . uniqid(), 'text' => 'Item 2'],
+                            ['id' => 'item-' . uniqid(), 'text' => 'Item 3']
+                        ];
+                    }
+                    
+                    // Add explicit type field
+                    $settings['type'] = 'ranking';
+                    
+                    Log::info('Normalized ranking question data', [
+                        'options_count' => count($settings['options']),
+                        'question_type' => $result['question_type']
+                    ]);
                     break;
                     
                 case 'likert':
