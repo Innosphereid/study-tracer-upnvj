@@ -94,7 +94,83 @@ onMounted(() => {
         selectionType: props.question.selectionType,
         modelValue: props.modelValue,
     });
+
+    // Initialize both formats if any selection exists
+    initializeResponseFormats();
 });
+
+// Initialize both formats to ensure validation works
+const initializeResponseFormats = () => {
+    // Only proceed if we already have answers
+    if (
+        !props.modelValue?.answers ||
+        Object.keys(props.modelValue.answers).length === 0
+    ) {
+        return;
+    }
+
+    // If we have answers but not responses/checkboxResponses, create them
+    if (
+        (!props.question.selectionType ||
+            props.question.selectionType === "radio") &&
+        (!props.modelValue.responses ||
+            Object.keys(props.modelValue.responses).length === 0)
+    ) {
+        // Create responses from answers
+        const responses = {};
+        Object.entries(props.modelValue.answers).forEach(
+            ([rowIndex, columnValue]) => {
+                const rowData = normalizedRows.value[parseInt(rowIndex)];
+                if (rowData && rowData.id) {
+                    responses[rowData.id] = columnValue;
+                }
+            }
+        );
+
+        if (Object.keys(responses).length > 0) {
+            // Add responses to model value
+            emit("update:modelValue", {
+                ...props.modelValue,
+                responses,
+            });
+        }
+    } else if (
+        props.question.selectionType === "checkbox" &&
+        (!props.modelValue.checkboxResponses ||
+            Object.keys(props.modelValue.checkboxResponses).length === 0)
+    ) {
+        // Create checkboxResponses from answers
+        const checkboxResponses = {};
+        Object.entries(props.modelValue.answers).forEach(
+            ([rowIndex, columnValues]) => {
+                if (!Array.isArray(columnValues)) return;
+
+                const rowData = normalizedRows.value[parseInt(rowIndex)];
+                if (rowData && rowData.id) {
+                    checkboxResponses[rowData.id] = {};
+
+                    // Set selected columns
+                    columnValues.forEach((columnValue) => {
+                        const column = normalizedColumns.value.find(
+                            (col) => col.value === columnValue
+                        );
+                        if (column && column.id) {
+                            checkboxResponses[rowData.id][column.id] = true;
+                        }
+                    });
+                }
+            }
+        );
+
+        if (Object.keys(checkboxResponses).length > 0) {
+            // Add checkboxResponses to model value
+            emit("update:modelValue", {
+                ...props.modelValue,
+                checkboxResponses,
+            });
+        }
+    }
+};
 
 // Computed property to normalize rows with proper sorting
 const normalizedRows = computed(() => {
@@ -169,6 +245,10 @@ const isOptionSelected = (rowIndex, columnValue) => {
 // Handle selection change
 const handleOptionChange = (rowIndex, columnValue) => {
     const newAnswers = { ...(props.modelValue?.answers || {}) };
+    const rowData = normalizedRows.value[rowIndex];
+
+    // Create/update responses object for validation format
+    const responses = { ...(props.modelValue?.responses || {}) };
 
     // For radio buttons (single selection per row)
     if (
@@ -176,6 +256,11 @@ const handleOptionChange = (rowIndex, columnValue) => {
         props.question.selectionType === "radio"
     ) {
         newAnswers[rowIndex] = columnValue;
+
+        // Update the responses format for validation
+        if (rowData && rowData.id) {
+            responses[rowData.id] = columnValue;
+        }
     }
     // For checkboxes (multiple selections per row)
     else if (props.question.selectionType === "checkbox") {
@@ -192,9 +277,39 @@ const handleOptionChange = (rowIndex, columnValue) => {
         } else {
             newAnswers[rowIndex].push(columnValue);
         }
+
+        // Update the checkboxResponses format for validation
+        const checkboxResponses = {
+            ...(props.modelValue?.checkboxResponses || {}),
+        };
+        if (rowData && rowData.id) {
+            if (!checkboxResponses[rowData.id]) {
+                checkboxResponses[rowData.id] = {};
+            }
+
+            // Find the column that matches this value
+            const column = normalizedColumns.value.find(
+                (col) => col.value === columnValue
+            );
+            if (column && column.id) {
+                // Toggle the checkbox state - fix the logic
+                checkboxResponses[rowData.id][column.id] = index === -1; // If index is -1, we're adding it
+            }
+        }
+
+        // Emit both formats
+        emit("update:modelValue", {
+            answers: newAnswers,
+            checkboxResponses: checkboxResponses,
+        });
+        return;
     }
 
-    emit("update:modelValue", { answers: newAnswers });
+    // Emit both component format and validation format
+    emit("update:modelValue", {
+        answers: newAnswers,
+        responses: responses,
+    });
 };
 </script>
 
