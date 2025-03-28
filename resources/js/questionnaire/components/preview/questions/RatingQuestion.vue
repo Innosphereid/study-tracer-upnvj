@@ -1,20 +1,42 @@
 <template>
     <div class="rating-question">
-        <div class="flex flex-wrap justify-between items-center gap-2 mt-2">
-            <template v-for="(n, index) in maxRating" :key="index">
-                <button
-                    type="button"
+        <div class="rating-stars mt-2 flex items-center justify-center">
+            <div
+                v-for="n in maxRating"
+                :key="n"
+                class="rating-star p-1 cursor-pointer"
+                @click="selectRating(n)"
+                @mouseenter="showHover(n)"
+                @mouseleave="clearHover()"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
                     :class="[
-                        'flex justify-center items-center rounded-full w-12 h-12 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2',
-                        isSelected(n)
-                            ? 'bg-blue-500 text-white hover:bg-blue-600'
-                            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50',
+                        'w-8 h-8 transition-all',
+                        isRatingActive(n) ? 'text-yellow-400' : 'text-gray-300',
                     ]"
-                    @click="selectRating(n)"
                 >
-                    {{ n }}
-                </button>
-            </template>
+                    <path
+                        fill-rule="evenodd"
+                        d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z"
+                        clip-rule="evenodd"
+                    />
+                </svg>
+            </div>
+        </div>
+
+        <div class="text-center mt-2">
+            <span class="text-sm font-medium" v-if="internalValue">
+                {{ internalValue }} / {{ maxRating }}
+            </span>
+            <span v-else-if="hoveredRating" class="text-sm text-gray-500">
+                {{ hoveredRating }} / {{ maxRating }}
+            </span>
+            <span v-else class="text-sm text-gray-400">
+                Klik untuk memberi rating
+            </span>
         </div>
 
         <div class="flex justify-between mt-1 text-xs text-gray-500">
@@ -31,7 +53,7 @@
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { ref, computed, watch } from "vue";
 
 const props = defineProps({
     question: {
@@ -58,63 +80,49 @@ const maxRating = computed(() => {
     return typeof max === "number" ? max : Number(max) || 5;
 });
 
-// Check if a rating is selected, handling both string and number values
-const isSelected = (value) => {
-    if (
-        props.modelValue === null ||
-        props.modelValue === undefined ||
-        props.modelValue === ""
-    ) {
-        return false;
+// Internal state
+const internalValue = ref(props.modelValue ? Number(props.modelValue) : 0);
+const hoveredRating = ref(0);
+
+// Watch for external changes
+watch(
+    () => props.modelValue,
+    (newVal) => {
+        internalValue.value = newVal ? Number(newVal) : 0;
+    }
+);
+
+// Check if a star position should be active
+const isRatingActive = (position) => {
+    if (hoveredRating.value) {
+        return hoveredRating.value >= position;
     }
 
-    // Convert both to strings for comparison
-    return value.toString() === props.modelValue.toString();
+    return internalValue.value >= position;
 };
 
 const selectRating = (value) => {
+    internalValue.value = value;
     // Always emit as string to be consistent
     emit("update:modelValue", value.toString());
+};
+
+const showHover = (rating) => {
+    hoveredRating.value = rating;
+};
+
+const clearHover = () => {
+    hoveredRating.value = 0;
 };
 </script>
 
 <style scoped>
-.rating-question button {
-    position: relative;
-    overflow: hidden;
+.rating-star {
+    display: inline-flex;
 }
 
-.rating-question button::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 5px;
-    height: 5px;
-    background: rgba(255, 255, 255, 0.5);
-    opacity: 0;
-    border-radius: 100%;
-    transform: scale(1, 1) translate(-50%);
-    transform-origin: 50% 50%;
-}
-
-.rating-question button:focus::after {
-    animation: ripple 1s ease-out;
-}
-
-@keyframes ripple {
-    0% {
-        transform: scale(0, 0);
-        opacity: 0.5;
-    }
-    20% {
-        transform: scale(25, 25);
-        opacity: 0.3;
-    }
-    100% {
-        opacity: 0;
-        transform: scale(40, 40);
-    }
+.rating-star:hover {
+    transform: scale(1.1);
 }
 
 .fade-enter-active,
