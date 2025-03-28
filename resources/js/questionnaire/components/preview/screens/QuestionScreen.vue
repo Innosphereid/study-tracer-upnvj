@@ -635,6 +635,13 @@ const getComponentForType = (type) => {
     const componentName = componentMap[type] || "ShortTextQuestion";
     console.log("Mapped to component name:", componentName);
 
+    // Handle temporarily disabled ranking component
+    if (type === "ranking") {
+        console.warn(
+            "Warning: Ranking component is temporarily disabled in the builder due to a navigation bug. Use with caution."
+        );
+    }
+
     // Try to find the component in the dynamically imported modules
     for (const path in questionComponents) {
         if (path.includes(componentName)) {
@@ -688,6 +695,13 @@ const getQuestionComponent = (type) => {
     // Get the component name based on the type
     const componentName = componentMap[type] || "ShortTextQuestion";
     console.log("Mapped to component name:", componentName);
+
+    // Handle temporarily disabled ranking component
+    if (type === "ranking") {
+        console.warn(
+            "Warning: Ranking component is temporarily disabled in the builder due to a navigation bug. Use with caution."
+        );
+    }
 
     // Try to find the component in the dynamically imported modules
     for (const path in questionComponents) {

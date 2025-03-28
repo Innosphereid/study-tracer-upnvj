@@ -150,12 +150,15 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                 icon: "slider",
                 category: "lanjutan",
             },
-            {
+            // Temporarily disabled due to a bug with drag and drop functionality
+            // that causes navigation to first page when interacting with ranking items
+            // TODO: Fix the bug and re-enable this component
+            /* {
                 id: "ranking",
                 name: "Rangking",
                 icon: "ranking",
                 category: "lanjutan",
-            },
+            }, */
         ],
 
         formattedLastSaved: (state) => {
