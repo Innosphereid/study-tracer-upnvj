@@ -19,20 +19,41 @@
                 </svg>
             </div>
 
+            <!-- Debug Panel (only visible with ?debug=true in URL) -->
+            <div
+                v-if="isDebugMode"
+                class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md text-left"
+            >
+                <h3 class="font-bold text-yellow-800 mb-2">Debug Info:</h3>
+                <pre
+                    class="text-xs bg-gray-100 p-2 rounded overflow-auto max-h-40"
+                >
+Welcome Title: {{ JSON.stringify(welcomeTitle) }}
+Welcome Description: {{ JSON.stringify(welcomeDescription) }}
+Raw welcomeScreen: {{
+                        JSON.stringify(
+                            props.questionnaire.welcomeScreen,
+                            null,
+                            2
+                        )
+                    }}</pre
+                >
+                <div class="mt-2 text-sm text-yellow-700">
+                    <p>
+                        ⚠️ This debug panel is only visible during
+                        development/testing.
+                    </p>
+                </div>
+            </div>
+
             <!-- Title with animation -->
             <h1 class="text-3xl font-bold text-gray-900 welcome-title mb-4">
-                {{
-                    questionnaire.welcomeScreen?.title ||
-                    "Selamat Datang di Kuesioner"
-                }}
+                {{ welcomeTitle }}
             </h1>
 
             <!-- Description with animation -->
             <div class="mt-4 text-lg text-gray-600 welcome-description">
-                {{
-                    questionnaire.welcomeScreen?.description ||
-                    "Terima kasih telah berpartisipasi dalam kuesioner ini. Kami menghargai waktu dan masukan Anda."
-                }}
+                {{ welcomeDescription }}
             </div>
 
             <!-- Start button with animation -->
@@ -86,12 +107,70 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed, onMounted, watch, ref } from "vue";
+
+const props = defineProps({
     questionnaire: {
         type: Object,
         required: true,
     },
 });
+
+// Check if debug mode is enabled
+const isDebugMode = ref(false);
+onMounted(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    isDebugMode.value = urlParams.get("debug") === "true";
+});
+
+// Calculate welcome screen title with fallback
+const welcomeTitle = computed(() => {
+    const title = props.questionnaire?.welcomeScreen?.title;
+    return title || "Selamat Datang di Kuesioner";
+});
+
+// Calculate welcome screen description with fallback
+const welcomeDescription = computed(() => {
+    const description = props.questionnaire?.welcomeScreen?.description;
+    return (
+        description ||
+        "Terima kasih telah berpartisipasi dalam kuesioner ini. Kami menghargai waktu dan masukan Anda."
+    );
+});
+
+// Directly set data from the props if needed (to force a refresh of the display)
+const forceUpdateDisplay = () => {
+    if (props.questionnaire?.welcomeScreen) {
+        // This is a more direct way to ensure the values are up-to-date
+        console.log(
+            "Forcing update with direct values:",
+            props.questionnaire.welcomeScreen
+        );
+    }
+};
+
+// Add debugging
+onMounted(() => {
+    console.log(
+        "WelcomeScreen mounted with questionnaire:",
+        props.questionnaire
+    );
+    console.log("Welcome title:", welcomeTitle.value);
+    console.log("Welcome description:", welcomeDescription.value);
+
+    // Force update after a short delay to ensure the DOM has processed the initial render
+    setTimeout(forceUpdateDisplay, 500);
+});
+
+// Watch for changes in welcome screen data
+watch(
+    () => props.questionnaire?.welcomeScreen,
+    (newValue) => {
+        console.log("Welcome screen data changed:", newValue);
+        forceUpdateDisplay();
+    },
+    { deep: true }
+);
 
 defineEmits(["start"]);
 </script>
