@@ -413,6 +413,11 @@ const validateCurrentPageQuestions = () => {
                             parseInt(answer, 10) > 0);
                     break;
 
+                case "yes-no":
+                    // yes-no questions are valid if they have a non-empty string value (typically "yes" or "no")
+                    questionValid = !!answer && answer.trim() !== "";
+                    break;
+
                 default:
                     // Default validation just checks if there's any value
                     questionValid = !!answer;
@@ -507,6 +512,11 @@ const goNext = () => {
                             }
                             break;
 
+                        case "yes-no":
+                            // yes-no questions are valid if they have a non-empty string value (typically "yes" or "no")
+                            questionValid = !!answer && answer.trim() !== "";
+                            break;
+
                         default:
                             questionValid = !!answer;
                     }
@@ -586,9 +596,63 @@ const hasNextSection = () => {
     return index < props.questionnaire.sections.length - 1;
 };
 
+// Helper to get the correct component for a question type
+const getComponentForType = (type) => {
+    // Log which question type we're trying to get a component for
+    console.log("Trying to get component for question type:", type);
+
+    // Import all question components dynamically
+    // This object will hold all the imported components
+    const componentMap = {
+        "short-text": "ShortTextQuestion",
+        "long-text": "LongTextQuestion",
+        radio: "RadioQuestion",
+        checkbox: "CheckboxQuestion",
+        dropdown: "DropdownQuestion",
+        rating: "RatingQuestion",
+        "yes-no": "YesNoQuestion",
+        email: "EmailQuestion",
+        phone: "PhoneQuestion",
+        number: "NumberQuestion",
+        date: "DateQuestion",
+        "file-upload": "FileUploadQuestion",
+        slider: "SliderQuestion",
+        matrix: "MatrixQuestion",
+        ranking: "RankingQuestion",
+        likert: "LikertQuestion",
+
+        // Backend types (from database)
+        text: "ShortTextQuestion",
+        textarea: "LongTextQuestion",
+        file: "FileUploadQuestion",
+    };
+
+    // Get the component name based on the type
+    const componentName = componentMap[type] || "ShortTextQuestion";
+    console.log("Mapped to component name:", componentName);
+
+    // Try to find the component in the dynamically imported modules
+    for (const path in questionComponents) {
+        if (path.includes(componentName)) {
+            console.log("Found component at path:", path);
+            return questionComponents[path].default;
+        }
+    }
+
+    // Fallback to a default component if none found
+    console.warn(`No component found for type ${type}, using default`);
+    return questionComponents[Object.keys(questionComponents)[0]].default;
+};
+
 // Helper to dynamically get the correct component for question type
 const getQuestionComponent = (type) => {
     console.log("Trying to get component for question type:", type);
+
+    // Special handling for known question types with settings issues
+    if (typeof questionComponents === "undefined") {
+        console.error("questionComponents is undefined!");
+        return null;
+    }
 
     // Map backend question types to component names
     // This is critical - the backend stores types like 'text' but components are named like 'ShortTextQuestion'
@@ -626,6 +690,18 @@ const getQuestionComponent = (type) => {
         if (path.includes(componentName)) {
             console.log("Found component at path:", path);
             return questionComponents[path].default;
+        }
+    }
+
+    // Special case for YesNoQuestion if it wasn't found directly
+    if (type === "yes-no") {
+        console.log("Special handling for yes-no question type");
+        // Try to find YesNoQuestion by full path
+        for (const path in questionComponents) {
+            if (path.includes("YesNoQuestion")) {
+                console.log("Found YesNoQuestion at path:", path);
+                return questionComponents[path].default;
+            }
         }
     }
 
@@ -797,145 +873,12 @@ const normalizeQuestionData = (question) => {
                             console.log(
                                 `Sorting options for question ${questionData.id} in descending order`
                             );
-                            questionData.options = [
-                                ...questionData.options,
-                            ].sort((a, b) => {
-                                // Compare text values for sorting
-                                return b.text.localeCompare(a.text);
-                            });
-                        }
-                    }
-
-                    // Handle allowOther flag
-                    if (questionData.settings.allowOther !== undefined) {
-                        questionData.allowOther = Boolean(
-                            questionData.settings.allowOther
-                        );
-                    }
-
-                    // Handle allowNone flag
-                    if (questionData.settings.allowNone !== undefined) {
-                        questionData.allowNone = Boolean(
-                            questionData.settings.allowNone
-                        );
-                    }
-
-                    // Copy other option-related settings
-                    ["defaultValue"].forEach((prop) => {
-                        if (
-                            questionData.settings[prop] !== undefined &&
-                            questionData[prop] === undefined
-                        ) {
-                            questionData[prop] = questionData.settings[prop];
-                        }
-                    });
-                    break;
-
-                case "matrix":
-                    // Copy matrix-specific properties
-                    ["matrixType", "rows", "columns"].forEach((prop) => {
-                        if (
-                            questionData.settings[prop] !== undefined &&
-                            questionData[prop] === undefined
-                        ) {
-                            questionData[prop] = questionData.settings[prop];
-                        }
-                    });
-
-                    // Normalize rows format
-                    if (Array.isArray(questionData.rows)) {
-                        questionData.rows = questionData.rows.map(
-                            (row, index) => {
-                                if (typeof row === "string") {
-                                    return {
-                                        id: `row_${row}`,
-                                        text: row,
-                                        value: row,
-                                    };
-                                }
-
-                                // Ensure row has value
-                                if (!row.value) {
-                                    row.value = row.text;
-                                }
-
-                                return row;
-                            }
-                        );
-
-                        // Apply sorting if rowsOrder is set to 'desc'
-                        if (questionData.rowsOrder === "desc") {
-                            console.log(
-                                `Sorting rows for matrix question ${questionData.id} in descending order`
-                            );
-                            questionData.rows.sort((a, b) =>
-                                b.text.localeCompare(a.text)
+                            questionData.options.sort((a, b) =>
+                                b.text
+                                    .toString()
+                                    .localeCompare(a.text.toString())
                             );
                         }
-                    }
-
-                    // Normalize columns format
-                    if (Array.isArray(questionData.columns)) {
-                        questionData.columns = questionData.columns.map(
-                            (column, index) => {
-                                if (typeof column === "string") {
-                                    return {
-                                        id: `column_${column}`,
-                                        text: column,
-                                        value: column,
-                                    };
-                                }
-
-                                // Ensure column has value
-                                if (!column.value) {
-                                    column.value = column.text;
-                                }
-
-                                return column;
-                            }
-                        );
-
-                        // Apply sorting if columnsOrder is set to 'desc'
-                        if (questionData.columnsOrder === "desc") {
-                            console.log(
-                                `Sorting columns for matrix question ${questionData.id} in descending order`
-                            );
-                            questionData.columns.sort((a, b) =>
-                                b.text.localeCompare(a.text)
-                            );
-                        }
-                    }
-                    break;
-
-                case "rating":
-                    // Copy rating-specific properties
-                    [
-                        "maxRating",
-                        "showValues",
-                        "icon",
-                        "defaultValue",
-                        "labels",
-                        "minRating",
-                        "maxRatingValue",
-                        "stepValue",
-                    ].forEach((prop) => {
-                        if (
-                            questionData.settings[prop] !== undefined &&
-                            questionData[prop] === undefined
-                        ) {
-                            questionData[prop] = questionData.settings[prop];
-                        }
-                    });
-
-                    // Ensure maxRating is numeric
-                    if (
-                        questionData.maxRating &&
-                        !Number.isInteger(questionData.maxRating)
-                    ) {
-                        questionData.maxRating =
-                            parseInt(questionData.maxRating, 10) || 5;
-                    } else if (!questionData.maxRating) {
-                        questionData.maxRating = 5; // Default if not set
                     }
                     break;
 
@@ -972,6 +915,18 @@ const normalizeQuestionData = (question) => {
                         }
                     });
                     break;
+
+                case "yes-no":
+                    // Ensure yes-no questions have necessary properties
+                    if (!questionData.yesLabel) {
+                        questionData.yesLabel =
+                            questionData.settings?.yesLabel || "Ya";
+                    }
+                    if (!questionData.noLabel) {
+                        questionData.noLabel =
+                            questionData.settings?.noLabel || "Tidak";
+                    }
+                    break;
             }
         }
     }
@@ -992,6 +947,20 @@ const normalizeQuestionData = (question) => {
         allowNone: questionData.allowNone,
         optionsOrder: questionData.optionsOrder,
     });
+
+    // Additional debugging for yes-no questions
+    if (
+        questionData.type === "yes-no" ||
+        (questionData.settings && questionData.settings.type === "yes-no")
+    ) {
+        console.log("YES-NO QUESTION DETECTED:", {
+            id: questionData.id,
+            type: questionData.type,
+            settings: questionData.settings,
+            yesLabel: questionData.yesLabel,
+            noLabel: questionData.noLabel,
+        });
+    }
 
     return questionData;
 };
@@ -1083,6 +1052,40 @@ const preprocessQuestions = () => {
                 }
             }
         }
+
+        // Handle yes-no questions that might be stored as another type
+        if (question.type === "radio" || question.type === "short-text") {
+            let settingsObj = question.settings;
+
+            // Try to parse settings if it's a string
+            if (typeof settingsObj === "string") {
+                try {
+                    settingsObj = JSON.parse(settingsObj);
+                } catch (e) {
+                    console.error("Failed to parse settings string:", e);
+                    settingsObj = {};
+                }
+            }
+
+            // Check if this is actually a yes-no question
+            if (settingsObj?.type === "yes-no") {
+                console.log(
+                    "Preprocessing: Changed",
+                    question.type,
+                    "to yes-no for question",
+                    question.id
+                );
+                question.type = "yes-no";
+
+                // Apply yes-no specific properties
+                if (settingsObj.yesLabel) {
+                    question.yesLabel = settingsObj.yesLabel;
+                }
+                if (settingsObj.noLabel) {
+                    question.noLabel = settingsObj.noLabel;
+                }
+            }
+        }
     });
 };
 
@@ -1140,6 +1143,11 @@ const validateAllQuestions = () => {
                             (typeof answer === "string" &&
                                 answer !== "" &&
                                 parseInt(answer, 10) > 0);
+                        break;
+
+                    case "yes-no":
+                        // yes-no questions are valid if they have a non-empty string value (typically "yes" or "no")
+                        questionValid = !!answer && answer.trim() !== "";
                         break;
 
                     case "matrix":
