@@ -182,6 +182,67 @@ onMounted(() => {
 const processQuestionnaireData = () => {
     console.log("Processing questionnaire data");
 
+    // Parse settings if it's a string
+    if (
+        props.questionnaire.settings &&
+        typeof props.questionnaire.settings === "string"
+    ) {
+        try {
+            const settingsObj = JSON.parse(props.questionnaire.settings);
+            console.log("Parsed settings:", settingsObj);
+
+            // Create welcome screen and thank you screen objects if they don't exist
+            if (!props.questionnaire.welcomeScreen) {
+                props.questionnaire.welcomeScreen = {};
+            }
+
+            if (!props.questionnaire.thankYouScreen) {
+                props.questionnaire.thankYouScreen = {};
+            }
+
+            // Apply parsed settings to the questionnaire object
+            props.questionnaire.showProgressBar = settingsObj.showProgressBar;
+            props.questionnaire.showPageNumbers = settingsObj.showPageNumbers;
+            props.questionnaire.requiresLogin = settingsObj.requiresLogin;
+
+            // Set welcome screen data - directly assign properties for reactivity
+            if (settingsObj.welcomeScreen) {
+                props.questionnaire.welcomeScreen.title =
+                    settingsObj.welcomeScreen.title;
+                props.questionnaire.welcomeScreen.description =
+                    settingsObj.welcomeScreen.description;
+                console.log(
+                    "Set welcome screen title:",
+                    props.questionnaire.welcomeScreen.title
+                );
+                console.log(
+                    "Set welcome screen description:",
+                    props.questionnaire.welcomeScreen.description
+                );
+            }
+
+            // Set thank you screen data - directly assign properties for reactivity
+            if (settingsObj.thankYouScreen) {
+                props.questionnaire.thankYouScreen.title =
+                    settingsObj.thankYouScreen.title;
+                props.questionnaire.thankYouScreen.description =
+                    settingsObj.thankYouScreen.description;
+                console.log(
+                    "Set thank you screen:",
+                    props.questionnaire.thankYouScreen
+                );
+            }
+        } catch (error) {
+            console.error("Error parsing questionnaire settings:", error);
+        }
+    }
+
+    // Log questionnaire data after processing settings
+    console.log(
+        "Welcome screen after processing:",
+        JSON.stringify(props.questionnaire.welcomeScreen, null, 2)
+    );
+
     // Map backend question types to frontend types
     const questionTypeMap = {
         text: "short-text",
@@ -193,6 +254,7 @@ const processQuestionnaireData = () => {
         date: "date",
         file: "file-upload",
         matrix: "matrix",
+        ranking: "ranking",
     };
 
     // If the questionnaire has sections, ensure each section's questions have the expected structure
