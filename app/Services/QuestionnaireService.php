@@ -1026,7 +1026,7 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                 'number' => 'text',
                 'yes-no' => 'radio',
                 'slider' => 'rating',
-                'likert' => 'matrix'
+                'likert' => 'likert'
             ];
             
             $frontendType = $questionData['type'];
@@ -1211,6 +1211,29 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                         if (isset($questionData[$field])) {
                             $settings[$field] = $questionData[$field];
                         }
+                    }
+                    break;
+                    
+                case 'likert':
+                    // Likert specific settings
+                    $likertFieldSets = ['scale', 'statements'];
+                    foreach ($likertFieldSets as $field) {
+                        if (isset($questionData[$field])) {
+                            $settings[$field] = $questionData[$field];
+                        }
+                    }
+                    
+                    // Ensure statements have proper structure
+                    if (isset($settings['statements']) && !empty($settings['statements'])) {
+                        // Statements are fine
+                    } else if (isset($settings['text'])) {
+                        // Create a default statement from the question text
+                        $settings['statements'] = [
+                            [
+                                'id' => 'statement-' . uniqid(),
+                                'text' => $settings['text']
+                            ]
+                        ];
                     }
                     break;
             }

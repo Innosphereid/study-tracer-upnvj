@@ -375,6 +375,46 @@ class QuestionnaireController extends Controller
                                             $question['options'] = $question['settings']['options'];
                                         }
                                         break;
+                                        
+                                    case 'likert':
+                                        // Handle likert settings
+                                        $likertProps = ['scale', 'statements'];
+                                        foreach ($likertProps as $prop) {
+                                            if (!isset($question[$prop]) && isset($question['settings'][$prop])) {
+                                                $question[$prop] = $question['settings'][$prop];
+                                            }
+                                        }
+                                        
+                                        // Parse settings if it's a string
+                                        if (isset($question['settings']) && is_string($question['settings'])) {
+                                            try {
+                                                $settings = json_decode($question['settings'], true);
+                                                if (is_array($settings)) {
+                                                    if (!isset($question['scale']) && isset($settings['scale'])) {
+                                                        $question['scale'] = $settings['scale'];
+                                                    }
+                                                    if (!isset($question['statements']) && isset($settings['statements'])) {
+                                                        $question['statements'] = $settings['statements'];
+                                                    }
+                                                    
+                                                    // If no statements exist, create one from the text
+                                                    if ((!isset($question['statements']) || empty($question['statements'])) && isset($settings['text'])) {
+                                                        $question['statements'] = [
+                                                            [
+                                                                'id' => 'statement-' . uniqid(),
+                                                                'text' => $settings['text']
+                                                            ]
+                                                        ];
+                                                    }
+                                                }
+                                            } catch (\Exception $e) {
+                                                Log::warning('Failed to decode likert settings', [
+                                                    'error' => $e->getMessage(),
+                                                    'settings' => $question['settings']
+                                                ]);
+                                            }
+                                        }
+                                        break;
                                 }
                                 
                                 Log::debug('Processed question type-specific settings', [

@@ -25,7 +25,7 @@ class UpdateQuestionnaireRequest extends FormRequest
      */
     public function rules(): array
     {
-        Log::info('Validating update questionnaire request', ['id' => $this->route('questionnaire')]);
+        Log::info('Validating update questionnaire request', ['id' => $this->route('id')]);
         
         return [
             'title' => 'sometimes|required|string|max:255',
@@ -34,7 +34,7 @@ class UpdateQuestionnaireRequest extends FormRequest
                 'nullable',
                 'string',
                 'max:255',
-                Rule::unique('questionnaires', 'slug')->ignore($this->route('questionnaire')),
+                Rule::unique('questionnaires', 'slug')->ignore($this->route('id')),
             ],
             'description' => 'sometimes|nullable|string',
             'status' => 'sometimes|nullable|string|in:draft,published,closed',
@@ -49,7 +49,7 @@ class UpdateQuestionnaireRequest extends FormRequest
             'sections.*.order' => 'nullable|integer|min:0',
             'sections.*.questions' => 'nullable|array',
             'sections.*.questions.*.id' => 'nullable|integer|exists:questions,id',
-            'sections.*.questions.*.question_type' => 'required|string|in:text,textarea,radio,checkbox,dropdown,rating,date,file,matrix',
+            'sections.*.questions.*.question_type' => 'required|string|in:text,textarea,radio,checkbox,dropdown,rating,date,file,matrix,likert',
             'sections.*.questions.*.title' => 'required|string',
             'sections.*.questions.*.description' => 'nullable|string',
             'sections.*.questions.*.is_required' => 'nullable|boolean',

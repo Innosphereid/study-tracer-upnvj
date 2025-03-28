@@ -716,15 +716,48 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
             // Log the data being sent
             console.log("Saving questionnaire data:", questionnaireData);
 
+            // Make sure we have a valid ID for updates - IMPORTANT FIX
+            let questionnaireId = this.questionnaire.id;
+            if (
+                !isCreate &&
+                (questionnaireId === null || questionnaireId === undefined)
+            ) {
+                console.error(
+                    "Error: Attempting to update questionnaire without valid ID"
+                );
+                this.errorMessage =
+                    "Tidak dapat menyimpan kuesioner: ID tidak valid";
+                this.saveStatus = "error";
+                return Promise.reject({
+                    success: false,
+                    message: this.errorMessage,
+                });
+            }
+
+            // Ensure numeric ID for API requests
+            if (!isCreate && questionnaireId) {
+                // Convert string IDs to numbers if they're numeric
+                if (
+                    typeof questionnaireId === "string" &&
+                    /^\d+$/.test(questionnaireId)
+                ) {
+                    questionnaireId = parseInt(questionnaireId, 10);
+                    console.log(
+                        "Converted string ID to number:",
+                        questionnaireId
+                    );
+                }
+            }
+
             const url = isCreate
                 ? "/kuesioner"
-                : `/kuesioner/${this.questionnaire.id}`;
+                : `/kuesioner/${questionnaireId}`;
             const method = isCreate ? "post" : "put";
 
             console.log("Saving questionnaire:", {
                 isCreate,
-                id: this.questionnaire.id,
-                idType: typeof this.questionnaire.id,
+                id: questionnaireId,
+                idType: typeof questionnaireId,
                 url,
                 method,
             });
@@ -891,7 +924,7 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                 "yes-no": "radio",
                 slider: "rating",
                 ranking: "matrix",
-                likert: "matrix",
+                likert: "likert",
             };
 
             return typeMap[frontendType] || "text"; // Default to text if mapping not found

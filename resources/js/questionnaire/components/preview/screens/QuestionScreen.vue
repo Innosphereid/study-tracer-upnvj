@@ -639,6 +639,32 @@ const normalizeQuestionData = (question) => {
     // Make a copy to avoid modifying the original
     const questionData = { ...question };
 
+    // First, check if this might be a Likert question stored as Matrix type
+    // This is a critical fix for the Likert vs Matrix display issue
+    if (questionData.type === "matrix" && questionData.settings) {
+        // Try to parse settings if it's a string
+        let settingsObj = questionData.settings;
+        if (typeof settingsObj === "string") {
+            try {
+                settingsObj = JSON.parse(settingsObj);
+            } catch (e) {
+                console.error("Failed to parse settings string:", e);
+                settingsObj = {};
+            }
+        }
+
+        // Check if the original frontend type was 'likert'
+        if (
+            settingsObj.type === "likert" ||
+            (settingsObj.scale && settingsObj.statements)
+        ) {
+            console.log(
+                "Detected Likert question stored as matrix type, changing type to likert"
+            );
+            questionData.type = "likert";
+        }
+    }
+
     // If settings exist and it's a string, parse it
     if (questionData.settings && typeof questionData.settings === "string") {
         try {
@@ -976,7 +1002,22 @@ const getFormattedAnswer = (questionId, questionType) => {
 
     // If no answer, return empty value based on type
     if (answer === undefined || answer === null) {
+        // Return proper empty object for component types that need objects
+        if (questionType === "likert") {
+            return { responses: {} };
+        }
+        if (questionType === "matrix") {
+            return { answers: {} };
+        }
         return "";
+    }
+
+    // If the answer is an empty string but the component expects an object
+    if (
+        answer === "" &&
+        (questionType === "likert" || questionType === "matrix")
+    ) {
+        return questionType === "likert" ? { responses: {} } : { answers: {} };
     }
 
     // Format based on question type
@@ -992,11 +1033,58 @@ const getFormattedAnswer = (questionId, questionType) => {
 
 // Animation effect when the component mounts
 onMounted(() => {
+    // Preprocess questions to detect and fix types
+    preprocessQuestions();
+
     // Delay the animation start slightly
     setTimeout(() => {
         animateSection.value = true;
     }, 100);
 });
+
+// Function to preprocess questions and detect special types before rendering
+const preprocessQuestions = () => {
+    if (!props.currentSection?.questions) return;
+
+    props.currentSection.questions.forEach((question) => {
+        // Handle Likert questions that are stored as Matrix type
+        if (question.type === "matrix") {
+            let settingsObj = question.settings;
+
+            // Try to parse settings if it's a string
+            if (typeof settingsObj === "string") {
+                try {
+                    settingsObj = JSON.parse(settingsObj);
+                } catch (e) {
+                    console.error("Failed to parse settings string:", e);
+                    settingsObj = {};
+                }
+            }
+
+            // Check if this is a Likert question
+            if (
+                settingsObj?.type === "likert" ||
+                (settingsObj?.scale && settingsObj?.statements)
+            ) {
+                console.log(
+                    "Preprocessing: Changed matrix to likert for question",
+                    question.id
+                );
+                question.type = "likert";
+
+                // Ensure modelValue has the correct structure for Likert
+                if (!props.answers[question.id]) {
+                    props.answers[question.id] = { responses: {} };
+                } else if (
+                    typeof props.answers[question.id] === "string" &&
+                    props.answers[question.id] === ""
+                ) {
+                    props.answers[question.id] = { responses: {} };
+                }
+            }
+        }
+    });
+};
 
 // Function to validate all questions in the current section
 const validateAllQuestions = () => {

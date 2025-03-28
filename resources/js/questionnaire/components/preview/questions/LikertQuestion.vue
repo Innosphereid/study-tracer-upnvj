@@ -1,76 +1,52 @@
 <template>
     <div class="likert-question">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead>
-                    <tr>
-                        <th
-                            class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3"
-                        >
-                            {{ question.statement || "Pernyataan" }}
-                        </th>
-                        <th
-                            v-for="(scale, index) in likertScales"
-                            :key="index"
-                            class="px-2 py-3 bg-gray-50 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                            {{ scale.label }}
-                        </th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    <tr
-                        v-for="(
-                            statement, statementIndex
-                        ) in question.statements"
-                        :key="statementIndex"
-                        class="hover:bg-gray-50 transition-colors duration-150"
+        <!-- Horizontal likert scale layout -->
+        <div class="bg-gray-50 p-3 rounded-md border border-gray-200">
+            <div class="flex items-center justify-between w-full">
+                <div class="flex flex-1 justify-between">
+                    <div
+                        v-for="option in likertScales"
+                        :key="option.value"
+                        class="flex flex-col items-center mx-1"
                     >
-                        <td
-                            class="px-4 py-4 whitespace-normal text-sm text-gray-700 font-medium"
+                        <input
+                            type="radio"
+                            :name="`likert-${question.id}`"
+                            :value="option.value"
+                            :id="`likert-${question.id}-${option.value}`"
+                            :checked="
+                                modelValue?.responses?.[0] === option.value
+                            "
+                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 cursor-pointer"
+                            @change="updateStatementValue(0, option.value)"
+                        />
+                        <label
+                            :for="`likert-${question.id}-${option.value}`"
+                            class="text-xs text-gray-600 mt-1 text-center whitespace-nowrap"
                         >
-                            {{ statement.text }}
-                        </td>
-                        <td
-                            v-for="(scale, scaleIndex) in likertScales"
-                            :key="scaleIndex"
-                            class="px-2 py-4 text-center"
-                        >
-                            <div class="flex justify-center">
-                                <input
-                                    type="radio"
-                                    :name="`likert-${question.id}-statement-${statementIndex}`"
-                                    :value="scale.value"
-                                    :checked="
-                                        getStatementValue(statementIndex) ===
-                                        scale.value
-                                    "
-                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 cursor-pointer transition-all duration-150 hover:scale-110"
-                                    @change="
-                                        updateStatementValue(
-                                            statementIndex,
-                                            scale.value
-                                        )
-                                    "
-                                />
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                            {{ option.value }}
+                        </label>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div
-            class="flex flex-wrap justify-between text-xs text-gray-500 mt-2 px-4"
-        >
-            <span>{{
-                question.leftLabel || likertScales[0]?.label || "Disagree"
-            }}</span>
-            <span>{{
-                question.rightLabel ||
-                likertScales[likertScales.length - 1]?.label ||
-                "Agree"
-            }}</span>
+        <!-- Scale labels -->
+        <div class="flex justify-between mt-2 px-2">
+            <span class="text-xs text-gray-500">
+                {{
+                    question.leftLabel ||
+                    likertScales[0]?.label ||
+                    "Sangat Tidak Setuju"
+                }}
+            </span>
+            <span class="text-xs text-gray-500">
+                {{
+                    question.rightLabel ||
+                    likertScales[likertScales.length - 1]?.label ||
+                    "Sangat Setuju"
+                }}
+            </span>
         </div>
 
         <transition name="fade">
@@ -103,8 +79,24 @@ const emit = defineEmits(["update:modelValue"]);
 
 // Get likert scale from question or use default
 const likertScales = computed(() => {
-    if (props.question.scales && props.question.scales.length > 0) {
-        return props.question.scales;
+    // Check for scale in the question properties
+    if (props.question.scale && props.question.scale.length > 0) {
+        return props.question.scale;
+    }
+
+    // Look for scale in settings
+    if (
+        props.question.settings &&
+        typeof props.question.settings === "string"
+    ) {
+        try {
+            const settings = JSON.parse(props.question.settings);
+            if (settings.scale && settings.scale.length > 0) {
+                return settings.scale;
+            }
+        } catch (e) {
+            console.error("Error parsing question settings:", e);
+        }
     }
 
     // Default 5-point Likert scale
@@ -115,6 +107,42 @@ const likertScales = computed(() => {
         { value: 4, label: "Setuju" },
         { value: 5, label: "Sangat Setuju" },
     ];
+});
+
+// Computed property to get statements from the question
+const statements = computed(() => {
+    // First check if statements exist directly
+    if (props.question.statements && props.question.statements.length > 0) {
+        return props.question.statements;
+    }
+
+    // Then check settings object
+    if (
+        props.question.settings &&
+        typeof props.question.settings === "string"
+    ) {
+        try {
+            const settings = JSON.parse(props.question.settings);
+            if (settings.statements && settings.statements.length > 0) {
+                return settings.statements;
+            }
+
+            // If no statements found but we have text, create a statement with the question text
+            if (settings.text) {
+                return [{ id: "default-statement", text: settings.text }];
+            }
+        } catch (e) {
+            console.error("Error parsing question settings:", e);
+        }
+    }
+
+    // Fallback to create a statement from the question text if available
+    if (props.question.text) {
+        return [{ id: "default-statement", text: props.question.text }];
+    }
+
+    // Default empty statement as fallback
+    return [{ id: "default-statement", text: "Pernyataan 1" }];
 });
 
 // Get the current value for a statement
@@ -132,38 +160,17 @@ const updateStatementValue = (statementIndex, value) => {
 </script>
 
 <style scoped>
-.likert-question table {
-    border-collapse: separate;
-    border-spacing: 0;
+.likert-question {
+    margin-top: 1rem;
 }
 
-.likert-question th,
-.likert-question td {
-    border: 1px solid #e5e7eb;
-}
-
-.likert-question th:first-child {
-    border-top-left-radius: 0.5rem;
-}
-
-.likert-question th:last-child {
-    border-top-right-radius: 0.5rem;
-}
-
-.likert-question tr:last-child td:first-child {
-    border-bottom-left-radius: 0.5rem;
-}
-
-.likert-question tr:last-child td:last-child {
-    border-bottom-right-radius: 0.5rem;
-}
-
-.likert-question input[type="radio"] {
-    position: relative;
+/* Radio button styling */
+input[type="radio"] {
     cursor: pointer;
+    transition: transform 0.2s;
 }
 
-.likert-question input[type="radio"]:checked {
+input[type="radio"]:checked {
     transform: scale(1.2);
 }
 

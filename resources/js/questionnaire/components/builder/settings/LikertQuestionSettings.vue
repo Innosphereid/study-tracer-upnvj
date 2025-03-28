@@ -136,6 +136,16 @@ const localScale = ref(
     ]
 );
 
+// Initialize statements array based on the question or create a default one
+const localStatements = ref(
+    props.question.statements || [
+        {
+            id: uuidv4(),
+            text: props.question.text || "Pernyataan 1",
+        },
+    ]
+);
+
 // Computed properties for minimum and maximum labels
 const minLabel = computed({
     get: () => {
@@ -172,6 +182,15 @@ watch(
         if (newQuestion.scale) {
             localScale.value = [...newQuestion.scale];
             localScaleCount.value = newQuestion.scale.length;
+        }
+
+        // Update statements if they exist in the question
+        if (newQuestion.statements) {
+            localStatements.value = [...newQuestion.statements];
+        }
+        // If statements don't exist but text changed, update the first statement text
+        else if (newQuestion.text && localStatements.value.length > 0) {
+            localStatements.value[0].text = newQuestion.text;
         }
     },
     { deep: true }
@@ -215,9 +234,18 @@ const updateScale = () => {
 
 // Update base question properties
 const updateQuestionBase = (updatedBaseQuestion) => {
+    // If the text changed, update the first statement's text
+    if (
+        updatedBaseQuestion.text !== props.question.text &&
+        localStatements.value.length > 0
+    ) {
+        localStatements.value[0].text = updatedBaseQuestion.text;
+    }
+
     emit("update:question", {
         ...updatedBaseQuestion,
         scale: localScale.value,
+        statements: localStatements.value,
     });
 };
 
@@ -226,6 +254,7 @@ const updateQuestion = () => {
     emit("update:question", {
         ...props.question,
         scale: localScale.value,
+        statements: localStatements.value,
     });
 };
 </script>
