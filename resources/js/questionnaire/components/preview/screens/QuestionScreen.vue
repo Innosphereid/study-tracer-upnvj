@@ -745,6 +745,15 @@ const normalizeQuestionData = (question) => {
             questionData.type = "likert";
             typeChanged = true;
         }
+
+        // Check if the original frontend type was 'ranking'
+        if (settingsObj.type === "ranking") {
+            console.log(
+                "Detected Ranking question stored as matrix type, changing type to ranking"
+            );
+            questionData.type = "ranking";
+            typeChanged = true;
+        }
     }
 
     // Check if this might be a Slider question stored as Rating type
@@ -1023,15 +1032,22 @@ const getFormattedAnswer = (questionId, questionType) => {
         if (questionType === "matrix") {
             return { answers: {} };
         }
+        if (questionType === "ranking") {
+            return { order: [] };
+        }
         return "";
     }
 
     // If the answer is an empty string but the component expects an object
     if (
         answer === "" &&
-        (questionType === "likert" || questionType === "matrix")
+        (questionType === "likert" ||
+            questionType === "matrix" ||
+            questionType === "ranking")
     ) {
-        return questionType === "likert" ? { responses: {} } : { answers: {} };
+        if (questionType === "likert") return { responses: {} };
+        if (questionType === "matrix") return { answers: {} };
+        if (questionType === "ranking") return { order: [] };
     }
 
     // Format based on question type
@@ -1094,6 +1110,25 @@ const preprocessQuestions = () => {
                     props.answers[question.id] === ""
                 ) {
                     props.answers[question.id] = { responses: {} };
+                }
+            }
+
+            // Check if this is a Ranking question
+            if (settingsObj?.type === "ranking") {
+                console.log(
+                    "Preprocessing: Changed matrix to ranking for question",
+                    question.id
+                );
+                question.type = "ranking";
+
+                // Ensure modelValue has the correct structure for Ranking
+                if (!props.answers[question.id]) {
+                    props.answers[question.id] = { order: [] };
+                } else if (
+                    typeof props.answers[question.id] === "string" &&
+                    props.answers[question.id] === ""
+                ) {
+                    props.answers[question.id] = { order: [] };
                 }
             }
         }
@@ -1314,6 +1349,14 @@ const detectQuestionType = (question) => {
         ) {
             console.log("detectQuestionType: Converting matrix to likert type");
             detectedType = "likert";
+        }
+
+        // Special case: Detect ranking stored as matrix
+        if (detectedType === "matrix" && settingsObj.type === "ranking") {
+            console.log(
+                "detectQuestionType: Converting matrix to ranking type"
+            );
+            detectedType = "ranking";
         }
     }
 
