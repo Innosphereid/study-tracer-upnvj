@@ -76,7 +76,7 @@ class Question extends Model
      */
     public function hasOptions(): bool
     {
-        return in_array($this->question_type, ['radio', 'checkbox', 'dropdown', 'matrix']);
+        return in_array($this->question_type, ['radio', 'checkbox', 'dropdown', 'matrix', 'likert']);
     }
 
     /**
