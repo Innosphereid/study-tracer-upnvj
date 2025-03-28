@@ -206,40 +206,77 @@ class PreviewController extends Controller
     private function transformQuestionnaireData(array $data): array
     {
         // Add necessary structure expected by the frontend components
-        if (!isset($data['welcomeScreen']) && isset($data['settings'])) {
-            // Extract welcome screen from settings if available
-            if (isset($data['settings']['welcomeScreen'])) {
-                $data['welcomeScreen'] = $data['settings']['welcomeScreen'];
+        if (!isset($data['welcomeScreen'])) {
+            // First check if settings is a JSON string and parse it
+            if (isset($data['settings']) && is_string($data['settings'])) {
+                try {
+                    $settings = json_decode($data['settings'], true);
+                    Log::debug('Parsed settings string in PreviewController', [
+                        'parsed_settings' => json_encode($settings, JSON_PRETTY_PRINT)
+                    ]);
+                    
+                    // Replace the settings string with the parsed object
+                    $data['settings'] = $settings;
+                } catch (\Exception $e) {
+                    Log::error('Failed to parse settings string in PreviewController', [
+                        'error' => $e->getMessage(),
+                        'settings_raw' => $data['settings']
+                    ]);
+                    $data['settings'] = [];
+                }
+            }
+            
+            // Now extract welcome screen from settings
+            if (isset($data['settings']) && is_array($data['settings'])) {
+                // Extract welcome screen from settings if available
+                if (isset($data['settings']['welcomeScreen'])) {
+                    $data['welcomeScreen'] = $data['settings']['welcomeScreen'];
+                    Log::debug('Extracted welcomeScreen from settings', [
+                        'welcome_screen' => json_encode($data['welcomeScreen'], JSON_PRETTY_PRINT)
+                    ]);
+                } else {
+                    // Create default welcome screen
+                    $data['welcomeScreen'] = [
+                        'title' => 'Selamat Datang',
+                        'description' => 'Terima kasih telah berpartisipasi dalam kuesioner ini.'
+                    ];
+                }
+                
+                // Extract thank you screen from settings if available
+                if (isset($data['settings']['thankYouScreen'])) {
+                    $data['thankYouScreen'] = $data['settings']['thankYouScreen'];
+                } else {
+                    // Create default thank you screen
+                    $data['thankYouScreen'] = [
+                        'title' => 'Terima Kasih',
+                        'description' => 'Terima kasih atas partisipasi Anda.'
+                    ];
+                }
+                
+                // Add progress bar setting
+                if (!isset($data['showProgressBar']) && isset($data['settings']['showProgressBar'])) {
+                    $data['showProgressBar'] = $data['settings']['showProgressBar'];
+                } else {
+                    $data['showProgressBar'] = true;
+                }
+                
+                // Add page numbers setting
+                if (!isset($data['showPageNumbers']) && isset($data['settings']['showPageNumbers'])) {
+                    $data['showPageNumbers'] = $data['settings']['showPageNumbers'];
+                } else {
+                    $data['showPageNumbers'] = true;
+                }
             } else {
-                // Create default welcome screen
+                // Default settings if no settings found
                 $data['welcomeScreen'] = [
                     'title' => 'Selamat Datang',
                     'description' => 'Terima kasih telah berpartisipasi dalam kuesioner ini.'
                 ];
-            }
-            
-            // Extract thank you screen from settings if available
-            if (isset($data['settings']['thankYouScreen'])) {
-                $data['thankYouScreen'] = $data['settings']['thankYouScreen'];
-            } else {
-                // Create default thank you screen
                 $data['thankYouScreen'] = [
                     'title' => 'Terima Kasih',
                     'description' => 'Terima kasih atas partisipasi Anda.'
                 ];
-            }
-            
-            // Add progress bar setting
-            if (!isset($data['showProgressBar']) && isset($data['settings']['showProgressBar'])) {
-                $data['showProgressBar'] = $data['settings']['showProgressBar'];
-            } else {
                 $data['showProgressBar'] = true;
-            }
-            
-            // Add page numbers setting
-            if (!isset($data['showPageNumbers']) && isset($data['settings']['showPageNumbers'])) {
-                $data['showPageNumbers'] = $data['settings']['showPageNumbers'];
-            } else {
                 $data['showPageNumbers'] = true;
             }
         }
