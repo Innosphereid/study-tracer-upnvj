@@ -1,11 +1,14 @@
 <template>
     <div class="ranking-question">
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <ul class="space-y-2">
+            <p v-if="sortedItems.length" class="text-sm text-gray-500 mb-3">
+                Seret dan tata item untuk membuat peringkat dari yang paling
+                penting hingga kurang penting
+            </p>
+            <ul class="space-y-3">
                 <draggable
                     v-model="sortedItems"
                     ghost-class="ghost"
-                    handle=".drag-handle"
                     item-key="id"
                     :animation="200"
                     @start="dragging = true"
@@ -13,30 +16,36 @@
                 >
                     <template #item="{ element, index }">
                         <li
-                            class="flex items-center p-3 bg-white border border-gray-200 rounded-lg shadow-sm transition-all duration-200"
-                            :class="{ 'shadow-md': dragging }"
+                            class="cursor-move p-0 bg-white border border-gray-200 rounded-lg shadow-sm transition-all duration-200 overflow-hidden hover:border-indigo-300"
+                            :class="{ 'shadow-md border-indigo-500': dragging }"
                         >
-                            <div
-                                class="drag-handle cursor-move flex items-center justify-center w-10 mr-2 text-gray-500"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    class="h-6 w-6"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
+                            <div class="flex items-center">
+                                <div
+                                    class="flex-shrink-0 bg-indigo-100 text-indigo-800 font-bold px-3 py-3 text-center flex flex-col justify-center items-center"
+                                    style="width: 50px"
                                 >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M4 6h16M4 12h16m-7 6h7"
-                                    />
-                                </svg>
-                            </div>
-                            <div class="flex-1">
-                                <div class="font-medium">
-                                    {{ index + 1 }}. {{ element.text }}
+                                    <span class="text-xl">{{ index + 1 }}</span>
+                                </div>
+                                <div class="flex-1 p-3 pl-4">
+                                    <div class="font-medium">
+                                        {{ element.text }}
+                                    </div>
+                                </div>
+                                <div class="flex-shrink-0 px-3 text-gray-400">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        class="h-6 w-6"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M4 6h16M4 12h16m-7 6h7"
+                                        />
+                                    </svg>
                                 </div>
                             </div>
                         </li>
@@ -155,13 +164,11 @@ watch(
 }
 
 .ghost {
-    opacity: 0.5;
-    background: #f3f4f6;
-    border: 1px dashed #d1d5db;
-}
-
-.drag-handle:hover {
-    color: #4f46e5;
+    opacity: 0.7;
+    background: #f0f4ff;
+    border: 2px dashed #6366f1 !important;
+    box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.1),
+        0 2px 4px -1px rgba(99, 102, 241, 0.06);
 }
 
 .fade-enter-active,
@@ -172,5 +179,23 @@ watch(
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;
+}
+
+/* Add subtle animation when sorting */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(99, 102, 241, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+    }
+}
+
+.ranking-question li:active {
+    animation: pulse 1.5s infinite;
+    background-color: #f9fafb;
 }
 </style>
