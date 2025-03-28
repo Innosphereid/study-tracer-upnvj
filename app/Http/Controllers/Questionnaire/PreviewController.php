@@ -266,10 +266,18 @@ class PreviewController extends Controller
                                 'rating' => 'rating',
                                 'date' => 'date',
                                 'file' => 'file-upload',
-                                'matrix' => 'matrix'
+                                'matrix' => 'matrix',
+                                'likert' => 'likert'
                             ];
                             
                             $question['type'] = $typeMap[$question['question_type']] ?? 'short-text';
+                            
+                            // Log the type mapping for debugging
+                            Log::debug('Mapped question type', [
+                                'question_id' => $question['id'] ?? 'unknown',
+                                'backend_type' => $question['question_type'],
+                                'frontend_type' => $question['type']
+                            ]);
                         }
                         
                         // Map title to text for frontend components
@@ -638,12 +646,16 @@ class PreviewController extends Controller
                                         }
                                         
                                         // Special handling to detect if this matrix is actually a likert question
+                                        $isLikert = false;
+                                        
+                                        // First check direct settings as string
                                         if (isset($question['settings']) && is_string($question['settings'])) {
                                             try {
                                                 $settings = json_decode($question['settings'], true);
                                                 if (is_array($settings)) {
                                                     // Check if this is a likert question stored as matrix
                                                     if (isset($settings['type']) && $settings['type'] === 'likert') {
+                                                        $isLikert = true;
                                                         $question['type'] = 'likert';
                                                         
                                                         // Copy likert properties
@@ -653,6 +665,12 @@ class PreviewController extends Controller
                                                         if (isset($settings['statements'])) {
                                                             $question['statements'] = $settings['statements'];
                                                         }
+                                                        if (isset($settings['leftLabel'])) {
+                                                            $question['leftLabel'] = $settings['leftLabel'];
+                                                        }
+                                                        if (isset($settings['rightLabel'])) {
+                                                            $question['rightLabel'] = $settings['rightLabel'];
+                                                        }
                                                     }
                                                 }
                                             } catch (\Exception $e) {
@@ -660,6 +678,85 @@ class PreviewController extends Controller
                                                     'error' => $e->getMessage()
                                                 ]);
                                             }
+                                        }
+                                        
+                                        // Then check settings as array
+                                        if (!$isLikert && isset($question['settings']) && is_array($question['settings'])) {
+                                            // Check if this is a likert question stored as matrix
+                                            if (isset($question['settings']['type']) && $question['settings']['type'] === 'likert') {
+                                                $isLikert = true;
+                                                $question['type'] = 'likert';
+                                                
+                                                // Copy likert properties
+                                                if (isset($question['settings']['scale'])) {
+                                                    $question['scale'] = $question['settings']['scale'];
+                                                }
+                                                if (isset($question['settings']['statements'])) {
+                                                    $question['statements'] = $question['settings']['statements'];
+                                                }
+                                                if (isset($question['settings']['leftLabel'])) {
+                                                    $question['leftLabel'] = $question['settings']['leftLabel'];
+                                                }
+                                                if (isset($question['settings']['rightLabel'])) {
+                                                    $question['rightLabel'] = $question['settings']['rightLabel'];
+                                                }
+                                            }
+                                        }
+                                        
+                                        // Check for likert-specific structures even without the 'type' field
+                                        if (!$isLikert) {
+                                            $settingsObj = $question['settings'] ?? [];
+                                            if (is_string($settingsObj)) {
+                                                try {
+                                                    $settingsObj = json_decode($settingsObj, true) ?: [];
+                                                } catch (\Exception $e) {
+                                                    $settingsObj = [];
+                                                }
+                                            }
+                                            
+                                            // If it has scale and statements, it's likely a likert question
+                                            if ((isset($settingsObj['scale']) || isset($question['scale'])) && 
+                                                (isset($settingsObj['statements']) || isset($question['statements']))) {
+                                                $isLikert = true;
+                                                $question['type'] = 'likert';
+                                                
+                                                if (!isset($question['scale']) && isset($settingsObj['scale'])) {
+                                                    $question['scale'] = $settingsObj['scale'];
+                                                }
+                                                if (!isset($question['statements']) && isset($settingsObj['statements'])) {
+                                                    $question['statements'] = $settingsObj['statements'];
+                                                }
+                                            }
+                                        }
+                                        
+                                        // If we determined this is a likert question, ensure it has the necessary default fields
+                                        if ($isLikert) {
+                                            // Ensure scale is set - create default if needed
+                                            if (!isset($question['scale']) || !is_array($question['scale']) || empty($question['scale'])) {
+                                                $question['scale'] = [
+                                                    ['value' => 1, 'label' => 'Sangat Tidak Setuju'],
+                                                    ['value' => 2, 'label' => 'Tidak Setuju'],
+                                                    ['value' => 3, 'label' => 'Netral'],
+                                                    ['value' => 4, 'label' => 'Setuju'],
+                                                    ['value' => 5, 'label' => 'Sangat Setuju']
+                                                ];
+                                            }
+                                            
+                                            // If no statements exist, create one from the text
+                                            if ((!isset($question['statements']) || empty($question['statements'])) && isset($question['text'])) {
+                                                $question['statements'] = [
+                                                    [
+                                                        'id' => 'statement-' . uniqid(),
+                                                        'text' => $question['text']
+                                                    ]
+                                                ];
+                                            }
+                                            
+                                            Log::debug('Converted matrix to likert', [
+                                                'question_id' => $question['id'] ?? 'unknown',
+                                                'has_scale' => isset($question['scale']),
+                                                'has_statements' => isset($question['statements'])
+                                            ]);
                                         }
                                         break;
                                         
@@ -682,7 +779,7 @@ class PreviewController extends Controller
                                         
                                     case 'likert':
                                         // Handle likert settings
-                                        $likertProps = ['scale', 'statements'];
+                                        $likertProps = ['scale', 'statements', 'leftLabel', 'rightLabel'];
                                         foreach ($likertProps as $prop) {
                                             if (!isset($question[$prop]) && isset($question['settings'][$prop])) {
                                                 $question[$prop] = $question['settings'][$prop];
@@ -700,13 +797,19 @@ class PreviewController extends Controller
                                                     if (!isset($question['statements']) && isset($settings['statements'])) {
                                                         $question['statements'] = $settings['statements'];
                                                     }
+                                                    if (!isset($question['leftLabel']) && isset($settings['leftLabel'])) {
+                                                        $question['leftLabel'] = $settings['leftLabel'];
+                                                    }
+                                                    if (!isset($question['rightLabel']) && isset($settings['rightLabel'])) {
+                                                        $question['rightLabel'] = $settings['rightLabel'];
+                                                    }
                                                     
                                                     // If no statements exist, create one from the text
-                                                    if ((!isset($question['statements']) || empty($question['statements'])) && isset($settings['text'])) {
+                                                    if ((!isset($question['statements']) || empty($question['statements'])) && isset($question['text'])) {
                                                         $question['statements'] = [
                                                             [
                                                                 'id' => 'statement-' . uniqid(),
-                                                                'text' => $settings['text']
+                                                                'text' => $question['text']
                                                             ]
                                                         ];
                                                     }
@@ -718,6 +821,28 @@ class PreviewController extends Controller
                                                 ]);
                                             }
                                         }
+                                        
+                                        // Ensure scale is set - create default if needed
+                                        if (!isset($question['scale']) || !is_array($question['scale']) || empty($question['scale'])) {
+                                            $question['scale'] = [
+                                                ['value' => 1, 'label' => 'Sangat Tidak Setuju'],
+                                                ['value' => 2, 'label' => 'Tidak Setuju'],
+                                                ['value' => 3, 'label' => 'Netral'],
+                                                ['value' => 4, 'label' => 'Setuju'],
+                                                ['value' => 5, 'label' => 'Sangat Setuju']
+                                            ];
+                                        }
+                                        
+                                        // Ensure type is properly set to likert (may be overwridden elsewhere)
+                                        $question['type'] = 'likert';
+                                        
+                                        Log::debug('Processed likert question', [
+                                            'question_id' => $question['id'] ?? 'unknown',
+                                            'has_scale' => isset($question['scale']),
+                                            'has_statements' => isset($question['statements']),
+                                            'scale_count' => isset($question['scale']) ? count($question['scale']) : 0,
+                                            'statements_count' => isset($question['statements']) ? count($question['statements']) : 0
+                                        ]);
                                         break;
                                 }
                                 
