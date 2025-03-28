@@ -88,15 +88,33 @@ const otherText = ref(props.modelValue?.otherText || "");
 
 // Computed property to check if we should show the "other" input
 const showOtherInput = computed(() => {
-    return props.modelValue?.value === "other";
+    return (
+        props.modelValue?.value === "other" ||
+        props.modelValue?.value === "Lainnya"
+    );
 });
 
 // Computed property that combines all options, adds "None" and "Other" options if enabled
 const normalizedOptions = computed(() => {
     let options = [...(props.question.options || [])];
 
-    // Add "None" option if allowed
-    if (props.question.allowNone) {
+    // Check if options already contain "None" and "Other"
+    const hasNoneOption = options.some(
+        (opt) =>
+            opt.value === "none" ||
+            opt.value === "Tidak Ada" ||
+            opt.text === "Tidak Ada"
+    );
+
+    const hasOtherOption = options.some(
+        (opt) =>
+            opt.value === "other" ||
+            opt.value === "Lainnya" ||
+            opt.text === "Lainnya"
+    );
+
+    // Add "None" option if allowed and not already present
+    if (props.question.allowNone && !hasNoneOption) {
         options.push({
             id: "none",
             text: "Tidak Ada",
@@ -105,14 +123,25 @@ const normalizedOptions = computed(() => {
         });
     }
 
-    // Add "Other" option if allowed
-    if (props.question.allowOther) {
+    // Add "Other" option if allowed and not already present
+    if (props.question.allowOther && !hasOtherOption) {
         options.push({
             id: "other",
             text: "Lainnya",
             value: "other",
             isSpecial: true,
         });
+    }
+
+    // Sort options if needed
+    if (props.question.optionsOrder === "desc") {
+        // Sort regular options (not special ones)
+        const regularOptions = options.filter((opt) => !opt.isSpecial);
+        const specialOptions = options.filter((opt) => opt.isSpecial);
+
+        regularOptions.sort((a, b) => b.text.localeCompare(a.text));
+
+        options = [...regularOptions, ...specialOptions];
     }
 
     return options;
@@ -122,20 +151,20 @@ const normalizedOptions = computed(() => {
 const handleChange = (event) => {
     const value = event.target.value;
 
-    // Special handling for "other" option
-    if (value === "other") {
+    // Special handling for "other" option (both "other" and "Lainnya" values)
+    if (value === "other" || value === "Lainnya") {
         emit("update:modelValue", {
-            value: "other",
+            value: value, // Keep the original value format
             otherText: otherText.value,
             label: "Lainnya",
         });
         return;
     }
 
-    // Special handling for "none" option
-    if (value === "none") {
+    // Special handling for "none" option (both "none" and "Tidak Ada" values)
+    if (value === "none" || value === "Tidak Ada") {
         emit("update:modelValue", {
-            value: "none",
+            value: value, // Keep the original value format
             otherText: "",
             label: "Tidak Ada",
         });
@@ -158,8 +187,11 @@ const handleChange = (event) => {
 
 // Method to update the "other" text
 const updateOtherText = () => {
+    // Preserve the original value format ("other" or "Lainnya")
+    const value = props.modelValue?.value === "Lainnya" ? "Lainnya" : "other";
+
     emit("update:modelValue", {
-        value: "other",
+        value: value,
         otherText: otherText.value,
         label: "Lainnya",
     });
