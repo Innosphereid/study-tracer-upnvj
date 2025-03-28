@@ -267,7 +267,10 @@ class PreviewController extends Controller
                                 'date' => 'date',
                                 'file' => 'file-upload',
                                 'matrix' => 'matrix',
-                                'likert' => 'likert'
+                                'likert' => 'likert',
+                                'yes-no' => 'yes-no',
+                                'slider' => 'slider',
+                                'ranking' => 'ranking'
                             ];
                             
                             $question['type'] = $typeMap[$question['question_type']] ?? 'short-text';
@@ -843,6 +846,16 @@ class PreviewController extends Controller
                                             'scale_count' => isset($question['scale']) ? count($question['scale']) : 0,
                                             'statements_count' => isset($question['statements']) ? count($question['statements']) : 0
                                         ]);
+                                        break;
+                                        
+                                    case 'yes-no':
+                                        // Ensure yes-no question has the proper settings
+                                        if (!isset($question['yesLabel'])) {
+                                            $question['yesLabel'] = $question['settings']['yesLabel'] ?? 'Ya';
+                                        }
+                                        if (!isset($question['noLabel'])) {
+                                            $question['noLabel'] = $question['settings']['noLabel'] ?? 'Tidak';
+                                        }
                                         break;
                                 }
                                 
