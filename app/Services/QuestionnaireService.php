@@ -388,6 +388,75 @@ class QuestionnaireService implements QuestionnaireServiceInterface
             $questionData['section_id'] = $sectionId;
             $questionData['questionnaire_id'] = $section->questionnaire_id;
             
+            // Validate question_type to ensure it's one of the allowed enum values
+            $allowedTypes = ['text', 'textarea', 'radio', 'checkbox', 'dropdown', 'rating', 'date', 'file', 'matrix', 'likert'];
+            
+            if (isset($questionData['question_type'])) {
+                if (!in_array($questionData['question_type'], $allowedTypes)) {
+                    Log::warning('Invalid question_type, converting to text', [
+                        'original_type' => $questionData['question_type'],
+                        'converted_to' => 'text'
+                    ]);
+                    $questionData['question_type'] = 'text';
+                }
+                
+                // Special handling for likert questions to ensure they have required structure
+                if ($questionData['question_type'] === 'likert') {
+                    // Ensure settings contains type=likert
+                    if (!isset($questionData['settings'])) {
+                        $questionData['settings'] = json_encode([
+                            'type' => 'likert',
+                            'scale' => [
+                                ['value' => 1, 'label' => 'Sangat Tidak Setuju'],
+                                ['value' => 2, 'label' => 'Tidak Setuju'],
+                                ['value' => 3, 'label' => 'Netral'],
+                                ['value' => 4, 'label' => 'Setuju'],
+                                ['value' => 5, 'label' => 'Sangat Setuju']
+                            ],
+                            'statements' => [
+                                [
+                                    'id' => 'statement-' . uniqid(),
+                                    'text' => $questionData['title'] ?? 'Default Statement'
+                                ]
+                            ]
+                        ]);
+                        
+                        Log::info('Created default settings for likert question', [
+                            'settings' => $questionData['settings']
+                        ]);
+                    } else if (is_array($questionData['settings'])) {
+                        // If settings is an array, ensure it has the required structure and encode as JSON
+                        $settings = $questionData['settings'];
+                        $settings['type'] = 'likert';
+                        
+                        if (!isset($settings['scale']) || !is_array($settings['scale'])) {
+                            $settings['scale'] = [
+                                ['value' => 1, 'label' => 'Sangat Tidak Setuju'],
+                                ['value' => 2, 'label' => 'Tidak Setuju'],
+                                ['value' => 3, 'label' => 'Netral'],
+                                ['value' => 4, 'label' => 'Setuju'],
+                                ['value' => 5, 'label' => 'Sangat Setuju']
+                            ];
+                        }
+                        
+                        if (!isset($settings['statements']) || !is_array($settings['statements'])) {
+                            $settings['statements'] = [
+                                [
+                                    'id' => 'statement-' . uniqid(),
+                                    'text' => $questionData['title'] ?? 'Default Statement'
+                                ]
+                            ];
+                        }
+                        
+                        $questionData['settings'] = json_encode($settings);
+                        
+                        Log::info('Normalized settings for likert question', [
+                            'settings' => $questionData['settings']
+                        ]);
+                    }
+                }
+            }
+            
             // Log the data we're about to pass to the repository
             Log::debug('Creating question with data', [
                 'question_data' => array_diff_key($questionData, ['options' => []]),
@@ -885,8 +954,50 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                     try {
                         Log::debug('Creating new question', [
                             'section_id' => $sectionId,
+                            'question_type' => $questionData['question_type'],
                             'question_data' => array_diff_key($questionData, ['options' => []])
                         ]);
+                        
+                        // Special handling for likert question type
+                        if ($questionData['question_type'] === 'likert') {
+                            Log::info('Creating new likert question', [
+                                'section_id' => $sectionId,
+                                'title' => $questionData['title'] ?? 'Untitled Likert Question',
+                                'has_settings' => isset($questionData['settings']),
+                                'settings_type' => isset($questionData['settings']) ? gettype($questionData['settings']) : 'none'
+                            ]);
+                            
+                            // Make sure settings are properly encoded as JSON
+                            if (isset($questionData['settings']) && is_array($questionData['settings'])) {
+                                Log::debug('Encoding likert settings from array to JSON', [
+                                    'settings_keys' => array_keys($questionData['settings'])
+                                ]);
+                                $questionData['settings'] = json_encode($questionData['settings']);
+                            }
+                            
+                            // Ensure we have a minimum valid structure in settings if not provided
+                            if (!isset($questionData['settings']) || empty($questionData['settings']) || $questionData['settings'] === '[]' || $questionData['settings'] === '{}') {
+                                Log::warning('Likert question missing settings, creating default structure', [
+                                    'question_title' => $questionData['title'] ?? 'Untitled Likert Question'
+                                ]);
+                                
+                                $defaultSettings = [
+                                    'type' => 'likert',
+                                    'statements' => [
+                                        ['id' => 'statement-' . uniqid(), 'text' => $questionData['title'] ?? 'Default Statement']
+                                    ],
+                                    'scale' => [
+                                        ['value' => 1, 'label' => 'Sangat Tidak Setuju'],
+                                        ['value' => 2, 'label' => 'Tidak Setuju'],
+                                        ['value' => 3, 'label' => 'Netral'],
+                                        ['value' => 4, 'label' => 'Setuju'],
+                                        ['value' => 5, 'label' => 'Sangat Setuju']
+                                    ]
+                                ];
+                                
+                                $questionData['settings'] = json_encode($defaultSettings);
+                            }
+                        }
                         
                         $question = $this->addQuestion($sectionId, $questionData);
                         $questionId = $question->id;
@@ -1038,6 +1149,26 @@ class QuestionnaireService implements QuestionnaireServiceInterface
         } else {
             Log::warning('No question type provided, defaulting to text');
             $result['question_type'] = 'text';
+        }
+        
+        // Special handling for likert questions that might be stored as matrix
+        if (isset($questionData['settings'])) {
+            $settings = $questionData['settings'];
+            if (is_string($settings)) {
+                try {
+                    $decodedSettings = json_decode($settings, true);
+                    if (isset($decodedSettings['type']) && $decodedSettings['type'] === 'likert') {
+                        Log::info('Detected likert question stored as another type, fixing type');
+                        $result['question_type'] = 'likert';
+                    }
+                } catch (\Exception $e) {
+                    // Failed to decode, leave as is
+                    Log::warning('Failed to decode settings JSON', ['error' => $e->getMessage()]);
+                }
+            } elseif (is_array($settings) && isset($settings['type']) && $settings['type'] === 'likert') {
+                Log::info('Detected likert question from settings array, fixing type');
+                $result['question_type'] = 'likert';
+            }
         }
         
         // Handle title/text
@@ -1216,25 +1347,42 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                     
                 case 'likert':
                     // Likert specific settings
-                    $likertFieldSets = ['scale', 'statements'];
+                    $likertFieldSets = ['scale', 'statements', 'leftLabel', 'rightLabel'];
                     foreach ($likertFieldSets as $field) {
                         if (isset($questionData[$field])) {
                             $settings[$field] = $questionData[$field];
                         }
                     }
                     
-                    // Ensure statements have proper structure
-                    if (isset($settings['statements']) && !empty($settings['statements'])) {
-                        // Statements are fine
-                    } else if (isset($settings['text'])) {
-                        // Create a default statement from the question text
+                    // Ensure we have a valid scale
+                    if (!isset($settings['scale']) || !is_array($settings['scale']) || empty($settings['scale'])) {
+                        $settings['scale'] = [
+                            ['value' => 1, 'label' => 'Sangat Tidak Setuju'],
+                            ['value' => 2, 'label' => 'Tidak Setuju'],
+                            ['value' => 3, 'label' => 'Netral'],
+                            ['value' => 4, 'label' => 'Setuju'],
+                            ['value' => 5, 'label' => 'Sangat Setuju']
+                        ];
+                    }
+                    
+                    // Ensure we have at least one statement
+                    if (!isset($settings['statements']) || !is_array($settings['statements']) || empty($settings['statements'])) {
                         $settings['statements'] = [
                             [
                                 'id' => 'statement-' . uniqid(),
-                                'text' => $settings['text']
+                                'text' => $result['title'] ?? 'Default Statement'
                             ]
                         ];
                     }
+                    
+                    // Add explicit type field
+                    $settings['type'] = 'likert';
+                    
+                    Log::info('Normalized likert question data', [
+                        'likert_scale_count' => count($settings['scale']),
+                        'likert_statements_count' => count($settings['statements']),
+                        'question_type' => $result['question_type']
+                    ]);
                     break;
             }
         }
