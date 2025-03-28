@@ -163,7 +163,12 @@
                             >
                                 <!-- Render Question based on type -->
                                 <component
-                                    :is="getQuestionComponent(question.type)"
+                                    :is="
+                                        getQuestionComponent(
+                                            question.type,
+                                            question
+                                        )
+                                    "
                                     :question="question"
                                     v-model="answers[question.id]"
                                     :error="errors[question.id]"
@@ -501,7 +506,7 @@ const publishQuestionnaire = () => {
 };
 
 // Helper to get the correct component for question type
-const getQuestionComponent = (type) => {
+const getQuestionComponent = (type, question = null) => {
     const componentMap = {
         "short-text": ShortText,
         "long-text": LongText,
@@ -515,6 +520,24 @@ const getQuestionComponent = (type) => {
         matrix: MatrixQuestion,
         ranking: RankingQuestion,
     };
+
+    // Special handling for radio questions that might actually be yes-no questions
+    if (type === "radio" && question && question.settings) {
+        try {
+            // Parse settings if it's a string
+            const settings =
+                typeof question.settings === "string"
+                    ? JSON.parse(question.settings)
+                    : question.settings;
+
+            // Check if this radio question was intended to be a yes-no question
+            if (settings.type === "yes-no") {
+                return YesNoQuestion;
+            }
+        } catch (error) {
+            console.error("Error parsing question settings:", error);
+        }
+    }
 
     return componentMap[type] || ShortText;
 };

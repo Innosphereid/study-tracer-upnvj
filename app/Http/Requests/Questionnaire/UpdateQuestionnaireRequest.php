@@ -49,7 +49,7 @@ class UpdateQuestionnaireRequest extends FormRequest
             'sections.*.order' => 'nullable|integer|min:0',
             'sections.*.questions' => 'nullable|array',
             'sections.*.questions.*.id' => 'nullable|integer|exists:questions,id',
-            'sections.*.questions.*.question_type' => 'required|string|in:text,textarea,radio,checkbox,dropdown,rating,date,file,matrix,likert',
+            'sections.*.questions.*.question_type' => 'required|string|in:text,textarea,radio,checkbox,dropdown,rating,date,file,matrix,likert,yes-no,slider,ranking',
             'sections.*.questions.*.title' => 'required|string',
             'sections.*.questions.*.description' => 'nullable|string',
             'sections.*.questions.*.is_required' => 'nullable|boolean',

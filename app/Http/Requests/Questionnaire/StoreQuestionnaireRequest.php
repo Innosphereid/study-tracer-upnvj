@@ -40,7 +40,7 @@ class StoreQuestionnaireRequest extends FormRequest
             'sections.*.description' => 'nullable|string',
             'sections.*.order' => 'nullable|integer|min:0',
             'sections.*.questions' => 'nullable|array',
-            'sections.*.questions.*.question_type' => 'required|string',
+            'sections.*.questions.*.question_type' => 'required|string|in:text,textarea,radio,checkbox,dropdown,rating,date,file,matrix,likert,yes-no,slider,ranking',
             'sections.*.questions.*.title' => 'required|string',
             'sections.*.questions.*.description' => 'nullable|string',
             'sections.*.questions.*.is_required' => 'nullable|boolean',

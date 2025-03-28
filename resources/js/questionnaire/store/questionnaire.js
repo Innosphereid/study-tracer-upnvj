@@ -921,7 +921,7 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                 email: "text",
                 phone: "text",
                 number: "text",
-                "yes-no": "radio",
+                "yes-no": "yes-no",
                 slider: "rating",
                 ranking: "matrix",
                 likert: "likert",
