@@ -648,6 +648,20 @@ const normalizeQuestionData = (question) => {
                 questionData.id,
                 questionData.settings
             );
+
+            // For rating questions, ensure labels are properly extracted
+            if (
+                questionData.type === "rating" &&
+                questionData.settings.labels &&
+                !questionData.labels
+            ) {
+                questionData.labels = questionData.settings.labels;
+                console.log(
+                    "Extracted labels for rating question",
+                    questionData.id,
+                    questionData.labels
+                );
+            }
         } catch (e) {
             console.error(
                 "Failed to parse settings JSON for question",
@@ -869,17 +883,23 @@ const normalizeQuestionData = (question) => {
 
                 case "rating":
                     // Copy rating-specific properties
-                    ["maxRating", "showValues", "icon", "defaultValue"].forEach(
-                        (prop) => {
-                            if (
-                                questionData.settings[prop] !== undefined &&
-                                questionData[prop] === undefined
-                            ) {
-                                questionData[prop] =
-                                    questionData.settings[prop];
-                            }
+                    [
+                        "maxRating",
+                        "showValues",
+                        "icon",
+                        "defaultValue",
+                        "labels",
+                        "minRating",
+                        "maxRatingValue",
+                        "stepValue",
+                    ].forEach((prop) => {
+                        if (
+                            questionData.settings[prop] !== undefined &&
+                            questionData[prop] === undefined
+                        ) {
+                            questionData[prop] = questionData.settings[prop];
                         }
-                    );
+                    });
 
                     // Ensure maxRating is numeric
                     if (
