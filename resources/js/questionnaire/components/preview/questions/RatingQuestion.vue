@@ -40,8 +40,15 @@
         </div>
 
         <div class="flex justify-between mt-1 text-xs text-gray-500">
-            <span>{{ question.labels?.min || "Sangat buruk" }}</span>
-            <span>{{ question.labels?.max || "Sangat baik" }}</span>
+            <span v-if="question.labels && question.labels[minRating]">
+                {{ question.labels[minRating] }}
+            </span>
+            <span v-else>{{ minRating }}</span>
+
+            <span v-if="question.labels && question.labels[maxRatingValue]">
+                {{ question.labels[maxRatingValue] }}
+            </span>
+            <span v-else>{{ maxRatingValue }}</span>
         </div>
 
         <transition name="fade">
@@ -72,6 +79,10 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:modelValue"]);
+
+// Computed properties for rating settings
+const minRating = computed(() => props.question.minRating || 1);
+const maxRatingValue = computed(() => props.question.maxRatingValue || 5);
 
 // Get max rating from question settings or default to 5
 const maxRating = computed(() => {
