@@ -125,7 +125,11 @@
                         <!-- Dynamic Question Component -->
                         <div class="pl-9">
                             <component
-                                :is="getQuestionComponent(question.type)"
+                                :is="
+                                    getQuestionComponent(
+                                        detectQuestionType(question)
+                                    )
+                                "
                                 :question="normalizeQuestionData(question)"
                                 :modelValue="
                                     getFormattedAnswer(
@@ -714,6 +718,7 @@ const getQuestionComponent = (type) => {
 const normalizeQuestionData = (question) => {
     // Make a copy to avoid modifying the original
     const questionData = { ...question };
+    let typeChanged = false;
 
     // First, check if this might be a Likert question stored as Matrix type
     // This is a critical fix for the Likert vs Matrix display issue
@@ -738,6 +743,46 @@ const normalizeQuestionData = (question) => {
                 "Detected Likert question stored as matrix type, changing type to likert"
             );
             questionData.type = "likert";
+            typeChanged = true;
+        }
+    }
+
+    // Check if this might be a Slider question stored as Rating type
+    if (questionData.type === "rating" && questionData.settings) {
+        // Try to parse settings if it's a string
+        let settingsObj = questionData.settings;
+        if (typeof settingsObj === "string") {
+            try {
+                settingsObj = JSON.parse(settingsObj);
+            } catch (e) {
+                console.error("Failed to parse settings string:", e);
+                settingsObj = {};
+            }
+        }
+
+        // Check if the original frontend type was 'slider'
+        if (settingsObj.type === "slider") {
+            console.log(
+                "Detected Slider question stored as rating type, changing type to slider"
+            );
+            questionData.type = "slider";
+            typeChanged = true;
+
+            // Ensure the slider-specific properties are copied
+            if (settingsObj.min !== undefined)
+                questionData.min = settingsObj.min;
+            if (settingsObj.max !== undefined)
+                questionData.max = settingsObj.max;
+            if (settingsObj.step !== undefined)
+                questionData.step = settingsObj.step;
+            if (settingsObj.showTicks !== undefined)
+                questionData.showTicks = settingsObj.showTicks;
+            if (settingsObj.showLabels !== undefined)
+                questionData.showLabels = settingsObj.showLabels;
+            if (settingsObj.labels !== undefined)
+                questionData.labels = settingsObj.labels;
+            if (settingsObj.defaultValue !== undefined)
+                questionData.defaultValue = settingsObj.defaultValue;
         }
     }
 
@@ -1233,6 +1278,48 @@ const finishQuestionnaire = () => {
 
     // If all validation passes, emit finish event
     emit("finish");
+};
+
+// New function to detect question type
+const detectQuestionType = (question) => {
+    // First, check the base type
+    let detectedType = question.type;
+
+    // Process settings to detect real type
+    if (question.settings) {
+        let settingsObj = question.settings;
+        if (typeof settingsObj === "string") {
+            try {
+                settingsObj = JSON.parse(settingsObj);
+            } catch (e) {
+                console.error(
+                    "Failed to parse settings string in detectQuestionType:",
+                    e
+                );
+                settingsObj = {};
+            }
+        }
+
+        // Special case: Detect slider stored as rating
+        if (detectedType === "rating" && settingsObj.type === "slider") {
+            console.log("detectQuestionType: Converting rating to slider type");
+            detectedType = "slider";
+        }
+
+        // Special case: Detect likert stored as matrix
+        if (
+            detectedType === "matrix" &&
+            (settingsObj.type === "likert" ||
+                (settingsObj.scale && settingsObj.statements))
+        ) {
+            console.log("detectQuestionType: Converting matrix to likert type");
+            detectedType = "likert";
+        }
+    }
+
+    // Return the detected type
+    console.log(`Question type detection: ${question.type} -> ${detectedType}`);
+    return detectedType;
 };
 </script>
 

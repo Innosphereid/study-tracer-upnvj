@@ -637,6 +637,29 @@ class PreviewController extends Controller
                                         if (!isset($question['maxRating'])) {
                                             $question['maxRating'] = 5;
                                         }
+                                        
+                                        // Check if this is actually a slider question based on settings
+                                        if (isset($question['settings']['type']) && $question['settings']['type'] === 'slider') {
+                                            $question['type'] = 'slider';
+                                            
+                                            // Copy slider-specific properties
+                                            $sliderProps = ['min', 'max', 'step', 'showTicks', 'showLabels', 'labels', 'defaultValue'];
+                                            foreach ($sliderProps as $prop) {
+                                                if (!isset($question[$prop]) && isset($question['settings'][$prop])) {
+                                                    $question[$prop] = $question['settings'][$prop];
+                                                }
+                                            }
+                                        }
+                                        break;
+                                        
+                                    case 'slider':
+                                        // Handle slider settings
+                                        $sliderProps = ['min', 'max', 'step', 'showTicks', 'showLabels', 'labels', 'defaultValue'];
+                                        foreach ($sliderProps as $prop) {
+                                            if (!isset($question[$prop]) && isset($question['settings'][$prop])) {
+                                                $question[$prop] = $question['settings'][$prop];
+                                            }
+                                        }
                                         break;
                                         
                                     case 'matrix':

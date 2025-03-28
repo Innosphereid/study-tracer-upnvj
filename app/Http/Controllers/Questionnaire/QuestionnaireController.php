@@ -262,7 +262,8 @@ class QuestionnaireController extends Controller
                                 'rating' => 'rating',
                                 'date' => 'date',
                                 'file' => 'file-upload',
-                                'matrix' => 'matrix'
+                                'matrix' => 'matrix',
+                                'slider' => 'slider'
                             ];
                             
                             $question['type'] = $typeMap[$question['question_type']] ?? 'short-text';
@@ -343,6 +344,30 @@ class QuestionnaireController extends Controller
                                         // Handle rating settings
                                         $ratingProps = ['maxRating', 'showValues', 'icon'];
                                         foreach ($ratingProps as $prop) {
+                                            if (!isset($question[$prop]) && isset($question['settings'][$prop])) {
+                                                $question[$prop] = $question['settings'][$prop];
+                                            }
+                                        }
+                                        
+                                        // Check if this is actually a slider question based on settings
+                                        if (isset($question['settings']) && is_array($question['settings']) && 
+                                            isset($question['settings']['type']) && $question['settings']['type'] === 'slider') {
+                                            $question['type'] = 'slider';
+                                            
+                                            // Apply slider-specific properties
+                                            $sliderProps = ['min', 'max', 'step', 'showTicks', 'showLabels', 'labels', 'defaultValue'];
+                                            foreach ($sliderProps as $prop) {
+                                                if (!isset($question[$prop]) && isset($question['settings'][$prop])) {
+                                                    $question[$prop] = $question['settings'][$prop];
+                                                }
+                                            }
+                                        }
+                                        break;
+                                        
+                                    case 'slider':
+                                        // Handle slider settings
+                                        $sliderProps = ['min', 'max', 'step', 'showTicks', 'showLabels', 'labels', 'defaultValue'];
+                                        foreach ($sliderProps as $prop) {
                                             if (!isset($question[$prop]) && isset($question['settings'][$prop])) {
                                                 $question[$prop] = $question['settings'][$prop];
                                             }
