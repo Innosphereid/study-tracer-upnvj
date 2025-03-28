@@ -640,32 +640,6 @@ class TracerStudySeeder extends Seeder
                 'options' => []
             ],
             [
-                'title' => 'Urutkan faktor berikut berdasarkan kontribusinya terhadap kesuksesan karir Anda',
-                'description' => null,
-                'question_type' => 'ranking',
-                'is_required' => true,
-                'order' => 1,
-                'settings' => json_encode([
-                    'text' => 'Urutkan faktor berikut berdasarkan kontribusinya terhadap kesuksesan karir Anda',
-                    'helpText' => '',
-                    'required' => true,
-                    'type' => 'ranking',
-                    'id' => Str::uuid()->toString(),
-                    'visible' => true,
-                    'title' => 'Urutkan faktor berikut berdasarkan kontribusinya terhadap kesuksesan karir Anda',
-                    'description' => '',
-                    'is_required' => true
-                ]),
-                'options' => [
-                    ['label' => 'Pengetahuan Akademik', 'value' => 'Pengetahuan Akademik', 'order' => 0],
-                    ['label' => 'Jaringan/koneksi', 'value' => 'Jaringan/koneksi', 'order' => 1],
-                    ['label' => 'Pengalaman magang/kerja selama kuliah', 'value' => 'Pengalaman magang/kerja selama kuliah', 'order' => 2],
-                    ['label' => 'Aktivitas organisasi', 'value' => 'Aktivitas organisasi', 'order' => 3],
-                    ['label' => 'Sertifikasi tambahan', 'value' => 'Sertifikasi tambahan', 'order' => 4],
-                    ['label' => 'Kemampuan berbahasa asing', 'value' => 'Kemampuan berbahasa asing', 'order' => 5]
-                ]
-            ],
-            [
                 'title' => 'Apakah Anda pernah mengikuti pelatihan/sertifikasi tambahan untuk menunjang karir?',
                 'description' => null,
                 'question_type' => 'yes-no',
