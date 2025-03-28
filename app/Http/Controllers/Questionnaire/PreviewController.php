@@ -610,7 +610,7 @@ class PreviewController extends Controller
                                         
                                     case 'rating':
                                         // Handle rating settings
-                                        $ratingProps = ['maxRating', 'showValues', 'icon'];
+                                        $ratingProps = ['maxRating', 'showValues', 'icon', 'labels', 'minRating', 'maxRatingValue', 'stepValue'];
                                         foreach ($ratingProps as $prop) {
                                             if (!isset($question[$prop]) && isset($question['settings'][$prop])) {
                                                 $question[$prop] = $question['settings'][$prop];
