@@ -50,7 +50,7 @@ const fileTypeText = computed(() => {
     }
 
     if (props.question.allowedTypes.includes("*/*")) {
-        return "file (semua tipe)";
+        return "file (semua jenis)";
     }
 
     const typeMap = {

@@ -439,6 +439,8 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
         },
 
         updateQuestion(questionId, updates) {
+            this.specialHandlingForFileUpload(updates);
+
             const sectionIndex = this.questionnaire.sections.findIndex(
                 (section) => section.questions.some((q) => q.id === questionId)
             );
@@ -760,6 +762,13 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                 idType: typeof questionnaireId,
                 url,
                 method,
+            });
+
+            // Process all questions to ensure proper handling of special cases
+            this.questionnaire.sections.forEach((section) => {
+                section.questions.forEach((question) => {
+                    this.specialHandlingForFileUpload(question);
+                });
             });
 
             // Send request to server
@@ -1232,6 +1241,29 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                     console.error("Failed to load questionnaire:", error);
                     throw error;
                 });
+        },
+
+        // Special handling for file upload questions with '*/*' allowedTypes
+        specialHandlingForFileUpload(question) {
+            if (
+                question.type === "file-upload" &&
+                question.allowedTypes &&
+                Array.isArray(question.allowedTypes) &&
+                question.allowedTypes.includes("*/*")
+            ) {
+                console.log("Store: Special handling for */* allowedTypes");
+
+                // Ensure we're not mixing allowedTypes
+                question.allowedTypes = ["*/*"];
+
+                // Make sure settings also has the correct allowedTypes
+                if (
+                    question.settings &&
+                    typeof question.settings === "object"
+                ) {
+                    question.settings.allowedTypes = ["*/*"];
+                }
+            }
         },
     },
 });

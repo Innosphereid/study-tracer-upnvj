@@ -159,6 +159,16 @@ Route::prefix('kuesioner')->middleware(['auth'])->group(function () {
         
     Route::get('/answer-details/response/{responseId}/question/{questionId}', 'App\Http\Controllers\Questionnaire\AnswerDetailController@getByResponseAndQuestion')
         ->name('answer-details.by-response-and-question');
+        
+    // File Upload Question Routes
+    Route::prefix('file-upload')->group(function () {
+        Route::post('/store', 'App\Http\Controllers\Questionnaire\FileUploadQuestionController@store')
+            ->name('file-upload.store');
+        Route::put('/{id}', 'App\Http\Controllers\Questionnaire\FileUploadQuestionController@update')
+            ->name('file-upload.update');
+        Route::post('/validate', 'App\Http\Controllers\Questionnaire\FileUploadQuestionController@validateFileType')
+            ->name('file-upload.validate');
+    });
 });
 
 // Endpoint untuk alumni (tidak perlu login)

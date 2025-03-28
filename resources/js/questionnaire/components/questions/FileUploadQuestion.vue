@@ -206,7 +206,7 @@ const acceptedFileTypes = computed(() => props.question.allowedTypes.join(","));
 // Human-readable file types
 const fileTypeText = computed(() => {
     if (props.question.allowedTypes.includes("*/*")) {
-        return "All file types";
+        return "Semua jenis file";
     }
 
     const typeMap = {

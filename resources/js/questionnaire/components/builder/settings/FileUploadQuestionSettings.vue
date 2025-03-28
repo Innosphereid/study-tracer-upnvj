@@ -241,11 +241,14 @@ initializeSelectedFileTypes();
 
 // Handle file category change
 function onFileCategoryChange() {
+    console.log("File category changed to:", fileCategory.value);
+
     // Reset selected file types when category changes
     selectedFileTypes.value = [];
 
     // If "All files" is selected
     if (fileCategory.value === "all") {
+        console.log("All files selected, setting allowedTypes to ['*/*']");
         updateAllowedTypes();
         return;
     }
@@ -266,6 +269,7 @@ function updateAllowedTypes() {
 
     if (fileCategory.value === "all") {
         allowedTypes = ["*/*"];
+        console.log("Setting allowedTypes to ['*/*'] for 'all' file category");
     } else {
         // Handle compound types (comma-separated values)
         selectedFileTypes.value.forEach((type) => {
@@ -277,11 +281,17 @@ function updateAllowedTypes() {
         });
     }
 
+    console.log("Final allowedTypes:", allowedTypes);
+
     const updatedQuestion = {
         ...props.question,
         allowedTypes: allowedTypes,
     };
 
+    console.log(
+        "Emitting updated question with allowedTypes:",
+        updatedQuestion.allowedTypes
+    );
     emit("update:question", updatedQuestion);
 }
 

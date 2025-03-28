@@ -244,105 +244,34 @@ const updateQuestionFromComponent = (updatedQuestion) => {
     // Extract all properties that need to be saved in the settings JSON
     const settingsProps = { ...updatedQuestion };
 
-    // Remove non-setting properties that are stored directly on the question
-    const directDbProps = [
-        "id",
-        "section_id",
-        "questionnaire_id",
-        "question_type",
-        "title",
-        "description",
-        "is_required",
-        "order",
-        "created_at",
-        "updated_at",
-        "settings", // Also remove existing settings to prevent nesting
-    ];
-
-    directDbProps.forEach((prop) => {
-        delete settingsProps[prop];
-    });
-
-    // Track type-specific settings to ensure they're included
-    const typeSpecificSettings = {};
-
-    // Process type-specific settings based on question type
+    // Extract type-specific settings based on question type
+    let typeSpecificSettings = {};
     if (updatedQuestion.type) {
         switch (updatedQuestion.type) {
-            case "radio":
-            case "checkbox":
-            case "dropdown":
-                // Option-based question types
-                const optionProps = [
-                    "options",
-                    "allowOther",
-                    "allowNone",
-                    "optionsOrder",
-                    "defaultValue",
-                ];
-                optionProps.forEach((prop) => {
-                    if (updatedQuestion[prop] !== undefined) {
-                        typeSpecificSettings[prop] = updatedQuestion[prop];
-                    }
-                });
-
-                // Ensure option values match their text if they follow option_X pattern
-                if (
-                    typeSpecificSettings.options &&
-                    Array.isArray(typeSpecificSettings.options)
-                ) {
-                    typeSpecificSettings.options =
-                        typeSpecificSettings.options.map((option) => {
-                            // Make a copy to avoid mutation
-                            const cleanOption = { ...option };
-
-                            // If value follows the option_X pattern, replace it with the text
-                            if (
-                                cleanOption.value &&
-                                (cleanOption.value.match(/^option_\d+$/) ||
-                                    cleanOption.value ===
-                                        "option_" + cleanOption.text)
-                            ) {
-                                cleanOption.value = cleanOption.text;
-                            }
-
-                            return cleanOption;
-                        });
-                }
-                break;
-
-            case "rating":
-                // Rating question type
-                const ratingProps = [
-                    "maxRating",
-                    "showValues",
-                    "icon",
-                    "defaultValue",
-                    "step",
-                ];
-                ratingProps.forEach((prop) => {
-                    if (updatedQuestion[prop] !== undefined) {
-                        typeSpecificSettings[prop] = updatedQuestion[prop];
-                    }
-                });
-                break;
-
-            case "matrix":
-                // Matrix question type
-                const matrixProps = ["matrixType", "rows", "columns"];
-                matrixProps.forEach((prop) => {
-                    if (updatedQuestion[prop] !== undefined) {
-                        typeSpecificSettings[prop] = updatedQuestion[prop];
-                    }
-                });
-                break;
-
             case "file-upload":
                 // File upload question type
                 const fileProps = ["allowedTypes", "maxFiles", "maxSize"];
                 fileProps.forEach((prop) => {
                     if (updatedQuestion[prop] !== undefined) {
-                        typeSpecificSettings[prop] = updatedQuestion[prop];
+                        // Khusus untuk field allowedTypes
+                        if (
+                            prop === "allowedTypes" &&
+                            Array.isArray(updatedQuestion[prop])
+                        ) {
+                            // Buat salinan array untuk menghindari mutasi
+                            typeSpecificSettings[prop] = [
+                                ...updatedQuestion[prop],
+                            ];
+
+                            // Pastikan "*/*" tidak di-escape dengan cara apapun
+                            if (typeSpecificSettings[prop].includes("*/*")) {
+                                console.log(
+                                    "Found */* in allowedTypes, ensuring it's not escaped"
+                                );
+                            }
+                        } else {
+                            typeSpecificSettings[prop] = updatedQuestion[prop];
+                        }
                     }
                 });
                 break;
@@ -421,6 +350,33 @@ const updateQuestionFromComponent = (updatedQuestion) => {
         // Set clean settings object without any nesting
         settings: cleanSettings,
     };
+
+    // Pastikan allowedTypes dengan "*/*" tidak di-escape saat disimpan
+    if (
+        updatedQuestion.type === "file-upload" &&
+        cleanSettings.allowedTypes &&
+        Array.isArray(cleanSettings.allowedTypes) &&
+        cleanSettings.allowedTypes.includes("*/*")
+    ) {
+        console.log(
+            "Detected file upload with */* allowedTypes before processing"
+        );
+        console.log("Original cleanSettings:", JSON.stringify(cleanSettings));
+
+        // Konversi settings ke string dengan opsi yang mencegah escape pada slash
+        const settingsString = JSON.stringify(cleanSettings, null, 0).replace(
+            /\\\//g,
+            "/"
+        );
+        console.log("Settings string after removing escape:", settingsString);
+
+        questionWithBackendFields.settings = JSON.parse(settingsString);
+
+        console.log(
+            "Processed settings for file upload with */* allowedTypes:",
+            JSON.stringify(questionWithBackendFields.settings)
+        );
+    }
 
     console.log(
         "Updating question with clean settings:",

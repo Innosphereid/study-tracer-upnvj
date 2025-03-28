@@ -197,6 +197,13 @@ const acceptTypes = computed(() => {
 // Display text about accepted file types
 const fileTypeText = computed(() => {
     if (props.question.allowedTypes && props.question.allowedTypes.length > 0) {
+        // Check if all file types are allowed
+        if (props.question.allowedTypes.includes("*/*")) {
+            return `Format yang diterima: Semua jenis file | Maks. ${
+                props.question.maxFiles || 1
+            } file`;
+        }
+
         // Format the allowed types for human reading
         const types = props.question.allowedTypes.map((type) => {
             if (type === "image/jpeg") return "JPG";
