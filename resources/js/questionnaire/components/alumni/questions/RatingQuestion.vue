@@ -60,7 +60,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, ref, computed } from "vue";
+import { defineProps, defineEmits, ref, computed, watch } from "vue";
 import QuestionContainer from "../ui/QuestionContainer.vue";
 import QuestionLabel from "../ui/QuestionLabel.vue";
 
@@ -120,7 +120,9 @@ const updateRating = (rating) => {
     // If clicking the same rating, clear it
     const newRating = props.modelValue === rating ? 0 : rating;
     emit("update:modelValue", newRating);
-    validate();
+
+    // Validasi segera setelah nilai berubah
+    setTimeout(() => validate(), 0);
 };
 
 // Validate the input
@@ -131,7 +133,7 @@ const validate = () => {
     // Required validation
     if (
         props.question.required &&
-        (!props.modelValue || props.modelValue === 0)
+        (props.modelValue === null || props.modelValue === 0)
     ) {
         isValid = false;
         errorMessage = "Pertanyaan ini wajib dijawab.";
@@ -140,6 +142,17 @@ const validate = () => {
     emit("validate", { isValid, errorMessage });
     return isValid;
 };
+
+// Watch for changes in modelValue to trigger validation
+watch(
+    () => props.modelValue,
+    (newValue) => {
+        if (newValue && newValue > 0) {
+            validate();
+        }
+    },
+    { immediate: true }
+);
 </script>
 
 <style scoped>
