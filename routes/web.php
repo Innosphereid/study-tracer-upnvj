@@ -86,15 +86,6 @@ Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])
     ->middleware(['auth', 'role:admin,superadmin'])
     ->name('admin.dashboard');
 
-// Fallback route
-Route::fallback(function () {
-    if (Auth::check()) {
-        return redirect()->route('dashboard');
-    }
-    
-    return redirect()->route('login');
-});
-
 // Email Preview Routes (for development only)
 Route::prefix('email-preview')->name('email.preview.')->group(function () {
     // Reset Password Request Email Preview
@@ -124,13 +115,13 @@ Route::prefix('kuesioner')->middleware(['auth'])->group(function () {
     Route::post('/', 'App\Http\Controllers\Questionnaire\QuestionnaireController@store')->name('questionnaires.store');
     
     // Menampilkan, mengedit, dan menghapus kuesioner
-    Route::get('/{id}', 'App\Http\Controllers\Questionnaire\QuestionnaireController@show')->name('questionnaires.show');
+    Route::get('/{id}', 'App\Http\Controllers\Questionnaire\QuestionnaireController@show')->name('questionnaires.show')->where('id', '[0-9]+');
     Route::get('/{id}/edit', 'App\Http\Controllers\Questionnaire\QuestionnaireController@edit')->name('questionnaires.edit');
     Route::put('/{id}', 'App\Http\Controllers\Questionnaire\QuestionnaireController@update')->name('questionnaires.update');
     Route::delete('/{id}', 'App\Http\Controllers\Questionnaire\QuestionnaireController@destroy')->name('questionnaires.destroy');
     
     // Melihat preview kuesioner
-    Route::get('/preview', 'App\Http\Controllers\Questionnaire\PreviewController@index')->name('preview.index');
+    Route::get('/{id}/preview', 'App\Http\Controllers\Questionnaire\QuestionnaireController@preview')->name('questionnaires.preview');
     
     // Mempublikasikan kuesioner
     Route::post('/{id}/publish', 'App\Http\Controllers\Questionnaire\QuestionnaireController@publish')->name('questionnaires.publish');
@@ -174,9 +165,9 @@ Route::prefix('kuesioner')->middleware(['auth'])->group(function () {
 
 // Endpoint untuk alumni (tidak perlu login)
 Route::prefix('kuesioner')->group(function () {
-    // New route: Access questionnaire by slug
+    // Access questionnaire by slug - menggunakan FormController
     Route::get('/{slug}', 'App\Http\Controllers\Questionnaire\FormController@show')
-        ->where('slug', '[a-z0-9-]+')
+        ->where('slug', '[a-z0-9\-]+')
         ->name('form.show');
     
     // Submit jawaban kuesioner
@@ -191,3 +182,15 @@ Route::prefix('kuesioner')->group(function () {
 Route::get('/vue-test', function() {
     return view('vue-test');
 })->name('vue-test');
+
+// Questionnaire Preview Route
+Route::get('/preview', 'App\Http\Controllers\Questionnaire\PreviewController@index')->name('preview.index');
+
+// Fallback route
+Route::fallback(function () {
+    if (Auth::check()) {
+        return redirect()->route('dashboard');
+    }
+    
+    return redirect()->route('login');
+});

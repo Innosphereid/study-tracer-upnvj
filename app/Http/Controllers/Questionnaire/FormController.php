@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
+use App\Models\Questionnaire;
 
 class FormController extends Controller
 {
@@ -42,30 +43,101 @@ class FormController extends Controller
      * @param string $slug
      * @return View
      */
-    public function show(string $slug): View
+    public function show($slug)
     {
-        Log::info('Displaying questionnaire form', ['slug' => $slug]);
+        // Find questionnaire by slug
+        $questionnaire = Questionnaire::where('slug', $slug)
+            ->where('status', 'published')
+            ->with(['sections.questions.options'])
+            ->firstOrFail();
+
+        // Log questionnaire data for debugging
+        Log::debug('Questionnaire data for alumni view:', [
+            'questionnaire_id' => $questionnaire->id,
+            'sections_count' => $questionnaire->sections->count(),
+            'questions_count' => $questionnaire->sections->sum(function($section) {
+                return $section->questions->count();
+            })
+        ]);
         
-        // Try to determine if this is an ID or a slug
-        $questionnaire = null;
+        // Process sections and questions to ensure proper format for Vue app
+        $sections = $questionnaire->sections->map(function ($section) {
+            // Map section data
+            $sectionData = [
+                'id' => $section->id,
+                'title' => $section->title,
+                'description' => $section->description,
+                'order' => $section->order,
+                'questions' => []
+            ];
+            
+            // Process questions
+            $questions = $section->questions->map(function ($question) {
+                // Ensure settings is a proper JSON object
+                $settings = $question->settings;
+                if (is_string($settings)) {
+                    try {
+                        $settings = json_decode($settings, true);
+                    } catch (\Exception $e) {
+                        Log::error('Failed to parse question settings:', [
+                            'question_id' => $question->id,
+                            'settings' => $question->settings,
+                            'error' => $e->getMessage()
+                        ]);
+                        $settings = [];
+                    }
+                }
+                
+                // Ensure options is correctly formatted
+                $options = [];
+                if ($question->options && $question->options->count() > 0) {
+                    $options = $question->options->map(function ($option) {
+                        return [
+                            'id' => $option->id,
+                            'value' => $option->value,
+                            'label' => $option->label,
+                            'order' => $option->order
+                        ];
+                    })->sortBy('order')->values()->toArray();
+                }
+                
+                // Build complete question data
+                return [
+                    'id' => $question->id,
+                    'text' => $question->title, // Use title as text for compatibility
+                    'title' => $question->title, // Use original title field
+                    'description' => $question->description,
+                    'helpText' => $question->description, // Also include as helpText for compatibility
+                    'type' => $question->question_type, // Primary type field
+                    'question_type' => $question->question_type, // Also include original for compatibility
+                    'is_required' => $question->is_required,
+                    'required' => $question->is_required, // Also include as required for compatibility
+                    'order' => $question->order,
+                    'settings' => $settings,
+                    'options' => $options
+                ];
+            })->sortBy('order')->values()->toArray();
+            
+            $sectionData['questions'] = $questions;
+            return $sectionData;
+        })->sortBy('order')->values()->toArray();
         
-        if (is_numeric($slug)) {
-            // If it's numeric, try to fetch by ID first
-            $questionnaire = $this->questionnaireService->getQuestionnaireById((int)$slug);
+        // Debug the processed sections
+        Log::debug('Processed sections for alumni view:', [
+            'sections_count' => count($sections),
+            'first_section_questions' => count($sections[0]['questions'] ?? [])
+        ]);
+        
+        // Add debug info as a meta field if in local environment
+        if (app()->environment('local')) {
+            $questionnaire->debug_info = [
+                'route' => 'form.show',
+                'controller' => 'FormController',
+                'processed_at' => now()->toDateTimeString()
+            ];
         }
         
-        // If not found by ID or not numeric, try by slug
-        if (!$questionnaire) {
-            $questionnaire = $this->questionnaireService->getQuestionnaireBySlug($slug);
-        }
-        
-        abort_if(!$questionnaire, 404, 'Kuesioner tidak ditemukan');
-        abort_if($questionnaire->status !== 'published', 403, 'Kuesioner tidak tersedia');
-        abort_if(!$questionnaire->isActive(), 403, 'Kuesioner sudah tidak aktif');
-        
-        $sections = $this->questionnaireService->getQuestionnaireSections($questionnaire->id);
-        
-        return view('questionnaire.form', compact('questionnaire', 'sections'));
+        return view('questionnaire.show', compact('questionnaire', 'sections'));
     }
     
     /**

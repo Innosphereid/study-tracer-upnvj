@@ -30,40 +30,96 @@
 </head>
 
 <body class="font-sans antialiased text-gray-900 bg-gray-50">
-    <!-- Vue Form Mount Point -->
-    <div id="questionnaire-form" data-questionnaire="{{ json_encode($questionnaire) }}"></div>
+    <!-- App Wrapper -->
+    <div id="app" class="container mx-auto py-8 px-4">
+        <!-- Debug information - hanya terlihat untuk admin -->
+        @auth
+            @if(auth()->user()->role === 'admin' || auth()->user()->role === 'superadmin')
+            <div id="debug-panel" class="bg-white p-4 mb-4 rounded-lg shadow border-2 border-blue-500">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-xl font-bold text-blue-700">Debug Info (Hanya Admin)</h2>
+                    <button class="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-700" onclick="document.getElementById('debug-panel').style.display='none'">Tutup</button>
+                </div>
+                <div class="overflow-auto max-h-60">
+                    <h3 class="font-bold">Questionnaire Data:</h3>
+                    <pre class="text-xs bg-gray-100 p-2 rounded overflow-auto">{{ json_encode($questionnaire, JSON_PRETTY_PRINT) }}</pre>
+                    
+                    <h3 class="font-bold mt-2">Sections Data:</h3>
+                    <pre class="text-xs bg-gray-100 p-2 rounded overflow-auto">{{ json_encode($sections, JSON_PRETTY_PRINT) }}</pre>
+                </div>
+                <div class="mt-2 text-sm text-gray-600">
+                    <p>Route: {{ request()->route()->getName() }}</p>
+                    <p>Controller: {{ get_class(request()->route()->getController()) }}</p>
+                </div>
+            </div>
+            @endif
+        @endauth
 
-    @if($questionnaire->requires_login && !auth()->check())
+        <!-- Vue Form Mount Point -->
+        <div id="questionnaire-form" data-questionnaire="{{ json_encode($questionnaire) }}" data-use-new-interface="true"
+            data-sections="{{ json_encode($sections) }}"></div>
+
+        @if($questionnaire->requires_login && !auth()->check())
+        <script>
+        // Redirect to login if questionnaire requires authentication
+        window.location.href = "{{ route('login', ['redirect' => url()->current()]) }}";
+        </script>
+        @endif
+
+        <!-- Fallback Error Handler -->
+        <div id="error-message" style="display: none; margin-top: 2rem;" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            <h2 class="font-bold text-xl mb-2">Terjadi kesalahan saat memuat kuesioner</h2>
+            <p class="mb-4">Mohon maaf atas ketidaknyamanan ini. Beberapa kemungkinan penyebabnya:</p>
+            <ul class="list-disc pl-5 mb-4">
+                <li>Ada masalah dengan JavaScript aplikasi</li>
+                <li>Kuesioner mungkin tidak valid atau rusak</li>
+                <li>Ada masalah dengan koneksi jaringan</li>
+            </ul>
+            <p class="mb-4">Silakan coba beberapa hal berikut:</p>
+            <ul class="list-disc pl-5 mb-4">
+                <li>Refresh halaman ini</li>
+                <li>Bersihkan cache browser Anda</li>
+                <li>Coba dengan browser yang berbeda</li>
+            </ul>
+            <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded" onclick="window.location.reload()">
+                Muat Ulang Halaman
+            </button>
+        </div>
+    </div>
+
     <script>
-    // Redirect to login if questionnaire requires authentication
-    window.location.href = "{{ route('login', ['redirect' => url()->current()]) }}";
-    </script>
-    @endif
+        // Detect if app failed to load
+        window.addEventListener('error', function(event) {
+            console.error('Global error caught:', event.error);
+            document.getElementById('error-message').style.display = 'block';
+        });
 
-    <!-- Footer Scripts -->
-    <script>
-    // Check if form has been submitted
-    const checkSubmission = () => {
-        const formKey = 'questionnaire_{{ $questionnaire->id }}_submitted';
-        return localStorage.getItem(formKey) === 'true';
-    };
+        // Check if app mounted after 3 seconds
+        setTimeout(function() {
+            const appElement = document.querySelector('#questionnaire-form');
+            if (appElement && appElement.children.length === 0) {
+                console.error('Vue app failed to mount after timeout');
+                document.getElementById('error-message').style.display = 'block';
+            }
+        }, 3000);
 
-    // Mark as submitted
-    const markAsSubmitted = () => {
-        const formKey = 'questionnaire_{{ $questionnaire->id }}_submitted';
-        localStorage.setItem(formKey, 'true');
-    };
+        // Add debug url param check
+        if (window.location.href.includes('debug=true')) {
+            const debugPanel = document.getElementById('debug-panel');
+            if (debugPanel) debugPanel.style.display = 'block';
+        }
 
-    // Listen for submission event from Vue component
-    document.addEventListener('questionnaire-submitted', () => {
-        markAsSubmitted();
-    });
-
-    // Show warning if already submitted
-    if (checkSubmission()) {
-        console.log('This questionnaire has already been submitted.');
-        // Optionally show a notification or disable form
-    }
+        // Make questionnaire data available in console for debugging
+        try {
+            const appElement = document.querySelector('#questionnaire-form');
+            if (appElement) {
+                window.questionnaireData = JSON.parse(appElement.dataset.questionnaire);
+                window.sectionsData = JSON.parse(appElement.dataset.sections);
+                console.log('Debug data available in console as window.questionnaireData and window.sectionsData');
+            }
+        } catch (e) {
+            console.error('Error parsing questionnaire data:', e);
+        }
     </script>
 </body>
 

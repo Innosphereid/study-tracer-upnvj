@@ -88,7 +88,7 @@ class QuestionnaireController extends Controller
         }
         
         return redirect()->route('questionnaires.edit', $questionnaire->id)
-            ->with('success', 'Kuesioner berhasil dibuat');
+            ->with('success', 'Kuesioner berhasil dibuat.');
     }
     
     /**
@@ -151,7 +151,7 @@ class QuestionnaireController extends Controller
         
         if ($updated) {
             return redirect()->route('questionnaires.edit', $id)
-                ->with('success', 'Kuesioner berhasil diperbarui');
+                ->with('success', 'Kuesioner berhasil diperbarui.');
         } else {
             return redirect()->back()->withErrors(['error' => 'Gagal memperbarui kuesioner']);
         }
@@ -541,7 +541,7 @@ class QuestionnaireController extends Controller
             
             if ($published) {
                 return redirect()->route('questionnaires.show', $id)
-                    ->with('success', 'Kuesioner berhasil dipublikasikan');
+                    ->with('success', 'Kuesioner berhasil dipublikasikan.');
             } else {
                 return redirect()->back()->withErrors(['error' => 'Gagal mempublikasikan kuesioner']);
             }
@@ -586,7 +586,7 @@ class QuestionnaireController extends Controller
         
         if ($closed) {
             return redirect()->route('questionnaires.show', $id)
-                ->with('success', 'Kuesioner berhasil ditutup');
+                ->with('success', 'Kuesioner berhasil ditutup.');
         } else {
             return redirect()->back()->withErrors(['error' => 'Gagal menutup kuesioner']);
         }
@@ -614,7 +614,7 @@ class QuestionnaireController extends Controller
         
         if ($clone) {
             return redirect()->route('questionnaires.edit', $clone->id)
-                ->with('success', 'Kuesioner berhasil diduplikasi');
+                ->with('success', 'Kuesioner berhasil diduplikasi.');
         } else {
             return redirect()->back()->withErrors(['error' => 'Gagal menduplikasi kuesioner']);
         }

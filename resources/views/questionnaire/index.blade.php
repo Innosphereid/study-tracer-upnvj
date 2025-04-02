@@ -8,7 +8,7 @@
         <div class="flex justify-between items-center">
             <h1 class="text-2xl font-semibold text-gray-900">Kelola Kuesioner</h1>
             <a href="{{ route('questionnaires.create') }}"
-                class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                class="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                 <svg xmlns="http://www.w3.org/2000/svg" class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -104,9 +104,8 @@
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div class="flex space-x-2 justify-end">
-                                                <!-- Menggunakan nilai ID langsung (integer atau string), bukan menggunakan objek -->
                                                 <a href="{{ route('questionnaires.edit', $questionnaire->id) }}"
-                                                    class="text-indigo-600 hover:text-indigo-900">
+                                                    class="text-indigo-600 hover:text-indigo-900 focus:outline-none focus:underline">
                                                     Edit
                                                 </a>
                                                 <a href="{{ route('preview.index', ['id' => $questionnaire->id]) }}"
@@ -118,8 +117,7 @@
                                                     Hasil
                                                 </a>
                                                 <form action="{{ route('questionnaires.destroy', $questionnaire->id) }}"
-                                                    method="POST"
-                                                    onsubmit="return confirm('Apakah Anda yakin ingin menghapus kuesioner ini?');">
+                                                    method="POST" class="inline-block">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit"
@@ -144,7 +142,7 @@
                                                     baru.</p>
                                                 <div class="mt-6">
                                                     <a href="{{ route('questionnaires.create') }}"
-                                                        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                        class="flex justify-center items-center w-full p-6 border-2 border-gray-300 border-dashed rounded-lg text-center hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                                         <svg xmlns="http://www.w3.org/2000/svg"
                                                             class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24"
                                                             stroke="currentColor">
