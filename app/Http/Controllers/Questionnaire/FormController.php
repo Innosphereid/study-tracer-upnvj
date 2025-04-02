@@ -123,19 +123,7 @@ class FormController extends Controller
         })->sortBy('order')->values()->toArray();
         
         // Debug the processed sections
-        Log::debug('Processed sections for alumni view:', [
-            'sections_count' => count($sections),
-            'first_section_questions' => count($sections[0]['questions'] ?? [])
-        ]);
-        
-        // Add debug info as a meta field if in local environment
-        if (app()->environment('local')) {
-            $questionnaire->debug_info = [
-                'route' => 'form.show',
-                'controller' => 'FormController',
-                'processed_at' => now()->toDateTimeString()
-            ];
-        }
+        Log::debug('Processing questionnaire sections completed');
         
         return view('questionnaire.show', compact('questionnaire', 'sections'));
     }
