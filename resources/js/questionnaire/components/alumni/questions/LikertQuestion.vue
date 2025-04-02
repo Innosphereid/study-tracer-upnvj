@@ -10,8 +10,9 @@
             <div class="mt-4">
                 <div class="likert-scale grid gap-2 py-2">
                     <!-- Scale labels for desktop -->
-                    <div class="hidden md:grid grid-cols-likert gap-1">
-                        <div class="col-span-1"></div>
+                    <div
+                        class="hidden md:grid grid-cols-likert-no-statement gap-1"
+                    >
                         <div
                             v-for="option in likertOptions"
                             :key="option.value"
@@ -22,13 +23,9 @@
                     </div>
 
                     <!-- Scale options -->
-                    <div class="grid grid-cols-likert gap-1 items-center">
-                        <div
-                            class="col-span-1 md:pr-4 text-sm md:text-base font-medium text-gray-800"
-                        >
-                            {{ statement }}
-                        </div>
-
+                    <div
+                        class="grid grid-cols-likert-no-statement gap-1 items-center"
+                    >
                         <div
                             v-for="option in likertOptions"
                             :key="option.value"
@@ -102,7 +99,7 @@ const settings = computed(() => {
     return props.question.settings;
 });
 
-// Get statement text
+// Get statement text (tidak lagi digunakan di template, tapi disimpan untuk kompatibilitas)
 const statement = computed(() => {
     return settings.value.statement || props.question.text;
 });
@@ -151,13 +148,13 @@ const validate = () => {
 </script>
 
 <style scoped>
-.grid-cols-likert {
-    grid-template-columns: 2fr repeat(5, 1fr);
+.grid-cols-likert-no-statement {
+    grid-template-columns: repeat(5, 1fr);
 }
 
 @media (max-width: 768px) {
-    .grid-cols-likert {
-        grid-template-columns: 1fr repeat(5, 1fr);
+    .grid-cols-likert-no-statement {
+        grid-template-columns: repeat(5, 1fr);
     }
 }
 
