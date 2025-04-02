@@ -7,10 +7,27 @@
                 :help-text="question.helpText"
             />
 
-            <div class="mt-4 overflow-x-auto">
-                <table class="min-w-full border-collapse">
+            <div
+                v-if="!rows.length || !columns.length"
+                class="p-4 bg-yellow-50 border border-yellow-200 rounded text-yellow-700 my-4"
+            >
+                <p class="font-medium">Data matriks tidak lengkap</p>
+                <p class="text-sm mt-1">
+                    Harap periksa konfigurasi pertanyaan untuk memastikan baris
+                    dan kolom telah didefinisikan.
+                </p>
+                <div class="text-xs mt-2">
+                    <p>Jumlah baris: {{ rows.length }}</p>
+                    <p>Jumlah kolom: {{ columns.length }}</p>
+                </div>
+            </div>
+
+            <div v-else class="mt-4 overflow-x-auto">
+                <table
+                    class="min-w-full border-collapse bg-white shadow-sm rounded-lg"
+                >
                     <thead>
-                        <tr>
+                        <tr class="bg-gray-50">
                             <th
                                 class="py-3 px-4 text-left text-sm font-medium text-gray-700 border-b border-gray-200 bg-gray-50 w-1/3"
                             ></th>
@@ -30,7 +47,7 @@
                             :class="{ 'bg-gray-50': rowIndex % 2 === 0 }"
                         >
                             <td
-                                class="py-3 px-4 text-sm text-gray-800 border-b border-gray-200"
+                                class="py-3 px-4 text-sm text-gray-800 border-b border-gray-200 font-medium"
                             >
                                 {{ row.label }}
                             </td>
@@ -96,7 +113,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, computed, ref, watch } from "vue";
+import { defineProps, defineEmits, computed, ref, watch, onMounted } from "vue";
 import QuestionContainer from "../ui/QuestionContainer.vue";
 import QuestionLabel from "../ui/QuestionLabel.vue";
 
@@ -156,17 +173,108 @@ const settings = computed(() => {
 
 // Matrix type (radio or checkbox)
 const matrixType = computed(() => {
-    return props.question.matrixType || settings.value.matrixType || "radio";
+    console.log("Matrix type check:", {
+        questionMatrixType: props.question.matrixType,
+        settingsMatrixType: settings.value.matrixType,
+        questionType: props.question.type,
+    });
+
+    // Cek beberapa kemungkinan lokasi konfigurasi tipe matriks
+    return (
+        props.question.matrixType ||
+        settings.value.matrixType ||
+        (props.question.type === "matrix-checkbox" ? "checkbox" : "radio")
+    );
 });
 
 // Matrix rows
 const rows = computed(() => {
-    return settings.value.rows || [];
+    console.log("Matrix rows settings:", settings.value.rows);
+
+    // Handle different data structures
+    if (settings.value.rows) {
+        // Normalize row format to have id, value, and label properties
+        return settings.value.rows.map((row) => {
+            // If row is already in the right format
+            if (row.id && row.label) {
+                return row;
+            }
+
+            // If row has text property but not label (from builder)
+            if (row.text && !row.label) {
+                return {
+                    id:
+                        row.id ||
+                        `row-${Math.random().toString(36).substr(2, 9)}`,
+                    value:
+                        row.id ||
+                        row.value ||
+                        `row-${Math.random().toString(36).substr(2, 9)}`,
+                    label: row.text,
+                };
+            }
+
+            // Default case
+            return {
+                id:
+                    row.id ||
+                    row.value ||
+                    `row-${Math.random().toString(36).substr(2, 9)}`,
+                value:
+                    row.id ||
+                    row.value ||
+                    `row-${Math.random().toString(36).substr(2, 9)}`,
+                label: row.label || row.text || "Unnamed Row",
+            };
+        });
+    }
+
+    return [];
 });
 
 // Matrix columns
 const columns = computed(() => {
-    return settings.value.columns || [];
+    console.log("Matrix columns settings:", settings.value.columns);
+
+    // Handle different data structures
+    if (settings.value.columns) {
+        // Normalize column format to have id, value, and label properties
+        return settings.value.columns.map((column) => {
+            // If column is already in the right format
+            if (column.id && column.label) {
+                return column;
+            }
+
+            // If column has text property but not label (from builder)
+            if (column.text && !column.label) {
+                return {
+                    id:
+                        column.id ||
+                        `col-${Math.random().toString(36).substr(2, 9)}`,
+                    value:
+                        column.id ||
+                        column.value ||
+                        `col-${Math.random().toString(36).substr(2, 9)}`,
+                    label: column.text,
+                };
+            }
+
+            // Default case
+            return {
+                id:
+                    column.id ||
+                    column.value ||
+                    `col-${Math.random().toString(36).substr(2, 9)}`,
+                value:
+                    column.id ||
+                    column.value ||
+                    `col-${Math.random().toString(36).substr(2, 9)}`,
+                label: column.label || column.text || "Unnamed Column",
+            };
+        });
+    }
+
+    return [];
 });
 
 // Get value for a row in radio matrix
@@ -218,6 +326,12 @@ const validate = () => {
     let isValid = true;
     let errorMessage = "";
 
+    // Pastikan ada rows dan columns sebelum validasi
+    if (!rows.value.length || !columns.value.length) {
+        console.warn("Matrix validation failed: no rows or columns defined");
+        return true; // Skip validation if no rows/columns defined
+    }
+
     // Required validation for radio matrix
     if (props.question.required && matrixType.value === "radio") {
         // Check if all rows have a selected value
@@ -248,6 +362,23 @@ const validate = () => {
     emit("validate", { isValid, errorMessage });
     return isValid;
 };
+
+onMounted(() => {
+    // Log untuk debugging
+    console.log("MatrixQuestion mounted with question:", props.question);
+    console.log("Matrix settings:", settings.value);
+    console.log("Normalized rows:", rows.value);
+    console.log("Normalized columns:", columns.value);
+
+    // Validasi data awal
+    if (!rows.value.length || !columns.value.length) {
+        console.warn("Matrix question missing rows or columns:", {
+            questionId: props.question.id,
+            rows: rows.value,
+            columns: columns.value,
+        });
+    }
+});
 </script>
 
 <style scoped>
