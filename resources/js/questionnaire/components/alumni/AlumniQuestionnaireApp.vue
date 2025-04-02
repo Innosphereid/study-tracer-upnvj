@@ -228,6 +228,33 @@ const getQuestionComponent = (type) => {
         yesno: "yes-no",
     };
 
+    // Debugging khusus untuk tipe matrix
+    if (normalizedType === "matrix") {
+        console.log("Matrix question detected - debugging info added");
+
+        // Cek apakah ada section yang aktif dan punya data matrix
+        const currentSectionQuestions =
+            props.questionnaire.sections?.[currentSectionIndex.value]
+                ?.questions || [];
+        const matrixQuestions = currentSectionQuestions.filter(
+            (q) =>
+                q.type?.toLowerCase() === "matrix" ||
+                q.question_type?.toLowerCase() === "matrix"
+        );
+
+        if (matrixQuestions.length > 0) {
+            console.log(
+                "Matrix questions in current section:",
+                matrixQuestions.map((q) => ({
+                    id: q.id,
+                    title: q.title,
+                    hasSettings: !!q.settings,
+                    settingsType: typeof q.settings,
+                }))
+            );
+        }
+    }
+
     // If the type is in our mapping, use the normalized version
     if (typeMapping[normalizedType]) {
         normalizedType = typeMapping[normalizedType];
