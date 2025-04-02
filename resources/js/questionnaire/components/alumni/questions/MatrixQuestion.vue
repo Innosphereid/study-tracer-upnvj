@@ -127,6 +127,8 @@ const props = defineProps({
         default: () => ({
             responses: {}, // For radio type
             checkboxResponses: {}, // For checkbox type
+            rowLabels: {},
+            columnLabels: {},
         }),
     },
     error: {
@@ -141,6 +143,8 @@ const emit = defineEmits(["update:modelValue", "validate"]);
 const localValue = ref({
     responses: { ...props.modelValue.responses } || {},
     checkboxResponses: { ...props.modelValue.checkboxResponses } || {},
+    rowLabels: { ...props.modelValue.rowLabels } || {},
+    columnLabels: { ...props.modelValue.columnLabels } || {},
 });
 
 // Watch for external changes to modelValue
@@ -150,6 +154,8 @@ watch(
         localValue.value = {
             responses: { ...newValue.responses } || {},
             checkboxResponses: { ...newValue.checkboxResponses } || {},
+            rowLabels: { ...newValue.rowLabels } || {},
+            columnLabels: { ...newValue.columnLabels } || {},
         };
     },
     { deep: true }
@@ -277,7 +283,29 @@ const updateRadioValue = (rowId, value) => {
     const responses = { ...localValue.value.responses };
     responses[rowId] = value;
 
-    localValue.value.responses = responses;
+    // Add row and column labels for better data readability
+    const rowLabels = { ...localValue.value.rowLabels };
+    const columnLabels = { ...localValue.value.columnLabels };
+
+    // Find the row and column labels
+    const row = rows.value.find((r) => r.value === rowId);
+    const column = columns.value.find((c) => c.value === value);
+
+    if (row) {
+        rowLabels[rowId] = row.label;
+    }
+
+    if (column) {
+        columnLabels[value] = column.label;
+    }
+
+    localValue.value = {
+        ...localValue.value,
+        responses,
+        rowLabels,
+        columnLabels,
+    };
+
     emit("update:modelValue", { ...localValue.value });
     validate();
 };
@@ -294,6 +322,8 @@ const isCheckboxChecked = (rowId, columnId) => {
 // Toggle checkbox value
 const toggleCheckboxValue = (rowId, columnId) => {
     const checkboxResponses = { ...localValue.value.checkboxResponses };
+    const rowLabels = { ...localValue.value.rowLabels };
+    const columnLabels = { ...localValue.value.columnLabels };
 
     if (!checkboxResponses[rowId]) {
         checkboxResponses[rowId] = [];
@@ -306,7 +336,25 @@ const toggleCheckboxValue = (rowId, columnId) => {
         checkboxResponses[rowId].splice(index, 1);
     }
 
-    localValue.value.checkboxResponses = checkboxResponses;
+    // Add row and column labels for better data readability
+    const row = rows.value.find((r) => r.value === rowId);
+    const column = columns.value.find((c) => c.value === columnId);
+
+    if (row) {
+        rowLabels[rowId] = row.label;
+    }
+
+    if (column) {
+        columnLabels[columnId] = column.label;
+    }
+
+    localValue.value = {
+        ...localValue.value,
+        checkboxResponses,
+        rowLabels,
+        columnLabels,
+    };
+
     emit("update:modelValue", { ...localValue.value });
     validate();
 };
@@ -351,6 +399,28 @@ const validate = () => {
     emit("validate", { isValid, errorMessage });
     return isValid;
 };
+
+// Add an onMounted hook to initialize labels if responses already exist
+onMounted(() => {
+    // Initialize row labels
+    rows.value.forEach((row) => {
+        if (row.value) {
+            localValue.value.rowLabels[row.value] = row.label;
+        }
+    });
+
+    // Initialize column labels
+    columns.value.forEach((column) => {
+        if (column.value) {
+            localValue.value.columnLabels[column.value] = column.label;
+        }
+    });
+
+    // If we have existing responses, make sure we have the labels
+    if (Object.keys(localValue.value.responses).length > 0) {
+        emit("update:modelValue", { ...localValue.value });
+    }
+});
 </script>
 
 <style scoped>

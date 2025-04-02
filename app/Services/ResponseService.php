@@ -117,13 +117,16 @@ class ResponseService implements ResponseServiceInterface
             return false;
         }
         
+        // Process answers data for structured storage
+        $processedAnswers = $this->processAnswersForStorage($answers);
+        
         // Continue to update response_data in the Response model for backward compatibility
-        $result = $this->responseRepository->saveAnswers($responseId, $answers);
+        $result = $this->responseRepository->saveAnswers($responseId, $processedAnswers);
         
         // Additionally save structured answer details
         $saveDetailResult = $this->answerDetailRepository->saveAnswers(
             $responseId, 
-            $answers, 
+            $processedAnswers, 
             $response->questionnaire_id
         );
         
@@ -134,6 +137,155 @@ class ResponseService implements ResponseServiceInterface
         }
         
         return $result;
+    }
+    
+    /**
+     * Process different answer types for storage
+     * 
+     * @param array $answers Raw answers from the request
+     * @return array Processed answers ready for storage
+     */
+    protected function processAnswersForStorage(array $answers): array
+    {
+        $processed = [];
+        
+        foreach ($answers as $questionId => $answer) {
+            // Skip if question ID is not valid (must be numeric)
+            if (!is_numeric($questionId)) {
+                Log::warning('Skipping invalid question ID', ['questionId' => $questionId]);
+                continue;
+            }
+            
+            // Convert complex answer types to a storable format
+            if (is_array($answer)) {
+                // Handle specific question types with array answers
+                
+                // Radio or Dropdown with "other" option
+                if (isset($answer['value']) && isset($answer['otherText'])) {
+                    if ($answer['value'] === 'other') {
+                        // If "other" is selected, use the otherText as the answer
+                        $processed[$questionId] = $answer['otherText'];
+                    } else {
+                        // Otherwise just use the selected value
+                        $processed[$questionId] = $answer['value'];
+                    }
+                    
+                    // Keep the full data for detailed storage
+                    $processed[$questionId] = [
+                        'value' => $answer['value'],
+                        'otherText' => $answer['otherText'],
+                        '_processedValue' => $processed[$questionId]
+                    ];
+                    continue;
+                }
+                
+                // Checkbox question
+                if (isset($answer['values']) && is_array($answer['values'])) {
+                    $processedValue = $answer['values'];
+                    
+                    // Add otherText if present
+                    if (isset($answer['otherText']) && !empty($answer['otherText']) && 
+                        in_array('other', $answer['values'])) {
+                        $processedValue[] = $answer['otherText'];
+                    }
+                    
+                    $processed[$questionId] = [
+                        'values' => $answer['values'],
+                        'otherText' => $answer['otherText'] ?? '',
+                        '_processedValue' => $processedValue
+                    ];
+                    continue;
+                }
+                
+                // Matrix question
+                if (isset($answer['responses']) || isset($answer['checkboxResponses'])) {
+                    // Matrix question (radio or checkbox)
+                    if (isset($answer['metadata']) && is_array($answer['metadata'])) {
+                        // If metadata is provided, use it directly
+                        $processed[$questionId] = [
+                            'responses' => $answer['responses'] ?? [],
+                            'checkboxResponses' => $answer['checkboxResponses'] ?? [],
+                            'metadata' => $answer['metadata'] ?? [],
+                            '_processedValue' => json_encode($answer)
+                        ];
+                    } else {
+                        // Create a more readable format with a formatted array of responses
+                        $formatted = [];
+                        
+                        // Format radio responses
+                        if (isset($answer['responses']) && is_array($answer['responses'])) {
+                            foreach ($answer['responses'] as $rowId => $columnId) {
+                                $formatted[] = [
+                                    'rowId' => $rowId,
+                                    'columnId' => $columnId,
+                                    'rowText' => $answer['rowLabels'][$rowId] ?? 'Unknown Row',
+                                    'columnText' => $answer['columnLabels'][$columnId] ?? 'Unknown Column',
+                                ];
+                            }
+                        }
+                        
+                        // Format checkbox responses
+                        if (isset($answer['checkboxResponses']) && is_array($answer['checkboxResponses'])) {
+                            foreach ($answer['checkboxResponses'] as $rowId => $columnIds) {
+                                foreach ($columnIds as $columnId) {
+                                    $formatted[] = [
+                                        'rowId' => $rowId,
+                                        'columnId' => $columnId,
+                                        'rowText' => $answer['rowLabels'][$rowId] ?? 'Unknown Row',
+                                        'columnText' => $answer['columnLabels'][$columnId] ?? 'Unknown Column',
+                                        'type' => 'checkbox'
+                                    ];
+                                }
+                            }
+                        }
+                        
+                        $processed[$questionId] = [
+                            'responses' => $answer['responses'] ?? [],
+                            'checkboxResponses' => $answer['checkboxResponses'] ?? [],
+                            'rowLabels' => $answer['rowLabels'] ?? [],
+                            'columnLabels' => $answer['columnLabels'] ?? [],
+                            'formatted' => $formatted,
+                            '_processedValue' => json_encode($formatted)
+                        ];
+                    }
+                    continue;
+                }
+                
+                // File upload
+                if (isset($answer['files']) || isset($answer['fileUrls'])) {
+                    $processed[$questionId] = [
+                        'files' => $answer['files'] ?? [],
+                        'fileUrls' => $answer['fileUrls'] ?? [],
+                        '_processedValue' => json_encode($answer)
+                    ];
+                    continue;
+                }
+                
+                // Ranking question (array of objects with order)
+                if (count($answer) > 0 && isset($answer[0]['id']) && isset($answer[0]['order'])) {
+                    $processed[$questionId] = [
+                        'ranks' => $answer,
+                        '_processedValue' => json_encode($answer)
+                    ];
+                    continue;
+                }
+                
+                // Default: store array as is with JSON encoded version as processedValue
+                $processed[$questionId] = [
+                    'data' => $answer,
+                    '_processedValue' => json_encode($answer)
+                ];
+            } else {
+                // For simple scalar values (text, number, etc.), store as is
+                $processed[$questionId] = $answer;
+            }
+        }
+        
+        Log::debug('Processed answers for storage', [
+            'answersCount' => count($processed)
+        ]);
+        
+        return $processed;
     }
     
     /**
@@ -254,15 +406,33 @@ class ResponseService implements ResponseServiceInterface
                 // Add answers for each question
                 foreach ($questions as $questionId => $question) {
                     if (isset($answerMap[$questionId])) {
+                        // Default to the simple answer value
                         $value = $answerMap[$questionId]->answer_value;
                         
                         // If we have JSON data, try to format it
                         $jsonData = $answerMap[$questionId]->answer_data;
                         if ($jsonData && is_array($jsonData)) {
+                            // Check for the formatted string (for matrix questions)
                             if (isset($jsonData['formatted'])) {
                                 $value = $jsonData['formatted'];
-                            } elseif (isset($jsonData['values']) && is_array($jsonData['values'])) {
+                            } 
+                            // Check for matrix responses (with readable format)
+                            elseif (isset($jsonData['responses']) && isset($jsonData['rowLabels']) && isset($jsonData['columnLabels'])) {
+                                $formattedResponses = [];
+                                foreach ($jsonData['responses'] as $rowId => $columnId) {
+                                    $rowLabel = $jsonData['rowLabels'][$rowId] ?? 'Unknown Row';
+                                    $columnLabel = $jsonData['columnLabels'][$columnId] ?? 'Unknown Column';
+                                    $formattedResponses[] = "{$rowLabel}: {$columnLabel}";
+                                }
+                                $value = implode(' | ', $formattedResponses);
+                            }
+                            // Handle checkbox type questions
+                            elseif (isset($jsonData['values']) && is_array($jsonData['values'])) {
                                 $value = implode('; ', $jsonData['values']);
+                            }
+                            // Handle humanReadable format if available
+                            elseif (isset($jsonData['humanReadable']) && is_array($jsonData['humanReadable'])) {
+                                $value = implode(' | ', $jsonData['humanReadable']);
                             }
                         }
                         

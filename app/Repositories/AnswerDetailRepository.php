@@ -87,44 +87,188 @@ class AnswerDetailRepository extends BaseRepository implements AnswerDetailRepos
             $success = true;
             
             foreach ($answerData as $questionId => $answerValue) {
-                // Check if answer already exists
-                $existingAnswer = $this->getByResponseAndQuestionId($responseId, $questionId);
-                
-                if ($existingAnswer) {
-                    // Update existing answer
-                    $updated = $this->update($existingAnswer->id, [
-                        'answer_value' => is_array($answerValue) ? json_encode($answerValue) : $answerValue,
-                        'answer_data' => is_array($answerValue) ? $answerValue : null
-                    ]);
+                try {
+                    // Check if answer already exists
+                    $existingAnswer = $this->getByResponseAndQuestionId($responseId, $questionId);
                     
-                    if (!$updated) {
-                        $success = false;
-                        Log::error('Failed to update answer detail', [
-                            'answerId' => $existingAnswer->id,
-                            'questionId' => $questionId
-                        ]);
-                    }
-                } else {
-                    // Create new answer
-                    $result = $this->create([
-                        'response_id' => $responseId,
-                        'question_id' => $questionId,
-                        'questionnaire_id' => $questionnaireId,
-                        'answer_value' => is_array($answerValue) ? json_encode($answerValue) : $answerValue,
-                        'answer_data' => is_array($answerValue) ? $answerValue : null
-                    ]);
+                    // Prepare answer data
+                    $answerValueString = $this->formatAnswerValueForStorage($answerValue);
+                    $answerDataJson = $this->formatAnswerDataForStorage($answerValue);
                     
-                    if (!$result) {
-                        $success = false;
-                        Log::error('Failed to create answer detail', [
-                            'responseId' => $responseId,
-                            'questionId' => $questionId
+                    if ($existingAnswer) {
+                        // Update existing answer
+                        $updated = $this->update($existingAnswer->id, [
+                            'answer_value' => $answerValueString,
+                            'answer_data' => $answerDataJson
                         ]);
+                        
+                        if (!$updated) {
+                            $success = false;
+                            Log::error('Failed to update answer detail', [
+                                'answerId' => $existingAnswer->id,
+                                'questionId' => $questionId
+                            ]);
+                        }
+                    } else {
+                        // Create new answer
+                        $result = $this->create([
+                            'response_id' => $responseId,
+                            'question_id' => $questionId,
+                            'questionnaire_id' => $questionnaireId,
+                            'answer_value' => $answerValueString,
+                            'answer_data' => $answerDataJson
+                        ]);
+                        
+                        if (!$result) {
+                            $success = false;
+                            Log::error('Failed to create answer detail', [
+                                'responseId' => $responseId,
+                                'questionId' => $questionId
+                            ]);
+                        }
                     }
+                } catch (\Exception $e) {
+                    $success = false;
+                    Log::error('Exception while saving answer', [
+                        'responseId' => $responseId,
+                        'questionId' => $questionId,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
                 }
             }
             
             return $success;
         });
+    }
+
+    /**
+     * Format an answer value for storage in the answer_value field
+     * 
+     * @param mixed $value The answer value to format
+     * @return string Formatted string value
+     */
+    protected function formatAnswerValueForStorage($value): string
+    {
+        // If it's already processed by ResponseService, use the processed value
+        if (is_array($value) && isset($value['_processedValue'])) {
+            if (is_array($value['_processedValue'])) {
+                return json_encode($value['_processedValue']);
+            }
+            return (string)$value['_processedValue'];
+        }
+        
+        // Default handling based on type
+        if (is_array($value)) {
+            return json_encode($value);
+        }
+        
+        // Handle null values
+        if ($value === null) {
+            return '';
+        }
+        
+        // Convert to string
+        return (string)$value;
+    }
+
+    /**
+     * Format an answer for storage in the answer_data JSON field
+     * 
+     * @param mixed $value The answer value to format
+     * @return array|null Data for JSON storage
+     */
+    protected function formatAnswerDataForStorage($value): ?array
+    {
+        // If not an array or is null, wrap in a simple format
+        if (!is_array($value)) {
+            return ['value' => $value, 'type' => gettype($value)];
+        }
+        
+        // If already has metadata from ResponseService, use as is
+        if (isset($value['_processedValue'])) {
+            // Remove internal processing marker before storage
+            $processedValue = $value;
+            unset($processedValue['_processedValue']);
+            
+            // For matrix questions, add a human-readable format
+            if (isset($processedValue['responses']) || isset($processedValue['checkboxResponses'])) {
+                $readableFormat = [];
+                
+                // Add a human-readable format for radio responses
+                if (isset($processedValue['responses']) && isset($processedValue['rowLabels']) && isset($processedValue['columnLabels'])) {
+                    foreach ($processedValue['responses'] as $rowId => $columnId) {
+                        $rowLabel = $processedValue['rowLabels'][$rowId] ?? 'Unknown Row';
+                        $columnLabel = $processedValue['columnLabels'][$columnId] ?? 'Unknown Column';
+                        $readableFormat[] = "{$rowLabel}: {$columnLabel}";
+                    }
+                }
+                
+                // Add a human-readable format for checkbox responses
+                if (isset($processedValue['checkboxResponses']) && isset($processedValue['rowLabels']) && isset($processedValue['columnLabels'])) {
+                    foreach ($processedValue['checkboxResponses'] as $rowId => $columnIds) {
+                        $rowLabel = $processedValue['rowLabels'][$rowId] ?? 'Unknown Row';
+                        $selections = [];
+                        
+                        foreach ($columnIds as $columnId) {
+                            $columnLabel = $processedValue['columnLabels'][$columnId] ?? 'Unknown Column';
+                            $selections[] = $columnLabel;
+                        }
+                        
+                        if (!empty($selections)) {
+                            $readableFormat[] = "{$rowLabel}: " . implode(', ', $selections);
+                        }
+                    }
+                }
+                
+                // Add readable format
+                if (!empty($readableFormat)) {
+                    $processedValue['humanReadable'] = $readableFormat;
+                    $processedValue['formatted'] = implode(' | ', $readableFormat);
+                }
+            }
+            
+            return $processedValue;
+        }
+        
+        // Handle matrix questions directly if it has the right structure
+        if (isset($value['responses']) || isset($value['checkboxResponses'])) {
+            $readableFormat = [];
+            
+            // Generate human-readable format for radio responses
+            if (isset($value['responses']) && isset($value['rowLabels']) && isset($value['columnLabels'])) {
+                foreach ($value['responses'] as $rowId => $columnId) {
+                    $rowLabel = $value['rowLabels'][$rowId] ?? 'Unknown Row';
+                    $columnLabel = $value['columnLabels'][$columnId] ?? 'Unknown Column';
+                    $readableFormat[] = "{$rowLabel}: {$columnLabel}";
+                }
+            }
+            
+            // Generate human-readable format for checkbox responses
+            if (isset($value['checkboxResponses']) && isset($value['rowLabels']) && isset($value['columnLabels'])) {
+                foreach ($value['checkboxResponses'] as $rowId => $columnIds) {
+                    $rowLabel = $value['rowLabels'][$rowId] ?? 'Unknown Row';
+                    $selections = [];
+                    
+                    foreach ($columnIds as $columnId) {
+                        $columnLabel = $value['columnLabels'][$columnId] ?? 'Unknown Column';
+                        $selections[] = $columnLabel;
+                    }
+                    
+                    if (!empty($selections)) {
+                        $readableFormat[] = "{$rowLabel}: " . implode(', ', $selections);
+                    }
+                }
+            }
+            
+            // Add readable format to the value
+            if (!empty($readableFormat)) {
+                $value['humanReadable'] = $readableFormat;
+                $value['formatted'] = implode(' | ', $readableFormat);
+            }
+        }
+        
+        // Return array as is
+        return $value;
     }
 } 

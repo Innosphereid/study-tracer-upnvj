@@ -139,59 +139,96 @@ class FormController extends Controller
         $slug = $request->input('slug');
         Log::info('Submitting questionnaire response', ['slug' => $slug]);
         
-        $questionnaire = null;
-        
-        if (is_numeric($slug)) {
-            // If it's numeric, try to fetch by ID first
-            $questionnaire = $this->questionnaireService->getQuestionnaireById((int)$slug);
-        }
-        
-        // If not found by ID or not numeric, try by slug
-        if (!$questionnaire) {
-            $questionnaire = $this->questionnaireService->getQuestionnaireBySlug($slug);
-        }
-        
-        if (!$questionnaire) {
-            if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'message' => 'Kuesioner tidak ditemukan'], 404);
+        try {
+            // Find questionnaire by slug or ID
+            $questionnaire = Questionnaire::where(function($query) use ($slug) {
+                    if (is_numeric($slug)) {
+                        $query->where('id', $slug);
+                    }
+                    $query->orWhere('slug', $slug);
+                })
+                ->where('status', 'published')
+                ->first();
+            
+            if (!$questionnaire) {
+                Log::error('Questionnaire not found', ['slug' => $slug]);
+                return $this->errorResponse('Kuesioner tidak ditemukan', 404);
             }
             
-            abort(404, 'Kuesioner tidak ditemukan');
-        }
-        
-        if ($questionnaire->status !== 'published' || !$questionnaire->isActive()) {
-            if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'message' => 'Kuesioner tidak tersedia'], 403);
+            if (!$questionnaire->isActive()) {
+                Log::error('Questionnaire is not active', ['slug' => $slug, 'status' => $questionnaire->status]);
+                return $this->errorResponse('Kuesioner tidak tersedia atau sudah ditutup', 403);
             }
             
-            abort(403, 'Kuesioner tidak tersedia');
-        }
-        
-        $validatedData = $request->validated();
-        
-        // Create or get existing response
-        $identifier = $validatedData['respondent_identifier'] ?? request()->ip();
-        $response = $this->responseService->findOrCreateResponse($questionnaire->id, $identifier);
-        
-        // Save answers
-        $saved = $this->responseService->saveAnswers($response->id, $validatedData['answers']);
-        
-        // Mark response as completed
-        $completed = $this->responseService->completeResponse($response->id);
-        
-        if ($request->expectsJson()) {
-            return response()->json([
-                'success' => $saved && $completed,
-                'message' => ($saved && $completed) ? 'Terima kasih atas partisipasi Anda!' : 'Gagal menyimpan jawaban'
-            ]);
-        }
-        
-        if ($saved && $completed) {
+            $validatedData = $request->validated();
+            
+            // Get or create respondent identifier
+            $identifier = $validatedData['respondent_identifier'] ?? $request->ip();
+            
+            // Add additional metadata
+            $metadata = [
+                'user_agent' => $request->userAgent(),
+                'ip_address' => $request->ip(),
+            ];
+            
+            // Create or get existing response
+            $response = $this->responseService->findOrCreateResponse(
+                $questionnaire->id, 
+                $identifier, 
+                $metadata
+            );
+            
+            // Save answers
+            $saved = $this->responseService->saveAnswers($response->id, $validatedData['answers']);
+            
+            // Mark response as completed
+            $completed = $this->responseService->completeResponse($response->id);
+            
+            if (!$saved || !$completed) {
+                Log::error('Failed to save or complete response', [
+                    'responseId' => $response->id,
+                    'saved' => $saved,
+                    'completed' => $completed
+                ]);
+                return $this->errorResponse('Gagal menyimpan jawaban. Silakan coba lagi.', 500);
+            }
+            
+            // Return success response
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Terima kasih atas partisipasi Anda!',
+                    'redirectTo' => route('form.thank-you', $questionnaire->slug)
+                ]);
+            }
+            
             return redirect()->route('form.thank-you', $questionnaire->slug)
                 ->with('success', 'Terima kasih atas partisipasi Anda!');
-        } else {
-            return redirect()->back()->withErrors(['error' => 'Gagal menyimpan jawaban']);
+        } catch (\Exception $e) {
+            Log::error('Error submitting questionnaire response', [
+                'slug' => $slug,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return $this->errorResponse('Terjadi kesalahan saat memproses jawaban Anda. Silakan coba lagi.', 500);
         }
+    }
+    
+    /**
+     * Create a standardized error response
+     *
+     * @param string $message
+     * @param int $statusCode
+     * @return JsonResponse|RedirectResponse
+     */
+    protected function errorResponse(string $message, int $statusCode): JsonResponse|RedirectResponse
+    {
+        if (request()->expectsJson()) {
+            return response()->json(['success' => false, 'message' => $message], $statusCode);
+        }
+        
+        return redirect()->back()->withErrors(['error' => $message]);
     }
     
     /**
