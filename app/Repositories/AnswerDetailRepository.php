@@ -191,6 +191,21 @@ class AnswerDetailRepository extends BaseRepository implements AnswerDetailRepos
             $processedValue = $value;
             unset($processedValue['_processedValue']);
             
+            // For Radio/Dropdown questions
+            if (isset($processedValue['value']) && isset($processedValue['otherText'])) {
+                // Ensure we have a formatted property for consistency
+                if (!isset($processedValue['formatted'])) {
+                    if ($processedValue['value'] === 'other') {
+                        $processedValue['formatted'] = $processedValue['otherText'];
+                    } else {
+                        $processedValue['formatted'] = $processedValue['value'];
+                    }
+                }
+                
+                // Add a humanReadable property for consistency with other question types
+                $processedValue['humanReadable'] = $processedValue['formatted'];
+            }
+            
             // For matrix questions, add a human-readable format
             if (isset($processedValue['responses']) || isset($processedValue['checkboxResponses'])) {
                 $readableFormat = [];
@@ -229,6 +244,21 @@ class AnswerDetailRepository extends BaseRepository implements AnswerDetailRepos
             }
             
             return $processedValue;
+        }
+        
+        // Handle radio questions directly if it has the right structure
+        if (isset($value['value']) && isset($value['otherText'])) {
+            // Create a formatted value
+            $formatted = '';
+            if ($value['value'] === 'other') {
+                $formatted = $value['otherText'];
+            } else {
+                $formatted = $value['value'];
+            }
+            
+            // Add formatted and humanReadable properties
+            $value['formatted'] = $formatted;
+            $value['humanReadable'] = $formatted;
         }
         
         // Handle matrix questions directly if it has the right structure

@@ -162,19 +162,23 @@ class ResponseService implements ResponseServiceInterface
                 
                 // Radio or Dropdown with "other" option
                 if (isset($answer['value']) && isset($answer['otherText'])) {
+                    // Determine the processed value (what should go in answer_value)
+                    $processedValue = '';
+                    
                     if ($answer['value'] === 'other') {
-                        // If "other" is selected, use the otherText as the answer
-                        $processed[$questionId] = $answer['otherText'];
+                        // If "other" is selected, use the otherText as the processed value
+                        $processedValue = $answer['otherText'];
                     } else {
                         // Otherwise just use the selected value
-                        $processed[$questionId] = $answer['value'];
+                        $processedValue = $answer['value'];
                     }
                     
-                    // Keep the full data for detailed storage
+                    // Create a more readable object for storage in answer_data
                     $processed[$questionId] = [
                         'value' => $answer['value'],
                         'otherText' => $answer['otherText'],
-                        '_processedValue' => $processed[$questionId]
+                        'formatted' => $processedValue, // Add a formatted field for consistent access
+                        '_processedValue' => $processedValue // This will go to answer_value
                     ];
                     continue;
                 }
@@ -412,10 +416,18 @@ class ResponseService implements ResponseServiceInterface
                         // If we have JSON data, try to format it
                         $jsonData = $answerMap[$questionId]->answer_data;
                         if ($jsonData && is_array($jsonData)) {
-                            // Check for the formatted string (for matrix questions)
+                            // Check for the formatted string (for any question type)
                             if (isset($jsonData['formatted'])) {
                                 $value = $jsonData['formatted'];
                             } 
+                            // Check for humanReadable format if available
+                            elseif (isset($jsonData['humanReadable'])) {
+                                if (is_array($jsonData['humanReadable'])) {
+                                    $value = implode(' | ', $jsonData['humanReadable']);
+                                } else {
+                                    $value = $jsonData['humanReadable'];
+                                }
+                            }
                             // Check for matrix responses (with readable format)
                             elseif (isset($jsonData['responses']) && isset($jsonData['rowLabels']) && isset($jsonData['columnLabels'])) {
                                 $formattedResponses = [];
@@ -426,13 +438,17 @@ class ResponseService implements ResponseServiceInterface
                                 }
                                 $value = implode(' | ', $formattedResponses);
                             }
+                            // Handle radio type questions with other option
+                            elseif (isset($jsonData['value']) && isset($jsonData['otherText'])) {
+                                if ($jsonData['value'] === 'other') {
+                                    $value = $jsonData['otherText'];
+                                } else {
+                                    $value = $jsonData['value'];
+                                }
+                            }
                             // Handle checkbox type questions
                             elseif (isset($jsonData['values']) && is_array($jsonData['values'])) {
                                 $value = implode('; ', $jsonData['values']);
-                            }
-                            // Handle humanReadable format if available
-                            elseif (isset($jsonData['humanReadable']) && is_array($jsonData['humanReadable'])) {
-                                $value = implode(' | ', $jsonData['humanReadable']);
                             }
                         }
                         
