@@ -32,29 +32,6 @@
 <body class="font-sans antialiased text-gray-900 bg-gray-50">
     <!-- App Wrapper -->
     <div id="app" class="container mx-auto py-8 px-4">
-        <!-- Debug information - hanya terlihat untuk admin -->
-        @auth
-            @if(auth()->user()->role === 'admin' || auth()->user()->role === 'superadmin')
-            <div id="debug-panel" class="bg-white p-4 mb-4 rounded-lg shadow border-2 border-blue-500">
-                <div class="flex justify-between items-center mb-2">
-                    <h2 class="text-xl font-bold text-blue-700">Debug Info (Hanya Admin)</h2>
-                    <button class="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-700" onclick="document.getElementById('debug-panel').style.display='none'">Tutup</button>
-                </div>
-                <div class="overflow-auto max-h-60">
-                    <h3 class="font-bold">Questionnaire Data:</h3>
-                    <pre class="text-xs bg-gray-100 p-2 rounded overflow-auto">{{ json_encode($questionnaire, JSON_PRETTY_PRINT) }}</pre>
-                    
-                    <h3 class="font-bold mt-2">Sections Data:</h3>
-                    <pre class="text-xs bg-gray-100 p-2 rounded overflow-auto">{{ json_encode($sections, JSON_PRETTY_PRINT) }}</pre>
-                </div>
-                <div class="mt-2 text-sm text-gray-600">
-                    <p>Route: {{ request()->route()->getName() }}</p>
-                    <p>Controller: {{ get_class(request()->route()->getController()) }}</p>
-                </div>
-            </div>
-            @endif
-        @endauth
-
         <!-- Vue Form Mount Point -->
         <div id="questionnaire-form" data-questionnaire="{{ json_encode($questionnaire) }}" data-use-new-interface="true"
             data-sections="{{ json_encode($sections) }}"></div>
@@ -102,12 +79,6 @@
                 document.getElementById('error-message').style.display = 'block';
             }
         }, 3000);
-
-        // Add debug url param check
-        if (window.location.href.includes('debug=true')) {
-            const debugPanel = document.getElementById('debug-panel');
-            if (debugPanel) debugPanel.style.display = 'block';
-        }
 
         // Make questionnaire data available in console for debugging
         try {

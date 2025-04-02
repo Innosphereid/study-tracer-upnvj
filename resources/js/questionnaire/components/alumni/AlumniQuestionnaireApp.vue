@@ -148,27 +148,15 @@ const props = defineProps({
     },
 });
 
-// Debug flag - automatically enable in development mode
-const debug = ref(
-    process.env.NODE_ENV === "development" ||
-        window.location.href.includes("debug=true")
-);
+// Debug flag - hanya diaktifkan jika eksplisit diminta
+const debug = ref(window.location.href.includes("debug=true"));
 
 // Add some debug logs
 if (debug.value) {
-    console.log("AlumniQuestionnaireApp initialized with props:", props);
-    console.log("Questionnaire data:", props.questionnaire);
-    console.log("Sections:", props.questionnaire.sections);
-
-    if (
-        props.questionnaire.sections &&
-        props.questionnaire.sections.length > 0
-    ) {
-        console.log(
-            "First section questions:",
-            props.questionnaire.sections[0].questions
-        );
-    }
+    console.log(
+        "AlumniQuestionnaireApp initialized with questionnaire ID:",
+        props.questionnaire.id
+    );
 }
 
 // UI state

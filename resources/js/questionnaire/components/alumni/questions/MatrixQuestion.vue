@@ -173,12 +173,6 @@ const settings = computed(() => {
 
 // Matrix type (radio or checkbox)
 const matrixType = computed(() => {
-    console.log("Matrix type check:", {
-        questionMatrixType: props.question.matrixType,
-        settingsMatrixType: settings.value.matrixType,
-        questionType: props.question.type,
-    });
-
     // Cek beberapa kemungkinan lokasi konfigurasi tipe matriks
     return (
         props.question.matrixType ||
@@ -189,8 +183,6 @@ const matrixType = computed(() => {
 
 // Matrix rows
 const rows = computed(() => {
-    console.log("Matrix rows settings:", settings.value.rows);
-
     // Handle different data structures
     if (settings.value.rows) {
         // Normalize row format to have id, value, and label properties
@@ -234,8 +226,6 @@ const rows = computed(() => {
 
 // Matrix columns
 const columns = computed(() => {
-    console.log("Matrix columns settings:", settings.value.columns);
-
     // Handle different data structures
     if (settings.value.columns) {
         // Normalize column format to have id, value, and label properties
@@ -328,7 +318,6 @@ const validate = () => {
 
     // Pastikan ada rows dan columns sebelum validasi
     if (!rows.value.length || !columns.value.length) {
-        console.warn("Matrix validation failed: no rows or columns defined");
         return true; // Skip validation if no rows/columns defined
     }
 
@@ -362,23 +351,6 @@ const validate = () => {
     emit("validate", { isValid, errorMessage });
     return isValid;
 };
-
-onMounted(() => {
-    // Log untuk debugging
-    console.log("MatrixQuestion mounted with question:", props.question);
-    console.log("Matrix settings:", settings.value);
-    console.log("Normalized rows:", rows.value);
-    console.log("Normalized columns:", columns.value);
-
-    // Validasi data awal
-    if (!rows.value.length || !columns.value.length) {
-        console.warn("Matrix question missing rows or columns:", {
-            questionId: props.question.id,
-            rows: rows.value,
-            columns: columns.value,
-        });
-    }
-});
 </script>
 
 <style scoped>
