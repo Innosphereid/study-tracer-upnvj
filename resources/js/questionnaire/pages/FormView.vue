@@ -451,7 +451,7 @@ const submitQuestionnaire = async () => {
         // Prepare submission data
         const submissionData = {
             slug: props.questionnaire.slug || props.questionnaire.id, // Use slug or fallback to ID
-            answers: answers.value,
+            answers: processAnswersBeforeSubmit(answers.value),
         };
 
         // Send to server
@@ -481,6 +481,44 @@ const submitQuestionnaire = async () => {
     } finally {
         isSubmitting.value = false;
     }
+};
+
+// Fungsi untuk memproses jawaban sebelum dikirim ke server
+const processAnswersBeforeSubmit = (answersData) => {
+    const processedAnswers = { ...answersData };
+
+    // Cari semua pertanyaan dalam seluruh section
+    const allQuestions = [];
+    if (props.questionnaire.sections) {
+        props.questionnaire.sections.forEach((section) => {
+            if (section.questions) {
+                allQuestions.push(...section.questions);
+            }
+        });
+    }
+
+    // Proses jawaban berdasarkan tipe pertanyaan
+    allQuestions.forEach((question) => {
+        const questionId = question.id;
+        const answer = processedAnswers[questionId];
+
+        // Khusus untuk pertanyaan tipe radio
+        if (
+            question.type?.toLowerCase() === "radio" &&
+            answer &&
+            typeof answer === "object"
+        ) {
+            if (answer.value === "other" && answer.otherText) {
+                // Jika "other" dipilih, gunakan otherText sebagai jawaban
+                processedAnswers[questionId] = answer.otherText;
+            } else {
+                // Gunakan hanya nilai "value" saja
+                processedAnswers[questionId] = answer.value;
+            }
+        }
+    });
+
+    return processedAnswers;
 };
 
 // Helper to get the correct component for question type

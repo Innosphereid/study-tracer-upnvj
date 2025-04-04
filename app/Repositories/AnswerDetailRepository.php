@@ -150,6 +150,11 @@ class AnswerDetailRepository extends BaseRepository implements AnswerDetailRepos
      */
     protected function formatAnswerValueForStorage($value): string
     {
+        // Jika nilai adalah array dengan struktur {value, otherText} (tipe radio)
+        if (is_array($value) && isset($value['value']) && isset($value['otherText']) && !isset($value['values'])) {
+            return (string)$value['value'];
+        }
+        
         // If it's already processed by ResponseService, use the processed value
         if (is_array($value) && isset($value['_processedValue'])) {
             if (is_array($value['_processedValue'])) {
@@ -180,6 +185,16 @@ class AnswerDetailRepository extends BaseRepository implements AnswerDetailRepos
      */
     protected function formatAnswerDataForStorage($value): ?array
     {
+        // Radio question type (untuk mempertahankan informasi lengkap di answer_data)
+        if (is_array($value) && isset($value['value']) && isset($value['otherText']) && !isset($value['values'])) {
+            return [
+                'value' => $value['value'],
+                'otherText' => $value['otherText'],
+                'formatted' => $value['value'] === 'other' ? $value['otherText'] : $value['value'],
+                'type' => 'radio'
+            ];
+        }
+        
         // If not an array or is null, wrap in a simple format
         if (!is_array($value)) {
             return ['value' => $value, 'type' => gettype($value)];
