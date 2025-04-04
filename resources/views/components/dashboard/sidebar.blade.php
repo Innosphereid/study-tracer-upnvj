@@ -44,9 +44,9 @@
             <!-- Kelola Kuesioner -->
             <x-dashboard.sidebar-dropdown icon="clipboard-list" label="Kelola Kuesioner"
                 :active="str_starts_with($activeMenu ?? '', 'kuesioner')">
-                <x-dashboard.sidebar-item label="Buat Kuesioner" link="#" :is-dropdown-item="true"
+                <x-dashboard.sidebar-item label="Buat Kuesioner" link="/kuesioner/create" :is-dropdown-item="true"
                     :active="$activeMenu === 'kuesioner.create'" />
-                <x-dashboard.sidebar-item label="Daftar Kuesioner" link="#" :is-dropdown-item="true"
+                <x-dashboard.sidebar-item label="Daftar Kuesioner" link="/kuesioner" :is-dropdown-item="true"
                     :active="$activeMenu === 'kuesioner.list'" />
                 <x-dashboard.sidebar-item label="Template Kuesioner" link="#" :is-dropdown-item="true"
                     :active="$activeMenu === 'kuesioner.template'" />
