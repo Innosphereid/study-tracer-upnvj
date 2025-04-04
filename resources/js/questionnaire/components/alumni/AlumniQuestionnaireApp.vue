@@ -539,6 +539,19 @@ const processAnswersBeforeSubmit = (answersData) => {
                 processedAnswers[questionId] = answer.value;
             }
         }
+
+        // Khusus untuk pertanyaan tipe checkbox
+        if (
+            question.type?.toLowerCase() === "checkbox" &&
+            answer &&
+            typeof answer === "object" &&
+            Array.isArray(answer.values) &&
+            answer.values.length === 0 &&
+            !question.required
+        ) {
+            // Gunakan string literal "null" untuk memastikan nilai yang benar disimpan di kolom answer_values
+            processedAnswers[questionId] = "null";
+        }
     });
 
     return processedAnswers;
