@@ -12,7 +12,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use App\Models\Questionnaire;
 
 class QuestionnaireController extends Controller
 {
@@ -40,36 +42,52 @@ class QuestionnaireController extends Controller
      */
     public function index(Request $request): View
     {
-        Log::info('Displaying questionnaires list');
+        Log::info('Filters received:', $request->all());
+
+        $filters = [
+            'search' => $request->search,
+            'status' => $request->status,
+            'period' => $request->period,
+            'is_template' => $request->has('is_template') ? $request->is_template : null,
+            'sort' => $request->sort ?? 'newest',
+        ];
+
+        $perPage = 12;
+        $questionnaires = $this->questionnaireService->getFilteredQuestionnaires($filters, $perPage);
         
-        $questionnaires = $this->questionnaireService->getPaginatedQuestionnaires(10);
-        
-        // Get counts for stats cards
-        $totalQuestionnaires = $this->questionnaireService->getTotalQuestionnairesCount();
-        $activeQuestionnaires = $this->questionnaireService->getActiveQuestionnairesCount();
-        $totalResponses = $this->questionnaireService->getTotalResponsesCount();
-        $responseRate = $this->questionnaireService->getOverallResponseRate();
-        
-        // For each questionnaire, add the section and question counts
+        // Get statistics
+        $totalQuestionnaires = Questionnaire::count();
+        $activeQuestionnaires = Questionnaire::whereDate('start_date', '<=', now())
+            ->whereDate('end_date', '>=', now())
+            ->count();
+        $totalResponses = DB::table('responses')->whereNotNull('completed_at')->count();
+        $overallResponseRate = $this->questionnaireService->getOverallResponseRate();
+
+        // Add counts for each questionnaire
         foreach ($questionnaires as $questionnaire) {
             $questionnaire->sections_count = $questionnaire->sections()->count();
-            $questionnaire->questions_count = $questionnaire->questions()->count();
-            $questionnaire->responses_count = $questionnaire->responses()->count();
+            $questionnaire->questions_count = $questionnaire->sections()->withCount('questions')->get()->sum('questions_count');
             
-            // Calculate response rate for each questionnaire
-            $totalRespondents = $questionnaire->responses()->count();
+            // Hitung total dan completed responses
+            $totalResponses = $questionnaire->responses()->count();
             $completedResponses = $questionnaire->responses()->whereNotNull('completed_at')->count();
-            $questionnaire->response_rate = $totalRespondents > 0 
-                ? round(($completedResponses / $totalRespondents) * 100) 
+            
+            // Simpan jumlah responses
+            $questionnaire->responses_count = $completedResponses;
+            
+            // Hitung response rate
+            $questionnaire->response_rate = $totalResponses > 0 
+                ? round(($completedResponses / $totalResponses) * 100, 1) 
                 : 0;
         }
-        
+
         return view('questionnaire.index', compact(
             'questionnaires', 
-            'totalQuestionnaires',
-            'activeQuestionnaires',
-            'totalResponses',
-            'responseRate'
+            'totalQuestionnaires', 
+            'activeQuestionnaires', 
+            'totalResponses', 
+            'overallResponseRate',
+            'filters'
         ));
     }
     

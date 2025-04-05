@@ -258,4 +258,84 @@ class QuestionnaireRepository extends BaseRepository implements QuestionnaireRep
         
         return $slug;
     }
+
+    /**
+     * Get filtered questionnaires
+     *
+     * @param array $filters
+     * @param int $perPage
+     * @param array $columns
+     * @param array $relations
+     * @return LengthAwarePaginator
+     */
+    public function getFiltered(
+        array $filters,
+        int $perPage = 10,
+        array $columns = ['*'],
+        array $relations = []
+    ): LengthAwarePaginator {
+        $query = $this->model->query();
+
+        // Load relations if specified
+        if (!empty($relations)) {
+            $query->with($relations);
+        }
+
+        // Apply search filter
+        if (!empty($filters['search'])) {
+            $searchTerm = $filters['search'];
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('title', 'like', "%{$searchTerm}%")
+                  ->orWhere('description', 'like', "%{$searchTerm}%");
+            });
+        }
+
+        // Apply status filter
+        if (!empty($filters['status']) && $filters['status'] !== 'all') {
+            $query->where('status', $filters['status']);
+        }
+
+        // Apply period filter
+        if (!empty($filters['period'])) {
+            $today = now();
+            
+            if ($filters['period'] === 'active') {
+                $query->where('start_date', '<=', $today)
+                      ->where('end_date', '>=', $today);
+            } elseif ($filters['period'] === 'upcoming') {
+                $query->where('start_date', '>', $today);
+            } elseif ($filters['period'] === 'expired') {
+                $query->where('end_date', '<', $today);
+            }
+        }
+
+        // Apply template filter
+        if (isset($filters['is_template'])) {
+            $query->where('is_template', $filters['is_template']);
+        }
+
+        // Apply sorting
+        if (!empty($filters['sort'])) {
+            switch ($filters['sort']) {
+                case 'oldest':
+                    $query->orderBy('created_at', 'asc');
+                    break;
+                case 'title_asc':
+                    $query->orderBy('title', 'asc');
+                    break;
+                case 'title_desc':
+                    $query->orderBy('title', 'desc');
+                    break;
+                case 'newest':
+                default:
+                    $query->orderBy('created_at', 'desc');
+                    break;
+            }
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        // Paginate results
+        return $query->paginate($perPage, $columns)->withQueryString();
+    }
 } 

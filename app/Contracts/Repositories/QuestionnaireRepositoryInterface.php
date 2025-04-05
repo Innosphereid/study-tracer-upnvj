@@ -60,4 +60,15 @@ interface QuestionnaireRepositoryInterface extends RepositoryInterface
      * @return Questionnaire|null
      */
     public function clone(int $id, array $attributes = []): ?Questionnaire;
+    
+    /**
+     * Get filtered questionnaires
+     *
+     * @param array $filters
+     * @param int $perPage
+     * @param array $columns
+     * @param array $relations
+     * @return LengthAwarePaginator
+     */
+    public function getFiltered(array $filters, int $perPage = 10, array $columns = ['*'], array $relations = []): LengthAwarePaginator;
 } 

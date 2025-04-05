@@ -210,4 +210,13 @@ interface QuestionnaireServiceInterface
      * @return float
      */
     public function getOverallResponseRate(): float;
+
+    /**
+     * Get filtered and paginated questionnaires
+     *
+     * @param array $filters
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function getFilteredQuestionnaires(array $filters, int $perPage = 10): LengthAwarePaginator;
 } 

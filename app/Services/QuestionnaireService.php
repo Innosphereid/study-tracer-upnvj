@@ -1814,4 +1814,21 @@ class QuestionnaireService implements QuestionnaireServiceInterface
             
         return round(($completedResponses / $totalResponses) * 100, 1);
     }
+    
+    /**
+     * Get filtered and paginated questionnaires
+     *
+     * @param array $filters
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function getFilteredQuestionnaires(array $filters, int $perPage = 10): LengthAwarePaginator
+    {
+        Log::info('Getting filtered and paginated questionnaires', [
+            'filters' => $filters,
+            'perPage' => $perPage
+        ]);
+        
+        return $this->questionnaireRepository->getFiltered($filters, $perPage, ['*'], ['user']);
+    }
 } 
