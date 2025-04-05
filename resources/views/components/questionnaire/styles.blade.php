@@ -1,0 +1,32 @@
+{{-- 
+/**
+ * Questionnaire Styles Component
+ * 
+ * This component provides CSS styles for the questionnaire listing page.
+ * It includes responsive grid styling for cards and table responsiveness.
+ */
+--}}
+
+<style>
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    .card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .card-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+</style> 
