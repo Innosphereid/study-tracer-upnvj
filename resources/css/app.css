@@ -104,3 +104,37 @@ img.logo {
     opacity: 1;
     transform: translateY(0);
 }
+
+/* Enhanced pagination styles */
+.pagination-container {
+    @apply mt-4 flex justify-center;
+}
+
+.pagination-container nav {
+    @apply inline-flex shadow-sm rounded-md overflow-hidden;
+}
+
+.pagination-container nav > div {
+    @apply inline-flex items-center;
+}
+
+.pagination-container span.relative,
+.pagination-container a.relative {
+    @apply relative inline-flex items-center px-4 py-2 text-sm font-medium border border-gray-300;
+}
+
+.pagination-container a.relative {
+    @apply bg-white text-gray-700 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500;
+}
+
+.pagination-container span[aria-current="page"] {
+    @apply z-10 bg-indigo-50 border-indigo-500 text-indigo-600;
+}
+
+.pagination-container span:not([aria-current="page"]) {
+    @apply bg-white text-gray-500 cursor-not-allowed;
+}
+
+.pagination-container span.text-gray-700 {
+    @apply px-4 py-2 border-gray-300 bg-white;
+}
