@@ -99,22 +99,20 @@
                             <select id="status-filter" name="status" onchange="submitForm()"
                                 class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md appearance-none bg-white">
                                 <option value="">Semua Status</option>
-                                <option value="draft"
-                                    {{ request('status') == 'draft' ? 'selected' : '' }}>Draft
+                                <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft
                                 </option>
-                                <option value="published"
-                                    {{ request('status') == 'published' ? 'selected' : '' }}>
+                                <option value="published" {{ request('status') == 'published' ? 'selected' : '' }}>
                                     Publikasi</option>
-                                <option value="closed"
-                                    {{ request('status') == 'closed' ? 'selected' : '' }}>Ditutup
+                                <option value="closed" {{ request('status') == 'closed' ? 'selected' : '' }}>Ditutup
                                 </option>
-                                <option value="template"
-                                    {{ request('status') == 'template' ? 'selected' : '' }}>
+                                <option value="template" {{ request('status') == 'template' ? 'selected' : '' }}>
                                     Template</option>
                             </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                            <div
+                                class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7" />
                                 </svg>
                             </div>
                         </div>
@@ -127,16 +125,20 @@
                             <select id="period" name="period" onchange="submitForm()"
                                 class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none">
                                 <option value="" {{ empty($filters['period'] ?? '') ? 'selected' : '' }}>Semua</option>
-                                <option value="active" {{ ($filters['period'] ?? '') == 'active' ? 'selected' : '' }}>Aktif
+                                <option value="active" {{ ($filters['period'] ?? '') == 'active' ? 'selected' : '' }}>
+                                    Aktif
                                 </option>
-                                <option value="upcoming" {{ ($filters['period'] ?? '') == 'upcoming' ? 'selected' : '' }}>
+                                <option value="upcoming"
+                                    {{ ($filters['period'] ?? '') == 'upcoming' ? 'selected' : '' }}>
                                     Mendatang</option>
                                 <option value="expired" {{ ($filters['period'] ?? '') == 'expired' ? 'selected' : '' }}>
                                     Kedaluwarsa</option>
                             </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                            <div
+                                class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7" />
                                 </svg>
                             </div>
                         </div>
@@ -156,9 +158,11 @@
                                     {{ isset($filters['is_template']) && $filters['is_template'] === '1' ? 'selected' : '' }}>
                                     Template</option>
                             </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                            <div
+                                class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7" />
                                 </svg>
                             </div>
                         </div>
@@ -170,37 +174,49 @@
                         <div class="relative">
                             <select id="sort" name="sort" onchange="submitForm()"
                                 class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none">
-                                <option value="newest" {{ ($filters['sort'] ?? 'newest') == 'newest' ? 'selected' : '' }}>
+                                <option value="newest"
+                                    {{ ($filters['sort'] ?? 'newest') == 'newest' ? 'selected' : '' }}>
                                     Terbaru</option>
-                                <option value="oldest" {{ ($filters['sort'] ?? '') == 'oldest' ? 'selected' : '' }}>Terlama
+                                <option value="oldest" {{ ($filters['sort'] ?? '') == 'oldest' ? 'selected' : '' }}>
+                                    Terlama
                                 </option>
-                                <option value="title_asc" {{ ($filters['sort'] ?? '') == 'title_asc' ? 'selected' : '' }}>
+                                <option value="title_asc"
+                                    {{ ($filters['sort'] ?? '') == 'title_asc' ? 'selected' : '' }}>
                                     Judul (A-Z)</option>
-                                <option value="title_desc" {{ ($filters['sort'] ?? '') == 'title_desc' ? 'selected' : '' }}>
+                                <option value="title_desc"
+                                    {{ ($filters['sort'] ?? '') == 'title_desc' ? 'selected' : '' }}>
                                     Judul (Z-A)</option>
                             </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                            <div
+                                class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7" />
                                 </svg>
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Items Per Page -->
                     <div class="sm:col-span-2">
                         <label for="per_page" class="block text-sm font-medium text-gray-700">Item per Halaman</label>
                         <div class="relative">
                             <select id="per_page" name="per_page" onchange="submitForm()"
                                 class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm appearance-none">
-                                <option value="10" {{ ($filters['per_page'] ?? '10') == '10' ? 'selected' : '' }}>10</option>
-                                <option value="20" {{ ($filters['per_page'] ?? '') == '20' ? 'selected' : '' }}>20</option>
-                                <option value="50" {{ ($filters['per_page'] ?? '') == '50' ? 'selected' : '' }}>50</option>
-                                <option value="100" {{ ($filters['per_page'] ?? '') == '100' ? 'selected' : '' }}>100</option>
+                                <option value="10" {{ ($filters['per_page'] ?? '10') == '10' ? 'selected' : '' }}>10
+                                </option>
+                                <option value="20" {{ ($filters['per_page'] ?? '') == '20' ? 'selected' : '' }}>20
+                                </option>
+                                <option value="50" {{ ($filters['per_page'] ?? '') == '50' ? 'selected' : '' }}>50
+                                </option>
+                                <option value="100" {{ ($filters['per_page'] ?? '') == '100' ? 'selected' : '' }}>100
+                                </option>
                             </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                            <div
+                                class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7" />
                                 </svg>
                             </div>
                         </div>
@@ -567,69 +583,69 @@
 
 @push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Set initial view based on saved preference
-        const savedView = localStorage.getItem('questionnaire_view') || 'grid';
-        toggleView(savedView);
-    });
+document.addEventListener('DOMContentLoaded', function() {
+    // Set initial view based on saved preference
+    const savedView = localStorage.getItem('questionnaire_view') || 'grid';
+    toggleView(savedView);
+});
 
-    function toggleView(viewType) {
-        const gridViewBtn = document.getElementById('grid-view-btn');
-        const listViewBtn = document.getElementById('list-view-btn');
-        const gridView = document.getElementById('grid-view');
-        const listView = document.getElementById('list-view');
+function toggleView(viewType) {
+    const gridViewBtn = document.getElementById('grid-view-btn');
+    const listViewBtn = document.getElementById('list-view-btn');
+    const gridView = document.getElementById('grid-view');
+    const listView = document.getElementById('list-view');
 
-        if (viewType === 'grid') {
-            gridViewBtn.classList.add('active-view', 'bg-gray-100');
-            listViewBtn.classList.remove('active-view', 'bg-gray-100');
-            gridView.classList.remove('hidden');
-            listView.classList.add('hidden');
-            // Save preference
-            localStorage.setItem('questionnaire_view', 'grid');
-        } else {
-            gridViewBtn.classList.remove('active-view', 'bg-gray-100');
-            listViewBtn.classList.add('active-view', 'bg-gray-100');
-            gridView.classList.add('hidden');
-            listView.classList.remove('hidden');
-            // Save preference
-            localStorage.setItem('questionnaire_view', 'list');
-        }
+    if (viewType === 'grid') {
+        gridViewBtn.classList.add('active-view', 'bg-gray-100');
+        listViewBtn.classList.remove('active-view', 'bg-gray-100');
+        gridView.classList.remove('hidden');
+        listView.classList.add('hidden');
+        // Save preference
+        localStorage.setItem('questionnaire_view', 'grid');
+    } else {
+        gridViewBtn.classList.remove('active-view', 'bg-gray-100');
+        listViewBtn.classList.add('active-view', 'bg-gray-100');
+        gridView.classList.add('hidden');
+        listView.classList.remove('hidden');
+        // Save preference
+        localStorage.setItem('questionnaire_view', 'list');
+    }
+}
+
+function submitForm() {
+    document.getElementById('submit-button').click();
+}
+
+function clearFilters() {
+    // Reset all form fields
+    document.getElementById('status-filter').value = '';
+    document.getElementById('period').value = '';
+    document.getElementById('is_template').value = '';
+    document.getElementById('search').value = '';
+    document.getElementById('sort').value = 'newest';
+
+    // Maintain per_page value if it exists
+    const perPageSelect = document.getElementById('per_page');
+    if (perPageSelect) {
+        // Keep the current value or reset to 10 if not set
+        perPageSelect.value = perPageSelect.value || '10';
     }
 
-    function submitForm() {
-        document.getElementById('submit-button').click();
-    }
+    // Submit the form to apply the cleared filters
+    submitForm();
+}
 
-    function clearFilters() {
-        // Reset all form fields
-        document.getElementById('status-filter').value = '';
-        document.getElementById('period').value = '';
-        document.getElementById('is_template').value = '';
-        document.getElementById('search').value = '';
-        document.getElementById('sort').value = 'newest';
-        
-        // Maintain per_page value if it exists
-        const perPageSelect = document.getElementById('per_page');
-        if (perPageSelect) {
-            // Keep the current value or reset to 10 if not set
-            perPageSelect.value = perPageSelect.value || '10';
-        }
+function clearOtherFilters() {
+    // Reset all filters except status
+    document.getElementById('period').value = '';
+    document.getElementById('search').value = '';
+    document.getElementById('sort').value = 'newest';
+}
 
-        // Submit the form to apply the cleared filters
-        submitForm();
-    }
-
-    function clearOtherFilters() {
-        // Reset all filters except status
-        document.getElementById('period').value = '';
-        document.getElementById('search').value = '';
-        document.getElementById('sort').value = 'newest';
-    }
-
-    function clearSearch() {
-        document.getElementById('search').value = '';
-        submitForm();
-    }
+function clearSearch() {
+    document.getElementById('search').value = '';
+    submitForm();
+}
 </script>
 @endpush
 @endsection
