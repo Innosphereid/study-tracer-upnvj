@@ -2,6 +2,58 @@
 
 @section('title', 'Daftar Kuesioner - TraceStudy UPNVJ')
 
+@section('styles')
+<style>
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    .card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .card-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* Tab Styles */
+.tab-link {
+    @apply whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm flex items-center;
+    transition: all 0.3s ease;
+}
+
+.tab-active {
+    @apply border-indigo-500 text-indigo-600;
+}
+
+.tab-inactive {
+    @apply border-transparent text-gray-500 hover: text-gray-700 hover:border-gray-300;
+}
+
+.tab-count {
+    @apply ml-2 py-0.5 px-2.5 text-xs font-medium rounded-full;
+}
+
+.tab-active .tab-count {
+    @apply bg-indigo-100 text-indigo-600;
+}
+
+.tab-inactive .tab-count {
+    @apply bg-gray-100 text-gray-500;
+}
+</style>
+@endsection
+
 @section('content')
 <div class="py-6">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -27,9 +79,42 @@
             </div>
         </div>
 
+        <!-- Status Tabs -->
+        <div class="mt-8 border-b border-gray-200">
+            <nav class="-mb-px flex space-x-8">
+                <a href="javascript:void(0);" onclick="switchTab('all')"
+                    class="tab-link {{ $activeTab === 'all' ? 'tab-active' : 'tab-inactive' }}">
+                    Semua
+                    <span class="tab-count">{{ $tabCounts['all'] }}</span>
+                </a>
+                <a href="javascript:void(0);" onclick="switchTab('draft')"
+                    class="tab-link {{ $activeTab === 'draft' ? 'tab-active' : 'tab-inactive' }}">
+                    Draft
+                    <span class="tab-count">{{ $tabCounts['draft'] }}</span>
+                </a>
+                <a href="javascript:void(0);" onclick="switchTab('published')"
+                    class="tab-link {{ $activeTab === 'published' ? 'tab-active' : 'tab-inactive' }}">
+                    Publikasi
+                    <span class="tab-count">{{ $tabCounts['published'] }}</span>
+                </a>
+                <a href="javascript:void(0);" onclick="switchTab('closed')"
+                    class="tab-link {{ $activeTab === 'closed' ? 'tab-active' : 'tab-inactive' }}">
+                    Ditutup
+                    <span class="tab-count">{{ $tabCounts['closed'] }}</span>
+                </a>
+                <a href="javascript:void(0);" onclick="switchTab('template')"
+                    class="tab-link {{ $activeTab === 'template' ? 'tab-active' : 'tab-inactive' }}">
+                    Template
+                    <span class="tab-count">{{ $tabCounts['template'] }}</span>
+                </a>
+            </nav>
+        </div>
+
         <!-- Filter and Search Container -->
         <div class="mt-6 bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
             <form id="filter-form" method="GET" action="{{ route('questionnaires.index') }}" class="space-y-6">
+                <input type="hidden" name="tab" value="{{ $activeTab }}" id="tab-input">
+
                 <div class="grid grid-cols-1 gap-y-4 gap-x-4 sm:grid-cols-6">
                     <!-- Search Input -->
                     <div class="sm:col-span-3">
@@ -62,18 +147,23 @@
                     </div>
 
                     <!-- Status Filter -->
-                    <div class="sm:col-span-1">
-                        <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
-                        <select id="status" name="status" onchange="submitForm()"
-                            class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            <option value="all" {{ ($filters['status'] ?? 'all') == 'all' ? 'selected' : '' }}>Semua
+                    <div class="flex flex-col">
+                        <label for="status-filter" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select id="status-filter" name="status" onchange="submitForm()"
+                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                            <option value="">Semua Status</option>
+                            <option value="draft"
+                                {{ request('status') == 'draft' || $activeTab == 'draft' ? 'selected' : '' }}>Draft
                             </option>
-                            <option value="draft" {{ ($filters['status'] ?? '') == 'draft' ? 'selected' : '' }}>Draft
-                            </option>
-                            <option value="published" {{ ($filters['status'] ?? '') == 'published' ? 'selected' : '' }}>
+                            <option value="published"
+                                {{ request('status') == 'published' || $activeTab == 'published' ? 'selected' : '' }}>
                                 Publikasi</option>
-                            <option value="closed" {{ ($filters['status'] ?? '') == 'closed' ? 'selected' : '' }}>
-                                Ditutup</option>
+                            <option value="closed"
+                                {{ request('status') == 'closed' || $activeTab == 'closed' ? 'selected' : '' }}>Ditutup
+                            </option>
+                            <option value="template"
+                                {{ request('status') == 'template' || $activeTab == 'template' ? 'selected' : '' }}>
+                                Template</option>
                         </select>
                     </div>
 
@@ -259,7 +349,7 @@
         <!-- View Toggle -->
         <div class="mt-8 flex justify-end">
             <span class="relative z-0 inline-flex shadow-sm rounded-md">
-                <button type="button" onclick="setView('grid')" id="grid-view-btn"
+                <button type="button" onclick="setViewType('grid')" id="grid-view-btn"
                     class="relative inline-flex items-center px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 active-view">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -267,7 +357,7 @@
                     </svg>
                     <span class="sr-only">Grid view</span>
                 </button>
-                <button type="button" onclick="setView('list')" id="list-view-btn"
+                <button type="button" onclick="setViewType('list')" id="list-view-btn"
                     class="relative -ml-px inline-flex items-center px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -280,36 +370,197 @@
 
         <!-- Card Grid Layout -->
         <div class="mt-4" id="grid-view">
-            @if(count($questionnaires) > 0)
-            <!-- Responsive Grid Layout -->
             <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                @foreach($questionnaires as $questionnaire)
+                @forelse ($questionnaires as $questionnaire)
                 @include('components.dashboard.questionnaire-card', ['questionnaire' => $questionnaire])
-                @endforeach
+                @empty
+                <div class="col-span-full py-10 text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">
+                        @if($activeTab === 'draft')
+                        Tidak ada kuesioner draft
+                        @elseif($activeTab === 'published')
+                        Tidak ada kuesioner yang sedang dipublikasikan
+                        @elseif($activeTab === 'closed')
+                        Tidak ada kuesioner yang ditutup
+                        @elseif($activeTab === 'template')
+                        Tidak ada template kuesioner
+                        @else
+                        Tidak ada kuesioner
+                        @endif
+                    </h3>
+                    <p class="mt-1 text-sm text-gray-500">
+                        @if($activeTab === 'draft')
+                        Buat kuesioner baru dan simpan sebagai draft
+                        @elseif($activeTab === 'published')
+                        Publikasikan kuesioner agar dapat diisi oleh responden
+                        @elseif($activeTab === 'closed')
+                        Kuesioner yang telah berakhir akan muncul di sini
+                        @elseif($activeTab === 'template')
+                        Buat template kuesioner untuk digunakan kembali
+                        @else
+                        Mulai dengan membuat kuesioner baru
+                        @endif
+                    </p>
+                    <div class="mt-6">
+                        <a href="{{ route('questionnaires.create') }}"
+                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="-ml-1 mr-2 h-5 w-5" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4" />
+                            </svg>
+                            Buat Kuesioner Baru
+                        </a>
+                    </div>
+                </div>
+                @endforelse
             </div>
 
+            @if($questionnaires->count() > 0)
+            <div class="mt-6">
+                {{ $questionnaires->withQueryString()->links() }}
+            </div>
+            @endif
+        </div>
+
+        <!-- List View Layout -->
+        <div class="mt-4 hidden" id="list-view">
+            @if($questionnaires->count() > 0)
+            <div class="overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="table-responsive">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Kuesioner
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Status
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Periode
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Respons
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Dibuat
+                                </th>
+                                <th scope="col" class="relative px-6 py-3">
+                                    <span class="sr-only">Aksi</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach($questionnaires as $questionnaire)
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div>
+                                            <div class="text-sm font-medium text-gray-900">
+                                                {{ $questionnaire->title }}
+                                            </div>
+                                            <div class="text-sm text-gray-500">
+                                                {{ Str::limit($questionnaire->description, 60) }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span
+                                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    {{ $questionnaire->status == 'published' ? 'bg-green-100 text-green-800' : 
+                                       ($questionnaire->status == 'draft' ? 'bg-gray-100 text-gray-800' : 'bg-red-100 text-red-800') }}">
+                                        {{ ucfirst($questionnaire->status) }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    @if ($questionnaire->start_date && $questionnaire->end_date)
+                                    {{ \Carbon\Carbon::parse($questionnaire->start_date)->format('d/m/Y') }} -
+                                    {{ \Carbon\Carbon::parse($questionnaire->end_date)->format('d/m/Y') }}
+                                    @else
+                                    -
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">
+                                        {{ $questionnaire->responses_count }}
+                                    </div>
+                                    <div class="text-xs text-gray-500">
+                                        {{ $questionnaire->response_rate }}% tingkat respons
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ $questionnaire->created_at->format('d/m/Y') }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <a href="{{ route('questionnaires.show', $questionnaire->id) }}"
+                                        class="text-indigo-600 hover:text-indigo-900 mr-2">Lihat</a>
+                                    <a href="{{ route('questionnaires.edit', $questionnaire->id) }}"
+                                        class="text-indigo-600 hover:text-indigo-900">Edit</a>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
             <div class="mt-6">
                 {{ $questionnaires->withQueryString()->links() }}
             </div>
             @else
-            <!-- Empty State -->
-            <div class="bg-white shadow-sm rounded-lg p-6">
-                <div class="flex flex-col items-center justify-center text-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400 mb-4" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor">
+            <div class="bg-white p-6 rounded-lg shadow-sm">
+                <div class="text-center py-10">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <h3 class="text-lg font-medium text-gray-900 mb-1">Belum ada kuesioner</h3>
-                    <p class="text-gray-500 mb-6">Mulai dengan membuat kuesioner baru.</p>
-                    <a href="{{ route('questionnaires.create') }}"
-                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="-ml-1 mr-2 h-5 w-5" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Buat Kuesioner Baru
-                    </a>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">
+                        @if($activeTab === 'draft')
+                        Tidak ada kuesioner draft
+                        @elseif($activeTab === 'published')
+                        Tidak ada kuesioner yang sedang dipublikasikan
+                        @elseif($activeTab === 'closed')
+                        Tidak ada kuesioner yang ditutup
+                        @elseif($activeTab === 'template')
+                        Tidak ada template kuesioner
+                        @else
+                        Tidak ada kuesioner
+                        @endif
+                    </h3>
+                    <p class="mt-1 text-sm text-gray-500">
+                        @if($activeTab === 'draft')
+                        Buat kuesioner baru dan simpan sebagai draft
+                        @elseif($activeTab === 'published')
+                        Publikasikan kuesioner agar dapat diisi oleh responden
+                        @elseif($activeTab === 'closed')
+                        Kuesioner yang telah berakhir akan muncul di sini
+                        @elseif($activeTab === 'template')
+                        Buat template kuesioner untuk digunakan kembali
+                        @else
+                        Mulai dengan membuat kuesioner baru
+                        @endif
+                    </p>
+                    <div class="mt-6">
+                        <a href="{{ route('questionnaires.create') }}"
+                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="-ml-1 mr-2 h-5 w-5" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4" />
+                            </svg>
+                            Buat Kuesioner Baru
+                        </a>
+                    </div>
                 </div>
             </div>
             @endif
@@ -319,31 +570,45 @@
 
 @push('scripts')
 <script>
-function setView(viewType) {
+// Initialize view type from localStorage or default to grid
+document.addEventListener('DOMContentLoaded', function() {
+    const savedViewType = localStorage.getItem('questionnaire_view') || 'grid';
+    setViewType(savedViewType);
+
+    // Set active tab based on URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const activeTab = urlParams.get('tab') || 'all';
+
+    // Check if tab switch should reset filters (except for the tab itself)
+    const fromTab = urlParams.get('from_tab');
+    if (fromTab && fromTab !== activeTab) {
+        // Clear applied filters when switching tabs except status filter
+        clearOtherFilters();
+    }
+});
+
+function setViewType(viewType) {
     const gridViewBtn = document.getElementById('grid-view-btn');
     const listViewBtn = document.getElementById('list-view-btn');
     const gridView = document.getElementById('grid-view');
+    const listView = document.getElementById('list-view');
 
     if (viewType === 'grid') {
         gridViewBtn.classList.add('active-view', 'bg-gray-100');
         listViewBtn.classList.remove('active-view', 'bg-gray-100');
         gridView.classList.remove('hidden');
+        listView.classList.add('hidden');
         // Save preference
         localStorage.setItem('questionnaire_view', 'grid');
     } else {
         gridViewBtn.classList.remove('active-view', 'bg-gray-100');
         listViewBtn.classList.add('active-view', 'bg-gray-100');
         gridView.classList.add('hidden');
+        listView.classList.remove('hidden');
         // Save preference
         localStorage.setItem('questionnaire_view', 'list');
     }
 }
-
-// Load user preference on page load
-document.addEventListener('DOMContentLoaded', function() {
-    const savedView = localStorage.getItem('questionnaire_view') || 'grid';
-    setView(savedView);
-});
 
 function submitForm() {
     document.getElementById('submit-button').click();
@@ -351,17 +616,55 @@ function submitForm() {
 
 function clearFilters() {
     // Reset all form fields
-    document.getElementById('status').value = 'all';
+    document.getElementById('status-filter').value = '';
     document.getElementById('period').value = '';
     document.getElementById('is_template').value = '';
-    document.getElementById('sort').value = 'newest';
     document.getElementById('search').value = '';
+    document.getElementById('sort').value = 'newest';
+
+    // Submit the form to apply the cleared filters
     submitForm();
+}
+
+function clearOtherFilters() {
+    // Reset all filters except status
+    document.getElementById('period').value = '';
+    document.getElementById('search').value = '';
+    document.getElementById('sort').value = 'newest';
 }
 
 function clearSearch() {
     document.getElementById('search').value = '';
     submitForm();
+}
+
+// Function to handle tab clicks and maintain other active filters
+function switchTab(tab) {
+    // Create new URL with tab parameter
+    const url = new URL(window.location.href);
+    const params = new URLSearchParams(url.search);
+
+    // Add from_tab parameter to track tab switches
+    params.set('from_tab', params.get('tab') || 'all');
+    params.set('tab', tab);
+    params.delete('page'); // Reset pagination when changing tabs
+
+    // Update hidden tab input in the form
+    document.getElementById('tab-input').value = tab;
+
+    // Update status filter in the form to match the tab
+    if (tab !== 'all' && tab !== 'template') {
+        document.getElementById('status-filter').value = tab;
+    } else if (tab === 'template') {
+        document.getElementById('is_template').value = '1';
+        document.getElementById('status-filter').value = '';
+    } else {
+        document.getElementById('status-filter').value = '';
+        document.getElementById('is_template').value = '';
+    }
+
+    // Navigate to the new URL
+    window.location.href = `${window.location.pathname}?${params.toString()}`;
 }
 </script>
 @endpush

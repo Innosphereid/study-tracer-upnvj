@@ -102,6 +102,40 @@
     </div>
     <!-- Scripts -->
     @vite(['resources/js/app.js'])
+    @stack('scripts')
+    <script>
+        function copyShareLink(link) {
+            navigator.clipboard.writeText(link).then(() => {
+                // Extract questionnaire ID from link
+                const questionnaireParts = link.split('/');
+                const questionnaireSlug = questionnaireParts[questionnaireParts.length - 1];
+                
+                // Get all toasts and find one that contains our slug
+                const toasts = document.querySelectorAll('[id^="toast-"]');
+                let toastElement = null;
+                
+                toasts.forEach(toast => {
+                    if (toast.innerHTML.includes(questionnaireSlug)) {
+                        toastElement = toast;
+                    }
+                });
+                
+                if (toastElement) {
+                    toastElement.classList.remove('hidden');
+                    setTimeout(() => {
+                        hideToast(toastElement.id);
+                    }, 3000);
+                }
+            });
+        }
+        
+        function hideToast(toastId) {
+            const toast = document.getElementById(toastId);
+            if (toast) {
+                toast.classList.add('hidden');
+            }
+        }
+    </script>
     @yield('scripts')
 </body>
 

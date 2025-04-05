@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use App\Models\Questionnaire;
+use App\Models\Response;
+use Carbon\Carbon;
+use App\Services\QuestionnaireService;
 
 class QuestionnaireController extends Controller
 {
@@ -42,52 +45,113 @@ class QuestionnaireController extends Controller
      */
     public function index(Request $request): View
     {
+        // Log the filters
         Log::info('Filters received:', $request->all());
-
-        $filters = [
-            'search' => $request->search,
-            'status' => $request->status,
-            'period' => $request->period,
-            'is_template' => $request->has('is_template') ? $request->is_template : null,
-            'sort' => $request->sort ?? 'newest',
-        ];
-
-        $perPage = 12;
-        $questionnaires = $this->questionnaireService->getFilteredQuestionnaires($filters, $perPage);
         
-        // Get statistics
-        $totalQuestionnaires = Questionnaire::count();
-        $activeQuestionnaires = Questionnaire::whereDate('start_date', '<=', now())
-            ->whereDate('end_date', '>=', now())
-            ->count();
-        $totalResponses = DB::table('responses')->whereNotNull('completed_at')->count();
-        $overallResponseRate = $this->questionnaireService->getOverallResponseRate();
-
-        // Add counts for each questionnaire
-        foreach ($questionnaires as $questionnaire) {
-            $questionnaire->sections_count = $questionnaire->sections()->count();
-            $questionnaire->questions_count = $questionnaire->sections()->withCount('questions')->get()->sum('questions_count');
-            
-            // Hitung total dan completed responses
-            $totalResponses = $questionnaire->responses()->count();
-            $completedResponses = $questionnaire->responses()->whereNotNull('completed_at')->count();
-            
-            // Simpan jumlah responses
-            $questionnaire->responses_count = $completedResponses;
-            
-            // Hitung response rate
-            $questionnaire->response_rate = $totalResponses > 0 
-                ? round(($completedResponses / $totalResponses) * 100, 1) 
-                : 0;
+        // Determine active tab
+        $activeTab = $request->query('tab', 'all');
+        
+        // Set up filters
+        $filters = [
+            'search' => $request->query('search'),
+            'status' => $request->query('status'),
+            'period' => $request->query('period'),
+            'is_template' => $request->query('is_template'),
+            'sort' => $request->query('sort', 'newest'),
+        ];
+        
+        // If tab is set, override status filter
+        if ($activeTab !== 'all' && $activeTab !== 'template') {
+            $filters['status'] = $activeTab;
+        } elseif ($activeTab === 'template') {
+            $filters['is_template'] = '1';
         }
-
+        
+        // Query base
+        $query = Questionnaire::with('user');
+        
+        // Apply filters
+        if (!empty($filters['search'])) {
+            $query->where(function ($q) use ($filters) {
+                $q->where('title', 'like', '%' . $filters['search'] . '%')
+                    ->orWhere('description', 'like', '%' . $filters['search'] . '%');
+            });
+        }
+        
+        if (!empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+        
+        if (isset($filters['is_template'])) {
+            $query->where('is_template', $filters['is_template']);
+        }
+        
+        if (!empty($filters['period'])) {
+            $now = Carbon::now();
+            
+            if ($filters['period'] === 'active') {
+                $query->where('start_date', '<=', $now)
+                    ->where('end_date', '>=', $now)
+                    ->where('status', 'published');
+            } elseif ($filters['period'] === 'upcoming') {
+                $query->where('start_date', '>', $now)
+                    ->where('status', 'published');
+            } elseif ($filters['period'] === 'expired') {
+                $query->where('end_date', '<', $now)
+                    ->where('status', 'published');
+            }
+        }
+        
+        // Apply sorting
+        if ($filters['sort'] === 'oldest') {
+            $query->orderBy('created_at', 'asc');
+        } elseif ($filters['sort'] === 'title_asc') {
+            $query->orderBy('title', 'asc');
+        } elseif ($filters['sort'] === 'title_desc') {
+            $query->orderBy('title', 'desc');
+        } else {
+            $query->orderBy('created_at', 'desc'); // default: newest
+        }
+        
+        // Get counts for tabs
+        $tabCounts = [
+            'all' => Questionnaire::count(),
+            'draft' => Questionnaire::where('status', 'draft')->count(),
+            'published' => Questionnaire::where('status', 'published')->count(),
+            'closed' => Questionnaire::where('status', 'closed')->count(),
+            'template' => Questionnaire::where('is_template', true)->count(),
+        ];
+        
+        // Get the counts for statistics
+        $totalQuestionnaires = $tabCounts['all'];
+        $activeQuestionnaires = Questionnaire::where('status', 'published')
+            ->where('start_date', '<=', Carbon::now())
+            ->where('end_date', '>=', Carbon::now())
+            ->count();
+        
+        // Count responses
+        $totalResponses = Response::count();
+        
+        // Calculate response rate
+        $overallResponseRate = app(QuestionnaireService::class)->getOverallResponseRate();
+        
+        // Paginate the results
+        $questionnaires = $query->paginate(9);
+        
+        // Calculate response rate for each questionnaire
+        foreach ($questionnaires as $questionnaire) {
+            $questionnaire->response_rate = $questionnaire->getResponseRate();
+        }
+        
         return view('questionnaire.index', compact(
-            'questionnaires', 
-            'totalQuestionnaires', 
-            'activeQuestionnaires', 
-            'totalResponses', 
+            'questionnaires',
+            'filters',
+            'totalQuestionnaires',
+            'activeQuestionnaires',
+            'totalResponses',
             'overallResponseRate',
-            'filters'
+            'tabCounts',
+            'activeTab'
         ));
     }
     

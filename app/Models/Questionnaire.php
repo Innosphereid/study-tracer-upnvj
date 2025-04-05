@@ -141,4 +141,21 @@ class Questionnaire extends Model
         $this->questionnaire_json = $jsonData;
         $this->save();
     }
+
+    /**
+     * Calculate the response rate for this questionnaire.
+     *
+     * @return float
+     */
+    public function getResponseRate(): float
+    {
+        $totalResponses = $this->responses()->count();
+        $completedResponses = $this->responses()->whereNotNull('completed_at')->count();
+        
+        if ($totalResponses === 0) {
+            return 0;
+        }
+        
+        return round(($completedResponses / $totalResponses) * 100, 1);
+    }
 } 
