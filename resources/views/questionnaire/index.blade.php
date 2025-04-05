@@ -25,32 +25,6 @@
 .table-responsive {
     overflow-x: auto;
 }
-
-/* Tab Styles */
-.tab-link {
-    @apply whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm flex items-center;
-    transition: all 0.3s ease;
-}
-
-.tab-active {
-    @apply border-indigo-500 text-indigo-600;
-}
-
-.tab-inactive {
-    @apply border-transparent text-gray-500 hover: text-gray-700 hover:border-gray-300;
-}
-
-.tab-count {
-    @apply ml-2 py-0.5 px-2.5 text-xs font-medium rounded-full;
-}
-
-.tab-active .tab-count {
-    @apply bg-indigo-100 text-indigo-600;
-}
-
-.tab-inactive .tab-count {
-    @apply bg-gray-100 text-gray-500;
-}
 </style>
 @endsection
 
@@ -79,42 +53,9 @@
             </div>
         </div>
 
-        <!-- Status Tabs -->
-        <div class="mt-8 border-b border-gray-200">
-            <nav class="-mb-px flex space-x-8">
-                <a href="javascript:void(0);" onclick="switchTab('all')"
-                    class="tab-link {{ $activeTab === 'all' ? 'tab-active' : 'tab-inactive' }}">
-                    Semua
-                    <span class="tab-count">{{ $tabCounts['all'] }}</span>
-                </a>
-                <a href="javascript:void(0);" onclick="switchTab('draft')"
-                    class="tab-link {{ $activeTab === 'draft' ? 'tab-active' : 'tab-inactive' }}">
-                    Draft
-                    <span class="tab-count">{{ $tabCounts['draft'] }}</span>
-                </a>
-                <a href="javascript:void(0);" onclick="switchTab('published')"
-                    class="tab-link {{ $activeTab === 'published' ? 'tab-active' : 'tab-inactive' }}">
-                    Publikasi
-                    <span class="tab-count">{{ $tabCounts['published'] }}</span>
-                </a>
-                <a href="javascript:void(0);" onclick="switchTab('closed')"
-                    class="tab-link {{ $activeTab === 'closed' ? 'tab-active' : 'tab-inactive' }}">
-                    Ditutup
-                    <span class="tab-count">{{ $tabCounts['closed'] }}</span>
-                </a>
-                <a href="javascript:void(0);" onclick="switchTab('template')"
-                    class="tab-link {{ $activeTab === 'template' ? 'tab-active' : 'tab-inactive' }}">
-                    Template
-                    <span class="tab-count">{{ $tabCounts['template'] }}</span>
-                </a>
-            </nav>
-        </div>
-
         <!-- Filter and Search Container -->
         <div class="mt-6 bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
             <form id="filter-form" method="GET" action="{{ route('questionnaires.index') }}" class="space-y-6">
-                <input type="hidden" name="tab" value="{{ $activeTab }}" id="tab-input">
-
                 <div class="grid grid-cols-1 gap-y-4 gap-x-4 sm:grid-cols-6">
                     <!-- Search Input -->
                     <div class="sm:col-span-3">
@@ -349,7 +290,7 @@
         <!-- View Toggle -->
         <div class="mt-8 flex justify-end">
             <span class="relative z-0 inline-flex shadow-sm rounded-md">
-                <button type="button" onclick="setViewType('grid')" id="grid-view-btn"
+                <button type="button" onclick="toggleView('grid')" id="grid-view-btn"
                     class="relative inline-flex items-center px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 active-view">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -357,7 +298,7 @@
                     </svg>
                     <span class="sr-only">Grid view</span>
                 </button>
-                <button type="button" onclick="setViewType('list')" id="list-view-btn"
+                <button type="button" onclick="toggleView('list')" id="list-view-btn"
                     class="relative -ml-px inline-flex items-center px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -570,102 +511,62 @@
 
 @push('scripts')
 <script>
-// Initialize view type from localStorage or default to grid
-document.addEventListener('DOMContentLoaded', function() {
-    const savedViewType = localStorage.getItem('questionnaire_view') || 'grid';
-    setViewType(savedViewType);
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set initial view based on saved preference
+        const savedView = localStorage.getItem('questionnaire_view') || 'grid';
+        toggleView(savedView);
+    });
 
-    // Set active tab based on URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const activeTab = urlParams.get('tab') || 'all';
+    function toggleView(viewType) {
+        const gridViewBtn = document.getElementById('grid-view-btn');
+        const listViewBtn = document.getElementById('list-view-btn');
+        const gridView = document.getElementById('grid-view');
+        const listView = document.getElementById('list-view');
 
-    // Check if tab switch should reset filters (except for the tab itself)
-    const fromTab = urlParams.get('from_tab');
-    if (fromTab && fromTab !== activeTab) {
-        // Clear applied filters when switching tabs except status filter
-        clearOtherFilters();
+        if (viewType === 'grid') {
+            gridViewBtn.classList.add('active-view', 'bg-gray-100');
+            listViewBtn.classList.remove('active-view', 'bg-gray-100');
+            gridView.classList.remove('hidden');
+            listView.classList.add('hidden');
+            // Save preference
+            localStorage.setItem('questionnaire_view', 'grid');
+        } else {
+            gridViewBtn.classList.remove('active-view', 'bg-gray-100');
+            listViewBtn.classList.add('active-view', 'bg-gray-100');
+            gridView.classList.add('hidden');
+            listView.classList.remove('hidden');
+            // Save preference
+            localStorage.setItem('questionnaire_view', 'list');
+        }
     }
-});
 
-function setViewType(viewType) {
-    const gridViewBtn = document.getElementById('grid-view-btn');
-    const listViewBtn = document.getElementById('list-view-btn');
-    const gridView = document.getElementById('grid-view');
-    const listView = document.getElementById('list-view');
-
-    if (viewType === 'grid') {
-        gridViewBtn.classList.add('active-view', 'bg-gray-100');
-        listViewBtn.classList.remove('active-view', 'bg-gray-100');
-        gridView.classList.remove('hidden');
-        listView.classList.add('hidden');
-        // Save preference
-        localStorage.setItem('questionnaire_view', 'grid');
-    } else {
-        gridViewBtn.classList.remove('active-view', 'bg-gray-100');
-        listViewBtn.classList.add('active-view', 'bg-gray-100');
-        gridView.classList.add('hidden');
-        listView.classList.remove('hidden');
-        // Save preference
-        localStorage.setItem('questionnaire_view', 'list');
+    function submitForm() {
+        document.getElementById('submit-button').click();
     }
-}
 
-function submitForm() {
-    document.getElementById('submit-button').click();
-}
-
-function clearFilters() {
-    // Reset all form fields
-    document.getElementById('status-filter').value = '';
-    document.getElementById('period').value = '';
-    document.getElementById('is_template').value = '';
-    document.getElementById('search').value = '';
-    document.getElementById('sort').value = 'newest';
-
-    // Submit the form to apply the cleared filters
-    submitForm();
-}
-
-function clearOtherFilters() {
-    // Reset all filters except status
-    document.getElementById('period').value = '';
-    document.getElementById('search').value = '';
-    document.getElementById('sort').value = 'newest';
-}
-
-function clearSearch() {
-    document.getElementById('search').value = '';
-    submitForm();
-}
-
-// Function to handle tab clicks and maintain other active filters
-function switchTab(tab) {
-    // Create new URL with tab parameter
-    const url = new URL(window.location.href);
-    const params = new URLSearchParams(url.search);
-
-    // Add from_tab parameter to track tab switches
-    params.set('from_tab', params.get('tab') || 'all');
-    params.set('tab', tab);
-    params.delete('page'); // Reset pagination when changing tabs
-
-    // Update hidden tab input in the form
-    document.getElementById('tab-input').value = tab;
-
-    // Update status filter in the form to match the tab
-    if (tab !== 'all' && tab !== 'template') {
-        document.getElementById('status-filter').value = tab;
-    } else if (tab === 'template') {
-        document.getElementById('is_template').value = '1';
+    function clearFilters() {
+        // Reset all form fields
         document.getElementById('status-filter').value = '';
-    } else {
-        document.getElementById('status-filter').value = '';
+        document.getElementById('period').value = '';
         document.getElementById('is_template').value = '';
+        document.getElementById('search').value = '';
+        document.getElementById('sort').value = 'newest';
+
+        // Submit the form to apply the cleared filters
+        submitForm();
     }
 
-    // Navigate to the new URL
-    window.location.href = `${window.location.pathname}?${params.toString()}`;
-}
+    function clearOtherFilters() {
+        // Reset all filters except status
+        document.getElementById('period').value = '';
+        document.getElementById('search').value = '';
+        document.getElementById('sort').value = 'newest';
+    }
+
+    function clearSearch() {
+        document.getElementById('search').value = '';
+        submitForm();
+    }
 </script>
 @endpush
 @endsection
