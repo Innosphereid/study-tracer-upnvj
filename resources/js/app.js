@@ -22,10 +22,10 @@ document.addEventListener("alpine:init", () => {
                 .then(() => {
                     // Panggil fungsi global untuk menampilkan toast
                     const linkDisplay =
-                        link.length > 40 ? link.substring(0, 37) + "..." : link;
+                        link.length > 35 ? link.substring(0, 30) + "..." : link;
                     window.showGlobalToast(
                         "Berhasil!",
-                        `Link "${linkDisplay}" berhasil disalin.`
+                        `Link berhasil disalin:\n${linkDisplay}`
                     );
                     // Tutup dropdown setelah delay singkat
                     setTimeout(() => {

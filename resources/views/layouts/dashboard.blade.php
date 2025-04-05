@@ -113,8 +113,8 @@
     function copyShareLink(link) {
         navigator.clipboard.writeText(link).then(() => {
             // Tampilkan toast dengan link yang berhasil disalin
-            const linkDisplay = link.length > 40 ? link.substring(0, 37) + '...' : link;
-            showGlobalToast("Berhasil!", `Link "${linkDisplay}" berhasil disalin.`);
+            const linkDisplay = link.length > 35 ? link.substring(0, 30) + '...' : link;
+            showGlobalToast("Berhasil!", `Link berhasil disalin:\n${linkDisplay}`);
         }).catch(err => {
             console.error('Gagal menyalin: ', err);
             showGlobalToast("Gagal!", "Tidak dapat menyalin link. Coba copy manual.", 3000);
@@ -142,7 +142,7 @@
                             </div>
                             <div class="ml-3 w-0 flex-1 pt-0.5">
                                 <p class="text-sm font-medium text-gray-900">${title}</p>
-                                <p class="mt-1 text-sm text-gray-500">${message}</p>
+                                <p class="mt-1 text-sm text-gray-500 whitespace-pre-line">${message}</p>
                             </div>
                             <div class="ml-4 flex-shrink-0 flex">
                                 <button onclick="document.getElementById('${toastId}').remove()"

@@ -91,11 +91,13 @@ img.logo {
     pointer-events: auto;
     transition: all 0.3s ease-out;
     max-width: calc(100vw - 2rem);
-    width: auto;
+    width: 350px;
 }
 
 #global-toast-container > div .text-gray-500 {
-    word-break: break-word;
+    word-break: break-all;
+    overflow-wrap: break-word;
+    white-space: normal;
 }
 
 #global-toast-container > div.translate-y-0 {
