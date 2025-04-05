@@ -48,8 +48,9 @@
                     :active="$activeMenu === 'kuesioner.create'" />
                 <x-dashboard.sidebar-item label="Daftar Kuesioner" link="/kuesioner" :is-dropdown-item="true"
                     :active="$activeMenu === 'kuesioner.list'" />
-                <x-dashboard.sidebar-item label="Template Kuesioner" link="#" :is-dropdown-item="true"
-                    :active="$activeMenu === 'kuesioner.template'" />
+                <x-dashboard.sidebar-item label="Template Kuesioner"
+                    link="/kuesioner?search=&status=&period=&is_template=1&sort=newest&per_page=10"
+                    :is-dropdown-item="true" :active="$activeMenu === 'kuesioner.template'" />
             </x-dashboard.sidebar-dropdown>
 
             <!-- Kelola Alumni -->
