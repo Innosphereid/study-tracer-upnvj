@@ -77,6 +77,8 @@ img.logo {
     flex-direction: column;
     align-items: flex-end;
     pointer-events: none;
+    max-width: 100%;
+    width: auto;
 }
 
 #global-toast-container > div {
@@ -88,6 +90,12 @@ img.logo {
     margin-bottom: 0.75rem;
     pointer-events: auto;
     transition: all 0.3s ease-out;
+    max-width: calc(100vw - 2rem);
+    width: auto;
+}
+
+#global-toast-container > div .text-gray-500 {
+    word-break: break-word;
 }
 
 #global-toast-container > div.translate-y-0 {

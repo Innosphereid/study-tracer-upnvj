@@ -16,6 +16,31 @@ document.addEventListener("alpine:init", () => {
         close() {
             this.open = false;
         },
+        copyShareLink(link) {
+            navigator.clipboard
+                .writeText(link)
+                .then(() => {
+                    // Panggil fungsi global untuk menampilkan toast
+                    const linkDisplay =
+                        link.length > 40 ? link.substring(0, 37) + "..." : link;
+                    window.showGlobalToast(
+                        "Berhasil!",
+                        `Link "${linkDisplay}" berhasil disalin.`
+                    );
+                    // Tutup dropdown setelah delay singkat
+                    setTimeout(() => {
+                        this.open = false;
+                    }, 300);
+                })
+                .catch((err) => {
+                    console.error("Gagal menyalin: ", err);
+                    window.showGlobalToast(
+                        "Gagal!",
+                        "Tidak dapat menyalin link. Coba copy manual.",
+                        3000
+                    );
+                });
+        },
     }));
 });
 

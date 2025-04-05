@@ -112,11 +112,12 @@
     <script>
     function copyShareLink(link) {
         navigator.clipboard.writeText(link).then(() => {
-            // Extract questionnaire ID from link
-            const questionnaireParts = link.split('/');
-            const questionnaireSlug = questionnaireParts[questionnaireParts.length - 1];
-
-            showGlobalToast("Berhasil!", "Tautan berhasil disalin ke clipboard.");
+            // Tampilkan toast dengan link yang berhasil disalin
+            const linkDisplay = link.length > 40 ? link.substring(0, 37) + '...' : link;
+            showGlobalToast("Berhasil!", `Link "${linkDisplay}" berhasil disalin.`);
+        }).catch(err => {
+            console.error('Gagal menyalin: ', err);
+            showGlobalToast("Gagal!", "Tidak dapat menyalin link. Coba copy manual.", 3000);
         });
     }
 
@@ -179,6 +180,9 @@
 
         return toastId;
     }
+
+    // Expose function globally
+    window.showGlobalToast = showGlobalToast;
 
     function handlePublish(event, questionnaireId, formUrl) {
         // Prevent default form submission

@@ -124,8 +124,10 @@
 
                 {{-- Share (if published) --}}
                 @if($questionnaire->status === 'published')
-                <button type="button" onclick="copyShareLink('{{ route('form.show', $questionnaire->slug) }}')"
-                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                <button type="button" 
+                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" 
+                    role="menuitem"
+                    @click.stop="copyShareLink('{{ route('form.show', $questionnaire->slug) }}')">
                     <div class="flex items-center">
                         <svg class="mr-3 h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                             stroke-width="2">
