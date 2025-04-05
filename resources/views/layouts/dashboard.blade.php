@@ -135,6 +135,57 @@
                 toast.classList.add('hidden');
             }
         }
+        
+        function handlePublish(event, questionnaireId, formUrl) {
+            // Prevent default form submission
+            event.preventDefault();
+            
+            // Get the form
+            const form = document.getElementById(`publish-form-${questionnaireId}`);
+            const formData = new FormData(form);
+            
+            // Add X-Requested-With header for Laravel to detect AJAX
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Publikasi gagal');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Show success toast
+                const toast = document.getElementById(`toast-publish-${questionnaireId}`);
+                toast.classList.remove('hidden');
+                
+                // After 2.5 seconds
+                setTimeout(() => {
+                    // Hide toast
+                    hideToast(`toast-publish-${questionnaireId}`);
+                    
+                    // Open new tab with form URL (use URL from response if available)
+                    const url = data && data.url ? data.url : formUrl;
+                    window.open(url, '_blank');
+                    
+                    // Refresh current page after 0.2 seconds
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 200);
+                }, 2500);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Submit form normally if fetch fails
+                form.submit();
+            });
+        }
     </script>
     @yield('scripts')
 </body>

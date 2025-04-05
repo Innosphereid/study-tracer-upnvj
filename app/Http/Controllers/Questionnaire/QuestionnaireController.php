@@ -640,10 +640,12 @@ class QuestionnaireController extends Controller
             }
             
             if ($request->expectsJson()) {
+                $updatedQuestionnaire = $this->questionnaireService->getQuestionnaireById($id);
                 return response()->json([
                     'success' => $published,
                     'message' => $published ? 'Kuesioner berhasil dipublikasikan' : 'Gagal mempublikasikan kuesioner',
-                    'questionnaire' => $published ? $this->questionnaireService->getQuestionnaireById($id) : null
+                    'questionnaire' => $published ? $updatedQuestionnaire : null,
+                    'url' => $published ? route('form.show', $updatedQuestionnaire->slug) : null
                 ]);
             }
             
