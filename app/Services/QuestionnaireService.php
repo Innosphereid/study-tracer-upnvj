@@ -1747,4 +1747,71 @@ class QuestionnaireService implements QuestionnaireServiceInterface
             'end_date' => now()
         ]);
     }
+
+    /**
+     * Get total questionnaires count.
+     *
+     * @return int
+     */
+    public function getTotalQuestionnairesCount(): int
+    {
+        return app(\App\Models\Questionnaire::class)->count();
+    }
+
+    /**
+     * Get active questionnaires count.
+     *
+     * @return int
+     */
+    public function getActiveQuestionnairesCount(): int
+    {
+        return app(\App\Models\Questionnaire::class)
+            ->where('status', 'published')
+            ->where(function ($query) {
+                $now = now();
+                $query->where(function ($q) use ($now) {
+                    $q->whereNull('start_date')
+                      ->whereNull('end_date');
+                })->orWhere(function ($q) use ($now) {
+                    $q->whereNull('end_date')
+                      ->where('start_date', '<=', $now);
+                })->orWhere(function ($q) use ($now) {
+                    $q->whereNull('start_date')
+                      ->where('end_date', '>=', $now);
+                })->orWhere(function ($q) use ($now) {
+                    $q->where('start_date', '<=', $now)
+                      ->where('end_date', '>=', $now);
+                });
+            })
+            ->count();
+    }
+
+    /**
+     * Get total responses count.
+     *
+     * @return int
+     */
+    public function getTotalResponsesCount(): int
+    {
+        return app(\App\Models\Response::class)->count();
+    }
+
+    /**
+     * Get overall response rate.
+     *
+     * @return float
+     */
+    public function getOverallResponseRate(): float
+    {
+        $totalResponses = $this->getTotalResponsesCount();
+        if ($totalResponses === 0) {
+            return 0;
+        }
+        
+        $completedResponses = app(\App\Models\Response::class)
+            ->whereNotNull('completed_at')
+            ->count();
+            
+        return round(($completedResponses / $totalResponses) * 100, 1);
+    }
 } 

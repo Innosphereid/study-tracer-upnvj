@@ -44,7 +44,33 @@ class QuestionnaireController extends Controller
         
         $questionnaires = $this->questionnaireService->getPaginatedQuestionnaires(10);
         
-        return view('questionnaire.index', compact('questionnaires'));
+        // Get counts for stats cards
+        $totalQuestionnaires = $this->questionnaireService->getTotalQuestionnairesCount();
+        $activeQuestionnaires = $this->questionnaireService->getActiveQuestionnairesCount();
+        $totalResponses = $this->questionnaireService->getTotalResponsesCount();
+        $responseRate = $this->questionnaireService->getOverallResponseRate();
+        
+        // For each questionnaire, add the section and question counts
+        foreach ($questionnaires as $questionnaire) {
+            $questionnaire->sections_count = $questionnaire->sections()->count();
+            $questionnaire->questions_count = $questionnaire->questions()->count();
+            $questionnaire->responses_count = $questionnaire->responses()->count();
+            
+            // Calculate response rate for each questionnaire
+            $totalRespondents = $questionnaire->responses()->count();
+            $completedResponses = $questionnaire->responses()->whereNotNull('completed_at')->count();
+            $questionnaire->response_rate = $totalRespondents > 0 
+                ? round(($completedResponses / $totalRespondents) * 100) 
+                : 0;
+        }
+        
+        return view('questionnaire.index', compact(
+            'questionnaires', 
+            'totalQuestionnaires',
+            'activeQuestionnaires',
+            'totalResponses',
+            'responseRate'
+        ));
     }
     
     /**

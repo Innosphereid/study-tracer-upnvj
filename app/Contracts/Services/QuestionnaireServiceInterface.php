@@ -182,4 +182,32 @@ interface QuestionnaireServiceInterface
      * @return bool
      */
     public function closeQuestionnaire(int $id): bool;
+    
+    /**
+     * Get total questionnaires count
+     *
+     * @return int
+     */
+    public function getTotalQuestionnairesCount(): int;
+    
+    /**
+     * Get active questionnaires count
+     *
+     * @return int
+     */
+    public function getActiveQuestionnairesCount(): int;
+    
+    /**
+     * Get total responses count
+     *
+     * @return int
+     */
+    public function getTotalResponsesCount(): int;
+    
+    /**
+     * Get overall response rate
+     *
+     * @return float
+     */
+    public function getOverallResponseRate(): float;
 } 
