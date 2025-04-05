@@ -5,10 +5,12 @@
     <div>
         @if($questionnaire->status === 'draft')
         <form id="publish-form-{{ $questionnaire->id }}"
-            action="{{ route('questionnaires.publish', $questionnaire->id) }}" method="POST" class="inline-block"
-            onsubmit="handlePublish(event, '{{ $questionnaire->id }}', '{{ route('form.show', $questionnaire->slug) }}')">
+            action="{{ route('questionnaires.publish', $questionnaire->id) }}" method="POST" class="inline-block">
             @csrf
-            <button type="submit"
+            <input type="hidden" name="start_date" id="start-date-{{ $questionnaire->id }}">
+            <input type="hidden" name="end_date" id="end-date-{{ $questionnaire->id }}">
+            <button type="button"
+                onclick="openDateSelectionModal('{{ $questionnaire->id }}', '{{ route('form.show', $questionnaire->slug) }}')"
                 class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                 <svg class="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
@@ -17,9 +19,8 @@
             </button>
         </form>
         @elseif($questionnaire->status === 'published')
-        <form id="close-form-{{ $questionnaire->id }}"
-            action="{{ route('questionnaires.close', $questionnaire->id) }}" method="POST" class="inline-block"
-            onsubmit="handleClose(event, '{{ $questionnaire->id }}')">
+        <form id="close-form-{{ $questionnaire->id }}" action="{{ route('questionnaires.close', $questionnaire->id) }}"
+            method="POST" class="inline-block" onsubmit="handleClose(event, '{{ $questionnaire->id }}')">
             @csrf
             <button type="submit"
                 class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
@@ -124,10 +125,8 @@
 
                 {{-- Share (if published) --}}
                 @if($questionnaire->status === 'published')
-                <button type="button" 
-                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" 
-                    role="menuitem"
-                    @click.stop="copyShareLink('{{ route('form.show', $questionnaire->slug) }}')">
+                <button type="button" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    role="menuitem" @click.stop="copyShareLink('{{ route('form.show', $questionnaire->slug) }}')">
                     <div class="flex items-center">
                         <svg class="mr-3 h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                             stroke-width="2">

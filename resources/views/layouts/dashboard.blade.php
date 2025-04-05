@@ -184,6 +184,14 @@
     // Expose function globally
     window.showGlobalToast = showGlobalToast;
 
+    /**
+     * Handles the publishing of a questionnaire via AJAX
+     * 
+     * @param {Event} event - The event object
+     * @param {string} questionnaireId - The ID of the questionnaire
+     * @param {string} formUrl - The URL to redirect to after successful publishing
+     * @returns {void}
+     */
     function handlePublish(event, questionnaireId, formUrl) {
         // Prevent default form submission
         event.preventDefault();
@@ -233,6 +241,13 @@
             });
     }
 
+    /**
+     * Handles the closing of a questionnaire via AJAX
+     * 
+     * @param {Event} event - The event object
+     * @param {string} questionnaireId - The ID of the questionnaire
+     * @returns {void}
+     */
     function handleClose(event, questionnaireId) {
         // Prevent default form submission
         event.preventDefault();
