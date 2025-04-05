@@ -17,7 +17,9 @@
             </button>
         </form>
         @elseif($questionnaire->status === 'published')
-        <form action="{{ route('questionnaires.close', $questionnaire->id) }}" method="POST" class="inline-block">
+        <form id="close-form-{{ $questionnaire->id }}"
+            action="{{ route('questionnaires.close', $questionnaire->id) }}" method="POST" class="inline-block"
+            onsubmit="handleClose(event, '{{ $questionnaire->id }}')">
             @csrf
             <button type="submit"
                 class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">

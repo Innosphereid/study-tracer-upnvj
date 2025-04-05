@@ -228,6 +228,48 @@
                 form.submit();
             });
     }
+
+    function handleClose(event, questionnaireId) {
+        // Prevent default form submission
+        event.preventDefault();
+
+        // Get the form
+        const form = document.getElementById(`close-form-${questionnaireId}`);
+        const formData = new FormData(form);
+
+        // Add X-Requested-With header for Laravel to detect AJAX
+        fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Penutupan kuesioner gagal');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Show success toast using the global toast function
+                showGlobalToast("Berhasil!", "Kuesioner berhasil ditutup.", 2000);
+
+                // After 2 seconds, refresh the page
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Show error toast
+                showGlobalToast("Gagal!", "Terjadi kesalahan saat menutup kuesioner.", 3000);
+                // Submit form normally if fetch fails
+                form.submit();
+            });
+    }
     </script>
     @yield('scripts')
 </body>
