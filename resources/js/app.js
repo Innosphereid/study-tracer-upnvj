@@ -3,10 +3,24 @@ import Alpine from "alpinejs";
 import "./email-check";
 import collapse from "@alpinejs/collapse";
 
+// Register collapse plugin
+Alpine.plugin(collapse);
+
+// Tambahkan konfigurasi untuk dropdown
+document.addEventListener("alpine:init", () => {
+    Alpine.data("dropdown", () => ({
+        open: false,
+        toggle() {
+            this.open = !this.open;
+        },
+        close() {
+            this.open = false;
+        },
+    }));
+});
+
 // Make Alpine available globally
 window.Alpine = Alpine;
-
-Alpine.plugin(collapse);
 
 // Initialize Alpine
 Alpine.start();
@@ -46,4 +60,35 @@ document.addEventListener("DOMContentLoaded", () => {
             form.classList.add("opacity-95", "scale-[0.99]");
         });
     }
+
+    // Add animation for form labels
+    const formInputs = document.querySelectorAll(
+        ".form-input, .form-textarea, .form-select"
+    );
+
+    formInputs.forEach((input) => {
+        input.addEventListener("focus", () => {
+            const label = input.previousElementSibling;
+            if (label && label.classList.contains("form-label")) {
+                label.classList.add("form-label-focus");
+            }
+        });
+
+        input.addEventListener("blur", () => {
+            if (input.value === "") {
+                const label = input.previousElementSibling;
+                if (label && label.classList.contains("form-label")) {
+                    label.classList.remove("form-label-focus");
+                }
+            }
+        });
+
+        // Check on load if input has value
+        if (input.value !== "") {
+            const label = input.previousElementSibling;
+            if (label && label.classList.contains("form-label")) {
+                label.classList.add("form-label-focus");
+            }
+        }
+    });
 });

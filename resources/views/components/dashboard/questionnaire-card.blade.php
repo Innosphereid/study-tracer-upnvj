@@ -1,7 +1,7 @@
 @props(['questionnaire', 'class' => ''])
 
 <div
-    class="bg-white rounded-lg shadow overflow-hidden transition duration-300 ease-in-out hover:shadow-md hover:-translate-y-1 {{ $class }}">
+    class="bg-white rounded-lg shadow transition duration-300 ease-in-out hover:shadow-md hover:-translate-y-1 {{ $class }}">
     {{-- Card Header --}}
     <div class="p-4 border-b border-gray-200">
         <div class="flex justify-between items-start">
@@ -129,7 +129,7 @@
 
     {{-- Card Footer --}}
     <div class="px-4 py-3 bg-gray-50 border-t border-gray-200">
-        <div class="flex justify-between">
+        <div class="flex justify-between dropdown-container">
             <x-dashboard.questionnaire-actions :questionnaire="$questionnaire" />
         </div>
     </div>

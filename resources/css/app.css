@@ -47,3 +47,22 @@ img.logo {
 .font-display {
     font-family: var(--font-display);
 }
+
+/* Dropdown menu fixes */
+.dropdown-menu {
+    position: absolute;
+    z-index: 100;
+    overflow: visible;
+}
+
+/* Membuat container dropdown tetap visible */
+.dropdown-container {
+    position: relative;
+    overflow: visible;
+}
+
+/* Make sure dropdowns are displayed above all other content */
+.dropdown-menu-container {
+    position: relative;
+    z-index: 50;
+}
