@@ -415,17 +415,6 @@
 
             @if($questionnaires->count() > 0)
             <div class="mt-6">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="text-sm text-gray-700">
-                        Menampilkan 
-                        <span class="font-medium">{{ $questionnaires->firstItem() ?? 0 }}</span>
-                        sampai
-                        <span class="font-medium">{{ $questionnaires->lastItem() ?? 0 }}</span>
-                        dari
-                        <span class="font-medium">{{ $questionnaires->total() }}</span>
-                        hasil
-                    </div>
-                </div>
                 <div class="pagination-container">
                     {{ $questionnaires->withQueryString()->links() }}
                 </div>
@@ -521,17 +510,6 @@
                 </div>
             </div>
             <div class="mt-6">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="text-sm text-gray-700">
-                        Menampilkan 
-                        <span class="font-medium">{{ $questionnaires->firstItem() ?? 0 }}</span>
-                        sampai
-                        <span class="font-medium">{{ $questionnaires->lastItem() ?? 0 }}</span>
-                        dari
-                        <span class="font-medium">{{ $questionnaires->total() }}</span>
-                        hasil
-                    </div>
-                </div>
                 <div class="pagination-container">
                     {{ $questionnaires->withQueryString()->links() }}
                 </div>
