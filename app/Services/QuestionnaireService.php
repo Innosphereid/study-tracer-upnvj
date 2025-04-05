@@ -63,7 +63,24 @@ class QuestionnaireService implements QuestionnaireServiceInterface
     public function getQuestionnaireById(int $id): ?Questionnaire
     {
         Log::info('Getting questionnaire by ID', ['id' => $id]);
-        return $this->questionnaireRepository->find($id);
+        
+        // Get the questionnaire with count relationships
+        $questionnaire = $this->questionnaireRepository->find($id, ['*'], [
+            'user',
+            'sections'
+        ]);
+        
+        if ($questionnaire) {
+            // Add count information
+            $questionnaire->loadCount('sections', 'responses');
+            
+            // Calculate questions count
+            $questionnaire->loadCount(['sections as questions_count' => function($query) {
+                $query->withCount('questions');
+            }]);
+        }
+        
+        return $questionnaire;
     }
     
     /**

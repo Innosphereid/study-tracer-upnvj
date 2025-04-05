@@ -1,3 +1,17 @@
+{{-- 
+Questionnaire Card Component
+
+This component displays a questionnaire as a card with key information:
+- Title and status badges
+- Date range information
+- Statistics (sections, questions, responses)
+- Response rate visualization
+- Action buttons
+
+@param \App\Models\Questionnaire $questionnaire - The questionnaire model to display
+@param string $class - Additional CSS classes to apply to the card container
+--}}
+
 @props(['questionnaire', 'class' => ''])
 
 <div
@@ -85,7 +99,7 @@
                     stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                 </svg>
-                <span class="text-sm text-gray-600">{{ $questionnaire->sections_count }} seksi</span>
+                <span class="text-sm text-gray-600">{{ $questionnaire->sections_count ?? 0 }} seksi</span>
             </div>
 
             {{-- Questions --}}
@@ -95,7 +109,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span class="text-sm text-gray-600">{{ $questionnaire->questions_count }} pertanyaan</span>
+                <span class="text-sm text-gray-600">{{ $questionnaire->questions_count ?? 0 }} pertanyaan</span>
             </div>
 
             {{-- Responses --}}
@@ -105,7 +119,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
                 </svg>
-                <span class="text-sm text-gray-600">{{ $questionnaire->responses_count }} respons</span>
+                <span class="text-sm text-gray-600">{{ $questionnaire->responses_count ?? 0 }} respons</span>
             </div>
         </div>
 

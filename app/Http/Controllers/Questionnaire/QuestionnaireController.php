@@ -67,8 +67,13 @@ class QuestionnaireController extends Controller
             $filters['is_template'] = '1';
         }
         
-        // Query base
-        $query = Questionnaire::with('user');
+        // Query base - Include withCount for needed statistics
+        $query = Questionnaire::with('user')
+            ->withCount('sections')
+            ->withCount('responses')
+            ->withCount(['sections as questions_count' => function($query) {
+                $query->withCount('questions');
+            }]);
         
         // Apply filters
         if (!empty($filters['search'])) {
@@ -141,6 +146,21 @@ class QuestionnaireController extends Controller
         // Calculate response rate for each questionnaire
         foreach ($questionnaires as $questionnaire) {
             $questionnaire->response_rate = $questionnaire->getResponseRate();
+            
+            // If the questions count is still not accurate with the withCount approach
+            if (!isset($questionnaire->questions_count) || $questionnaire->questions_count <= 0) {
+                // Load the sections with their questions relationship if needed
+                if (!$questionnaire->relationLoaded('sections') || 
+                    ($questionnaire->sections->isNotEmpty() && 
+                     !$questionnaire->sections->first()->relationLoaded('questions'))) {
+                    $questionnaire->load('sections.questions');
+                }
+                
+                // Calculate the total questions manually
+                $questionnaire->questions_count = $questionnaire->sections->sum(function ($section) {
+                    return $section->questions->count();
+                });
+            }
         }
         
         return view('questionnaire.index', compact(

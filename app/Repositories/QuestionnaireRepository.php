@@ -32,6 +32,15 @@ class QuestionnaireRepository extends BaseRepository implements QuestionnaireRep
         
         $query = $this->model->newQuery();
         
+        // Add count relationships
+        $query->withCount('sections')
+            ->withCount('responses');
+        
+        // Load the total questions count
+        $query->withCount(['sections as questions_count' => function($query) {
+            $query->withCount('questions');
+        }]);
+        
         if (!empty($relations)) {
             $query->with($relations);
         }
@@ -275,6 +284,15 @@ class QuestionnaireRepository extends BaseRepository implements QuestionnaireRep
         array $relations = []
     ): LengthAwarePaginator {
         $query = $this->model->query();
+
+        // Add count relationships
+        $query->withCount('sections')
+            ->withCount('responses');
+        
+        // Load the total questions count
+        $query->withCount(['sections as questions_count' => function($query) {
+            $query->withCount('questions');
+        }]);
 
         // Load relations if specified
         if (!empty($relations)) {

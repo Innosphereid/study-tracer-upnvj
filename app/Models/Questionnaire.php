@@ -158,4 +158,39 @@ class Questionnaire extends Model
         
         return round(($completedResponses / $totalResponses) * 100, 1);
     }
+
+    /**
+     * Get the total number of questions across all sections.
+     *
+     * @return int
+     */
+    public function getQuestionsCountAttribute(): int
+    {
+        // If the attribute already exists, use it
+        if (array_key_exists('questions_count', $this->attributes)) {
+            return $this->attributes['questions_count'];
+        }
+        
+        // If we have the relationship loaded with withCount, use that
+        if ($this->questions_count !== null) {
+            return $this->questions_count;
+        }
+        
+        // If sections are loaded, calculate from them
+        if ($this->relationLoaded('sections')) {
+            // Check if questions are loaded on the sections
+            $firstSection = $this->sections->first();
+            if ($firstSection && $firstSection->relationLoaded('questions')) {
+                return $this->sections->sum(function ($section) {
+                    return $section->questions->count();
+                });
+            }
+            
+            // Otherwise, load the sections with questions count
+            return $this->sections->loadCount('questions')->sum('questions_count');
+        }
+        
+        // As a last resort, query directly
+        return $this->sections()->withCount('questions')->get()->sum('questions_count');
+    }
 } 
