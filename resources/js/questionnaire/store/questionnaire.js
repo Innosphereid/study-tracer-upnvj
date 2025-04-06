@@ -169,9 +169,200 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
     },
 
     actions: {
+        /**
+         * Initialize the questionnaire with data from the server
+         *
+         * This method transforms the data from the backend format to the format expected by the frontend components.
+         * It handles various data transformations and ensures all required fields are present.
+         *
+         * @param {Object} data - The questionnaire data from the backend
+         */
         initializeQuestionnaire(data) {
+            console.log("Initializing questionnaire with data:", data);
+
             if (data && Object.keys(data).length > 0) {
-                this.questionnaire = { ...this.questionnaire, ...data };
+                // Save original data
+                this.originalQuestionnaire = JSON.parse(JSON.stringify(data));
+
+                // Create a clean copy to prevent reference issues
+                const newQuestionnaire = { ...this.questionnaire };
+
+                // Copy basic properties
+                newQuestionnaire.id = data.id;
+                newQuestionnaire.title = data.title || newQuestionnaire.title;
+                newQuestionnaire.description =
+                    data.description || newQuestionnaire.description;
+                newQuestionnaire.slug = data.slug || newQuestionnaire.slug;
+                newQuestionnaire.status =
+                    data.status || newQuestionnaire.status;
+
+                // Copy dates if available
+                if (data.start_date) {
+                    newQuestionnaire.startDate = data.start_date;
+                }
+                if (data.end_date) {
+                    newQuestionnaire.endDate = data.end_date;
+                }
+
+                // Handle settings
+                if (data.settings) {
+                    const settings =
+                        typeof data.settings === "string"
+                            ? JSON.parse(data.settings)
+                            : data.settings;
+
+                    // Copy settings
+                    newQuestionnaire.showProgressBar =
+                        settings.showProgressBar ??
+                        newQuestionnaire.showProgressBar;
+                    newQuestionnaire.showPageNumbers =
+                        settings.showPageNumbers ??
+                        newQuestionnaire.showPageNumbers;
+                    newQuestionnaire.requiresLogin =
+                        settings.requiresLogin ??
+                        newQuestionnaire.requiresLogin;
+
+                    // Copy welcome screen
+                    if (settings.welcomeScreen) {
+                        newQuestionnaire.welcomeScreen = {
+                            title:
+                                settings.welcomeScreen.title ||
+                                newQuestionnaire.welcomeScreen.title,
+                            description:
+                                settings.welcomeScreen.description ||
+                                newQuestionnaire.welcomeScreen.description,
+                        };
+                    }
+
+                    // Copy thank you screen
+                    if (settings.thankYouScreen) {
+                        newQuestionnaire.thankYouScreen = {
+                            title:
+                                settings.thankYouScreen.title ||
+                                newQuestionnaire.thankYouScreen.title,
+                            description:
+                                settings.thankYouScreen.description ||
+                                newQuestionnaire.thankYouScreen.description,
+                        };
+                    }
+                }
+
+                // Process sections
+                if (data.sections && Array.isArray(data.sections)) {
+                    newQuestionnaire.sections = data.sections.map((section) => {
+                        // Ensure section has an id (use existing or generate new)
+                        const sectionId = section.id || uuidv4();
+
+                        // Create base section object
+                        const newSection = {
+                            id: sectionId,
+                            title:
+                                section.title ||
+                                `Seksi ${data.sections.indexOf(section) + 1}`,
+                            description: section.description || "",
+                            questions: [],
+                        };
+
+                        // Process section settings if available
+                        if (section.settings) {
+                            const sectionSettings =
+                                typeof section.settings === "string"
+                                    ? JSON.parse(section.settings)
+                                    : section.settings;
+
+                            // Add settings to section
+                            newSection.settings = sectionSettings;
+                        }
+
+                        // Process questions
+                        if (
+                            section.questions &&
+                            Array.isArray(section.questions)
+                        ) {
+                            newSection.questions = section.questions.map(
+                                (question) => {
+                                    // Ensure question has correct type format
+                                    // Map backend question_type to frontend type if needed
+                                    const questionType =
+                                        question.type ||
+                                        (question.question_type
+                                            ? this.mapQuestionType(
+                                                  question.question_type
+                                              )
+                                            : "short-text");
+
+                                    // Create base question
+                                    const newQuestion = {
+                                        id: question.id || uuidv4(),
+                                        type: questionType,
+                                        text:
+                                            question.text ||
+                                            question.title ||
+                                            "Untitled Question",
+                                        helpText:
+                                            question.helpText ||
+                                            question.description ||
+                                            "",
+                                        required:
+                                            question.required ||
+                                            question.is_required ||
+                                            false,
+                                    };
+
+                                    // Process question settings
+                                    if (question.settings) {
+                                        const questionSettings =
+                                            typeof question.settings ===
+                                            "string"
+                                                ? JSON.parse(question.settings)
+                                                : question.settings;
+
+                                        // Add settings to question
+                                        Object.assign(
+                                            newQuestion,
+                                            questionSettings
+                                        );
+                                    }
+
+                                    // Process options for choice-based questions
+                                    if (
+                                        question.options &&
+                                        Array.isArray(question.options)
+                                    ) {
+                                        newQuestion.options =
+                                            question.options.map((option) => ({
+                                                id: option.id || uuidv4(),
+                                                text:
+                                                    option.text ||
+                                                    option.title ||
+                                                    option.label ||
+                                                    "Option",
+                                                value:
+                                                    option.value ||
+                                                    option.text ||
+                                                    option.title ||
+                                                    option.label ||
+                                                    "Option",
+                                            }));
+                                    }
+
+                                    // Special handling for specific question types
+                                    this.specialHandlingForQuestionType(
+                                        newQuestion
+                                    );
+
+                                    return newQuestion;
+                                }
+                            );
+                        }
+
+                        return newSection;
+                    });
+                }
+
+                // Update state
+                this.questionnaire = newQuestionnaire;
+                console.log("Questionnaire initialized:", this.questionnaire);
             }
         },
 
@@ -1281,6 +1472,70 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
 
         slugify(text) {
             return slugify(text);
+        },
+
+        /**
+         * Applies special handling for different question types
+         *
+         * This method ensures that all question types have the necessary data
+         * structures required by their respective components. It initializes
+         * default values for specialized question types like matrix, rating,
+         * and likert scale questions.
+         *
+         * @param {Object} question - The question object to process
+         * @returns {Object} - The processed question object
+         */
+        specialHandlingForQuestionType(question) {
+            // Handle file upload questions
+            if (question.type === "file-upload") {
+                this.specialHandlingForFileUpload(question);
+            }
+
+            // Handle matrix questions
+            if (question.type === "matrix") {
+                if (!question.rows) {
+                    question.rows = [
+                        { id: uuidv4(), text: "Row 1" },
+                        { id: uuidv4(), text: "Row 2" },
+                    ];
+                }
+
+                if (!question.columns) {
+                    question.columns = [
+                        { id: uuidv4(), text: "Column 1" },
+                        { id: uuidv4(), text: "Column 2" },
+                    ];
+                }
+            }
+
+            // Handle rating questions
+            if (question.type === "rating") {
+                if (!question.maxRating) {
+                    question.maxRating = 5;
+                }
+            }
+
+            // Handle likert questions
+            if (question.type === "likert") {
+                if (!question.likertOptions) {
+                    question.likertOptions = [
+                        { id: uuidv4(), text: "Sangat Tidak Setuju" },
+                        { id: uuidv4(), text: "Tidak Setuju" },
+                        { id: uuidv4(), text: "Netral" },
+                        { id: uuidv4(), text: "Setuju" },
+                        { id: uuidv4(), text: "Sangat Setuju" },
+                    ];
+                }
+
+                if (!question.statements) {
+                    question.statements = [
+                        { id: uuidv4(), text: "Pernyataan 1" },
+                        { id: uuidv4(), text: "Pernyataan 2" },
+                    ];
+                }
+            }
+
+            return question;
         },
     },
 });

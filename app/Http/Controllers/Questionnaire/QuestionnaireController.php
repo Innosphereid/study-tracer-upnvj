@@ -240,21 +240,38 @@ class QuestionnaireController extends Controller
     
     /**
      * Show the form for editing the specified questionnaire.
+     * 
+     * This method prepares the questionnaire data for the edit page.
+     * It loads the questionnaire with its related sections, questions, and options,
+     * and transforms the data structure to be compatible with the frontend builder component.
+     * The JSON representation is used to ensure consistency with the frontend expectations.
      *
-     * @param int $id
-     * @return View
+     * @param int $id - The ID of the questionnaire to edit
+     * @return View - The view with the prepared questionnaire data
      */
     public function edit(int $id): View
     {
         Log::info('Displaying questionnaire edit form', ['id' => $id]);
         
+        // Get full questionnaire with all related data
         $questionnaire = $this->questionnaireService->getQuestionnaireById($id);
         
         abort_if(!$questionnaire, 404, 'Kuesioner tidak ditemukan');
         
-        $sections = $this->questionnaireService->getQuestionnaireSections($id);
+        // Load sections with questions and options for complete data structure
+        $questionnaire->load(['sections.questions.options']);
         
-        return view('questionnaire.edit', compact('questionnaire', 'sections'));
+        // If questionnaire_json is available and complete, use it as it's more consistent with the frontend structure
+        if (!empty($questionnaire->questionnaire_json)) {
+            $questionnaire = $questionnaire->questionnaire_json;
+        } else {
+            // Ensure we have a properly formatted data structure for the frontend
+            $questionnaire->storeAsJson();
+            $questionnaire->refresh();
+            $questionnaire = $questionnaire->questionnaire_json;
+        }
+        
+        return view('questionnaire.edit', compact('questionnaire'));
     }
     
     /**
