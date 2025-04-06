@@ -42,6 +42,7 @@
  * - Whether the builder element exists
  * - Whether the CSRF token exists and its value
  * - The parsed questionnaire data
+ * - Debug information about sections and questions
  */
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Edit page loaded');
@@ -59,6 +60,35 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('ID:', data.id);
             console.log('ID type:', typeof data.id);
             console.log('Status:', data.status);
+
+            // Log detailed section and question information
+            if (data.sections && Array.isArray(data.sections)) {
+                console.log(`Found ${data.sections.length} sections in questionnaire data`);
+
+                data.sections.forEach((section, sIndex) => {
+                    console.log(`Section #${sIndex + 1}:`, {
+                        id: section.id,
+                        title: section.title,
+                        questions_count: section.questions?.length || 0
+                    });
+
+                    if (section.questions && Array.isArray(section.questions)) {
+                        section.questions.forEach((question, qIndex) => {
+                            console.log(`- Question #${qIndex + 1}:`, {
+                                id: question.id,
+                                type: question.type,
+                                text: question.text,
+                                options_count: question.options?.length || 0
+                            });
+                        });
+                    } else {
+                        console.warn(
+                            `Section #${sIndex + 1} has no questions or questions is not an array`);
+                    }
+                });
+            } else {
+                console.warn('No sections found in questionnaire data or sections is not an array');
+            }
 
             // Trigger helpful error message if startsWith would be problematic
             if (data.id && typeof data.id !== 'string') {

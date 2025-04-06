@@ -204,12 +204,23 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
                     newQuestionnaire.endDate = data.end_date;
                 }
 
+                // Debug information
+                console.log("Processing questionnaire settings");
+                console.log("Settings data:", data.settings);
+                console.log("Has sections:", Array.isArray(data.sections));
+                console.log(
+                    "Sections count:",
+                    Array.isArray(data.sections) ? data.sections.length : 0
+                );
+
                 // Handle settings
                 if (data.settings) {
                     const settings =
                         typeof data.settings === "string"
                             ? JSON.parse(data.settings)
                             : data.settings;
+
+                    console.log("Parsed settings:", settings);
 
                     // Copy settings
                     newQuestionnaire.showProgressBar =
@@ -249,115 +260,208 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
 
                 // Process sections
                 if (data.sections && Array.isArray(data.sections)) {
-                    newQuestionnaire.sections = data.sections.map((section) => {
-                        // Ensure section has an id (use existing or generate new)
-                        const sectionId = section.id || uuidv4();
+                    console.log(`Processing ${data.sections.length} sections`);
 
-                        // Create base section object
-                        const newSection = {
-                            id: sectionId,
-                            title:
-                                section.title ||
-                                `Seksi ${data.sections.indexOf(section) + 1}`,
-                            description: section.description || "",
-                            questions: [],
-                        };
-
-                        // Process section settings if available
-                        if (section.settings) {
-                            const sectionSettings =
-                                typeof section.settings === "string"
-                                    ? JSON.parse(section.settings)
-                                    : section.settings;
-
-                            // Add settings to section
-                            newSection.settings = sectionSettings;
-                        }
-
-                        // Process questions
-                        if (
-                            section.questions &&
-                            Array.isArray(section.questions)
-                        ) {
-                            newSection.questions = section.questions.map(
-                                (question) => {
-                                    // Ensure question has correct type format
-                                    // Map backend question_type to frontend type if needed
-                                    const questionType =
-                                        question.type ||
-                                        (question.question_type
-                                            ? this.mapQuestionType(
-                                                  question.question_type
-                                              )
-                                            : "short-text");
-
-                                    // Create base question
-                                    const newQuestion = {
-                                        id: question.id || uuidv4(),
-                                        type: questionType,
-                                        text:
-                                            question.text ||
-                                            question.title ||
-                                            "Untitled Question",
-                                        helpText:
-                                            question.helpText ||
-                                            question.description ||
-                                            "",
-                                        required:
-                                            question.required ||
-                                            question.is_required ||
-                                            false,
-                                    };
-
-                                    // Process question settings
-                                    if (question.settings) {
-                                        const questionSettings =
-                                            typeof question.settings ===
-                                            "string"
-                                                ? JSON.parse(question.settings)
-                                                : question.settings;
-
-                                        // Add settings to question
-                                        Object.assign(
-                                            newQuestion,
-                                            questionSettings
-                                        );
-                                    }
-
-                                    // Process options for choice-based questions
-                                    if (
-                                        question.options &&
-                                        Array.isArray(question.options)
-                                    ) {
-                                        newQuestion.options =
-                                            question.options.map((option) => ({
-                                                id: option.id || uuidv4(),
-                                                text:
-                                                    option.text ||
-                                                    option.title ||
-                                                    option.label ||
-                                                    "Option",
-                                                value:
-                                                    option.value ||
-                                                    option.text ||
-                                                    option.title ||
-                                                    option.label ||
-                                                    "Option",
-                                            }));
-                                    }
-
-                                    // Special handling for specific question types
-                                    this.specialHandlingForQuestionType(
-                                        newQuestion
-                                    );
-
-                                    return newQuestion;
-                                }
+                    newQuestionnaire.sections = data.sections.map(
+                        (section, index) => {
+                            console.log(
+                                `Processing section #${index}:`,
+                                section
                             );
-                        }
 
-                        return newSection;
-                    });
+                            // Ensure section has an id (use existing or generate new)
+                            const sectionId = section.id || uuidv4();
+
+                            // Create base section object
+                            const newSection = {
+                                id: sectionId,
+                                title:
+                                    section.title ||
+                                    `Seksi ${
+                                        data.sections.indexOf(section) + 1
+                                    }`,
+                                description: section.description || "",
+                                questions: [],
+                            };
+
+                            // Process section settings if available
+                            if (section.settings) {
+                                const sectionSettings =
+                                    typeof section.settings === "string"
+                                        ? JSON.parse(section.settings)
+                                        : section.settings;
+
+                                // Add settings to section
+                                newSection.settings = sectionSettings;
+                            }
+
+                            // Process questions
+                            if (
+                                section.questions &&
+                                Array.isArray(section.questions)
+                            ) {
+                                console.log(
+                                    `Section ${sectionId} has ${section.questions.length} questions`
+                                );
+
+                                newSection.questions = section.questions.map(
+                                    (question, qIndex) => {
+                                        console.log(
+                                            `Processing question #${qIndex}:`,
+                                            question
+                                        );
+
+                                        // Ensure question has correct type format
+                                        // Map backend question_type to frontend type if needed
+                                        let questionType =
+                                            question.type ||
+                                            (question.question_type
+                                                ? this.mapFrontendQuestionType(
+                                                      question.question_type
+                                                  )
+                                                : "short-text");
+
+                                        console.log(
+                                            `Question type mapped from ${
+                                                question.question_type ||
+                                                question.type
+                                            } to ${questionType}`
+                                        );
+
+                                        // Create base question
+                                        const newQuestion = {
+                                            id: question.id || uuidv4(),
+                                            type: questionType,
+                                            text:
+                                                question.text ||
+                                                question.title ||
+                                                "Untitled Question",
+                                            helpText:
+                                                question.helpText ||
+                                                question.description ||
+                                                "",
+                                            required:
+                                                question.required ||
+                                                question.is_required ||
+                                                false,
+                                        };
+
+                                        // Process question settings
+                                        if (question.settings) {
+                                            try {
+                                                const questionSettings =
+                                                    typeof question.settings ===
+                                                    "string"
+                                                        ? JSON.parse(
+                                                              question.settings
+                                                          )
+                                                        : question.settings;
+
+                                                // Add settings to question
+                                                Object.assign(
+                                                    newQuestion,
+                                                    questionSettings
+                                                );
+
+                                                console.log(
+                                                    `Applied settings to question #${qIndex}`
+                                                );
+                                            } catch (error) {
+                                                console.error(
+                                                    `Error parsing question settings for question #${qIndex}:`,
+                                                    error
+                                                );
+                                            }
+                                        }
+
+                                        // Process options for choice-based questions
+                                        if (
+                                            question.options &&
+                                            Array.isArray(question.options)
+                                        ) {
+                                            console.log(
+                                                `Question #${qIndex} has ${question.options.length} options`
+                                            );
+
+                                            newQuestion.options =
+                                                question.options.map(
+                                                    (option) => ({
+                                                        id:
+                                                            option.id ||
+                                                            uuidv4(),
+                                                        text:
+                                                            option.text ||
+                                                            option.title ||
+                                                            option.label ||
+                                                            "Option",
+                                                        value:
+                                                            option.value ||
+                                                            option.text ||
+                                                            option.title ||
+                                                            option.label ||
+                                                            "Option",
+                                                    })
+                                                );
+                                        } else if (
+                                            [
+                                                "radio",
+                                                "checkbox",
+                                                "dropdown",
+                                            ].includes(questionType)
+                                        ) {
+                                            // Create default options for choice-based questions if none provided
+                                            console.log(
+                                                `Creating default options for ${questionType} question`
+                                            );
+                                            newQuestion.options = [
+                                                {
+                                                    id: uuidv4(),
+                                                    text: "Opsi 1",
+                                                    value: "option_1",
+                                                },
+                                                {
+                                                    id: uuidv4(),
+                                                    text: "Opsi 2",
+                                                    value: "option_2",
+                                                },
+                                                {
+                                                    id: uuidv4(),
+                                                    text: "Opsi 3",
+                                                    value: "option_3",
+                                                },
+                                            ];
+                                        }
+
+                                        // Special handling for specific question types
+                                        this.specialHandlingForQuestionType(
+                                            newQuestion
+                                        );
+
+                                        return newQuestion;
+                                    }
+                                );
+                            } else {
+                                console.warn(
+                                    `Section ${sectionId} has no questions or questions is not an array`
+                                );
+                            }
+
+                            return newSection;
+                        }
+                    );
+                } else {
+                    console.warn(
+                        "Questionnaire has no sections or sections is not an array"
+                    );
+                    // Create a default section if none exists
+                    newQuestionnaire.sections = [
+                        {
+                            id: uuidv4(),
+                            title: "Seksi 1",
+                            description: "",
+                            questions: [],
+                        },
+                    ];
                 }
 
                 // Update state
@@ -1536,6 +1640,34 @@ export const useQuestionnaireStore = defineStore("questionnaire", {
             }
 
             return question;
+        },
+
+        /**
+         * Maps backend question types to frontend question types
+         *
+         * @param {string} backendType - The question type from the backend
+         * @returns {string} - The corresponding frontend question type
+         */
+        mapFrontendQuestionType(backendType) {
+            const typeMap = {
+                text: "short-text",
+                textarea: "long-text",
+                radio: "radio",
+                checkbox: "checkbox",
+                dropdown: "dropdown",
+                rating: "rating",
+                date: "date",
+                file: "file-upload",
+                matrix: "matrix",
+                likert: "likert",
+                "yes-no": "yes-no",
+                slider: "slider",
+                email: "email",
+                phone: "phone",
+                number: "number",
+            };
+
+            return typeMap[backendType] || "short-text";
         },
     },
 });

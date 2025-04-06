@@ -259,16 +259,73 @@ class QuestionnaireController extends Controller
         abort_if(!$questionnaire, 404, 'Kuesioner tidak ditemukan');
         
         // Load sections with questions and options for complete data structure
-        $questionnaire->load(['sections.questions.options']);
+        $questionnaire->load(['sections' => function($query) {
+            $query->orderBy('order');
+        }, 'sections.questions' => function($query) {
+            $query->orderBy('order');
+        }, 'sections.questions.options' => function($query) {
+            $query->orderBy('order');
+        }]);
+        
+        // Ensure we have the latest data after eager loading
+        $questionnaire->refresh();
+        
+        // Debug information
+        Log::debug('Questionnaire data structure for edit page', [
+            'id' => $questionnaire->id,
+            'sections_count' => $questionnaire->sections->count(),
+            'has_settings' => !empty($questionnaire->settings),
+            'has_questionnaire_json' => !empty($questionnaire->questionnaire_json)
+        ]);
+        
+        // For each section, log the questions count
+        foreach ($questionnaire->sections as $index => $section) {
+            Log::debug("Section #{$index} data", [
+                'id' => $section->id,
+                'title' => $section->title,
+                'questions_count' => $section->questions->count()
+            ]);
+        }
         
         // If questionnaire_json is available and complete, use it as it's more consistent with the frontend structure
         if (!empty($questionnaire->questionnaire_json)) {
-            $questionnaire = $questionnaire->questionnaire_json;
+            // Make sure questionnaire_json includes all sections and questions
+            $jsonData = $questionnaire->questionnaire_json;
+            
+            // Verify if JSON has sections
+            if (empty($jsonData['sections']) && $questionnaire->sections->isNotEmpty()) {
+                Log::warning('questionnaire_json does not contain sections data, regenerating JSON');
+                $questionnaire->storeAsJson();
+                $questionnaire->refresh();
+                $jsonData = $questionnaire->questionnaire_json;
+            }
+            
+            // Debug questionnaire_json structure
+            Log::debug('Using questionnaire_json structure', [
+                'has_sections' => !empty($jsonData['sections']),
+                'sections_count' => !empty($jsonData['sections']) ? count($jsonData['sections']) : 0,
+                'first_section' => !empty($jsonData['sections']) ? (isset($jsonData['sections'][0]) ? json_encode($jsonData['sections'][0]) : 'Empty array') : 'N/A'
+            ]);
+            
+            $questionnaire = $jsonData;
         } else {
-            // Ensure we have a properly formatted data structure for the frontend
+            // Create a properly formatted data structure for the frontend
             $questionnaire->storeAsJson();
             $questionnaire->refresh();
+            
+            // Debug the newly created JSON structure
+            Log::debug('Created new questionnaire_json structure', [
+                'has_sections' => !empty($questionnaire->questionnaire_json['sections']),
+                'sections_count' => !empty($questionnaire->questionnaire_json['sections']) ? 
+                    count($questionnaire->questionnaire_json['sections']) : 0
+            ]);
+            
             $questionnaire = $questionnaire->questionnaire_json;
+        }
+        
+        // Final verification of data structure
+        if (empty($questionnaire['sections'])) {
+            Log::error('No sections data available for questionnaire', ['id' => $id]);
         }
         
         return view('questionnaire.edit', compact('questionnaire'));

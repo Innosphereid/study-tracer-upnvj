@@ -117,12 +117,39 @@ class Questionnaire extends Model
     /**
      * Store the complete questionnaire structure as JSON.
      *
+     * This method creates a comprehensive JSON representation of the questionnaire,
+     * including all sections, questions, and options. The JSON is stored in the
+     * questionnaire_json field for efficient access by frontend components.
+     *
      * @return void
      */
     public function storeAsJson(): void
     {
-        // Load sections with questions and options
-        $this->load(['sections.questions.options']);
+        // First, ensure we have the latest data
+        $this->refresh();
+        
+        // Load sections with questions and options, ordering everything correctly
+        $this->load([
+            'sections' => function($query) {
+                $query->orderBy('order');
+            },
+            'sections.questions' => function($query) {
+                $query->orderBy('order');
+            },
+            'sections.questions.options' => function($query) {
+                $query->orderBy('order');
+            }
+        ]);
+        
+        // Parse settings to ensure it's an array
+        $settings = $this->settings;
+        if (is_string($settings)) {
+            $settings = json_decode($settings, true);
+        }
+        
+        if (empty($settings)) {
+            $settings = [];
+        }
         
         // Create a complete representation
         $jsonData = [
@@ -133,13 +160,207 @@ class Questionnaire extends Model
             'status' => $this->status,
             'start_date' => $this->start_date,
             'end_date' => $this->end_date,
-            'settings' => $this->settings,
-            'sections' => $this->sections->toArray()
+            'settings' => $settings,
+            'sections' => []
         ];
+        
+        // Process sections, ensuring they have all required data
+        foreach ($this->sections as $section) {
+            $sectionData = [
+                'id' => $section->id,
+                'title' => $section->title,
+                'description' => $section->description,
+                'order' => $section->order,
+                'questions' => []
+            ];
+            
+            // Process section settings
+            if (!empty($section->settings)) {
+                $sectionSettings = $section->settings;
+                if (is_string($sectionSettings)) {
+                    $sectionSettings = json_decode($sectionSettings, true);
+                }
+                $sectionData['settings'] = $sectionSettings;
+            }
+            
+            // Process questions
+            foreach ($section->questions as $question) {
+                $questionData = [
+                    'id' => $question->id,
+                    'type' => $this->mapQuestionType($question->question_type),
+                    'question_type' => $question->question_type,
+                    'title' => $question->title,
+                    'text' => $question->title, // Duplicate for frontend compatibility
+                    'description' => $question->description,
+                    'helpText' => $question->description, // Duplicate for frontend compatibility
+                    'is_required' => (bool)$question->is_required,
+                    'required' => (bool)$question->is_required, // Duplicate for frontend compatibility
+                    'order' => $question->order,
+                    'options' => []
+                ];
+                
+                // Process question settings
+                if (!empty($question->settings)) {
+                    $questionSettings = $question->settings;
+                    if (is_string($questionSettings)) {
+                        $questionSettings = json_decode($questionSettings, true);
+                    }
+                    $questionData['settings'] = $questionSettings;
+                    
+                    // Apply specific settings to the question root for frontend compatibility
+                    if (is_array($questionSettings)) {
+                        foreach ($questionSettings as $key => $value) {
+                            if (!isset($questionData[$key])) {
+                                $questionData[$key] = $value;
+                            }
+                        }
+                    }
+                }
+                
+                // Process options (if any)
+                foreach ($question->options as $option) {
+                    $optionData = [
+                        'id' => $option->id,
+                        'text' => $option->label,
+                        'value' => $option->value,
+                        'order' => $option->order
+                    ];
+                    
+                    $questionData['options'][] = $optionData;
+                }
+                
+                // Add special properties based on question type
+                $this->addTypeSpecificProperties($questionData);
+                
+                $sectionData['questions'][] = $questionData;
+            }
+            
+            $jsonData['sections'][] = $sectionData;
+        }
         
         // Store the JSON representation
         $this->questionnaire_json = $jsonData;
         $this->save();
+    }
+    
+    /**
+     * Map database question types to frontend question types.
+     *
+     * @param string $dbType The database question type
+     * @return string The frontend question type
+     */
+    private function mapQuestionType(string $dbType): string
+    {
+        $typeMap = [
+            'text' => 'short-text',
+            'textarea' => 'long-text',
+            'radio' => 'radio',
+            'checkbox' => 'checkbox',
+            'dropdown' => 'dropdown',
+            'rating' => 'rating',
+            'date' => 'date',
+            'file' => 'file-upload',
+            'matrix' => 'matrix',
+            'likert' => 'likert',
+            'yes-no' => 'yes-no',
+            'slider' => 'slider'
+        ];
+        
+        return $typeMap[$dbType] ?? 'short-text';
+    }
+    
+    /**
+     * Add type-specific properties to question data based on its type.
+     *
+     * @param array &$questionData The question data to enhance
+     * @return void
+     */
+    private function addTypeSpecificProperties(array &$questionData): void
+    {
+        switch ($questionData['question_type']) {
+            case 'matrix':
+                if (!isset($questionData['rows'])) {
+                    $questionData['rows'] = [
+                        ['id' => 'row1', 'text' => 'Row 1'],
+                        ['id' => 'row2', 'text' => 'Row 2']
+                    ];
+                }
+                
+                if (!isset($questionData['columns'])) {
+                    $questionData['columns'] = [
+                        ['id' => 'col1', 'text' => 'Column 1'],
+                        ['id' => 'col2', 'text' => 'Column 2']
+                    ];
+                }
+                
+                if (!isset($questionData['matrixType'])) {
+                    $questionData['matrixType'] = 'radio';
+                }
+                break;
+                
+            case 'rating':
+                if (!isset($questionData['maxRating'])) {
+                    $questionData['maxRating'] = 5;
+                }
+                
+                if (!isset($questionData['labels'])) {
+                    $questionData['labels'] = [
+                        '1' => 'Sangat Buruk',
+                        '5' => 'Sangat Baik'
+                    ];
+                }
+                break;
+                
+            case 'likert':
+                if (!isset($questionData['statements']) && isset($questionData['text'])) {
+                    $questionData['statements'] = [
+                        ['id' => 'statement1', 'text' => $questionData['text']]
+                    ];
+                }
+                
+                if (!isset($questionData['scale'])) {
+                    $questionData['scale'] = [
+                        ['value' => 1, 'label' => 'Sangat Tidak Setuju'],
+                        ['value' => 2, 'label' => 'Tidak Setuju'],
+                        ['value' => 3, 'label' => 'Netral'],
+                        ['value' => 4, 'label' => 'Setuju'],
+                        ['value' => 5, 'label' => 'Sangat Setuju']
+                    ];
+                }
+                break;
+                
+            case 'file':
+                if (!isset($questionData['allowedTypes'])) {
+                    $questionData['allowedTypes'] = ['image/*', 'application/pdf'];
+                }
+                
+                if (!isset($questionData['maxSize'])) {
+                    $questionData['maxSize'] = 5; // 5MB
+                }
+                
+                if (!isset($questionData['maxFiles'])) {
+                    $questionData['maxFiles'] = 1;
+                }
+                break;
+                
+            case 'slider':
+                if (!isset($questionData['min'])) {
+                    $questionData['min'] = 0;
+                }
+                
+                if (!isset($questionData['max'])) {
+                    $questionData['max'] = 100;
+                }
+                
+                if (!isset($questionData['step'])) {
+                    $questionData['step'] = 1;
+                }
+                
+                if (!isset($questionData['showTicks'])) {
+                    $questionData['showTicks'] = true;
+                }
+                break;
+        }
     }
 
     /**
