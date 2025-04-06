@@ -157,162 +157,67 @@ class QuestionRepository extends BaseRepository implements QuestionRepositoryInt
     }
 
     /**
-     * @inheritDoc
+     * Set the options for a question. This will delete existing options and replace them with new ones.
+     *
+     * @param int $questionId
+     * @param array $options
+     * @return bool
      */
     public function setOptions(int $questionId, array $options): bool
     {
-        Log::info('Setting options for question', ['questionId' => $questionId, 'options_count' => count($options)]);
-        
-        /** @var Question|null $question */
-        $question = $this->find($questionId);
-        
-        if (!$question) {
-            Log::warning('Question not found when setting options', ['questionId' => $questionId]);
-            return false;
-        }
-        
-        // Only certain question types can have options
-        if (!$question->hasOptions()) {
-            Log::warning('Cannot set options for this question type', [
-                'questionId' => $questionId, 
-                'type' => $question->question_type
-            ]);
-            return false;
-        }
-        
-        // Begin transaction
-        return DB::transaction(function () use ($question, $options) {
+        try {
+            Log::info('Setting options for question', ['question_id' => $questionId, 'option_count' => count($options)]);
+            
+            // Get the question
+            $question = $this->find($questionId);
+            if (!$question) {
+                Log::error('Question not found', ['question_id' => $questionId]);
+                return false;
+            }
+            
+            // Begin transaction
+            DB::beginTransaction();
+            
             // Delete existing options
             $question->options()->delete();
             
-            Log::info('Deleted existing options, creating new options', [
-                'question_id' => $question->id,
-                'options_count' => count($options)
+            // Create new options
+            $order = 0;
+            foreach ($options as $option) {
+                // Allow for changing the order if specified
+                $optionOrder = $option['order'] ?? $order;
+                
+                // Clean option data - remove any temporary IDs (non-numeric or UUIDs)
+                $optionData = [
+                    'question_id' => $questionId,
+                    'value' => $option['value'] ?? 'Option',
+                    'label' => $option['label'] ?? $option['text'] ?? $option['value'] ?? 'Option',
+                    'order' => $optionOrder,
+                ];
+                
+                // Create new option
+                $question->options()->create($optionData);
+                
+                $order++;
+            }
+            
+            // Commit transaction
+            DB::commit();
+            
+            Log::info('Options set successfully', ['question_id' => $questionId, 'option_count' => count($options)]);
+            return true;
+        } catch (\Exception $e) {
+            // Rollback transaction on error
+            DB::rollBack();
+            
+            Log::error('Error setting options', [
+                'question_id' => $questionId,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
-            // Create new options
-            foreach ($options as $order => $option) {
-                // Normalize option data
-                $optionData = [];
-                
-                // Set order
-                $optionData['order'] = is_numeric($order) ? $order : (isset($option['order']) ? $option['order'] : 0);
-                
-                // Handle value field (required)
-                if (isset($option['value'])) {
-                    // If value follows the option_X pattern and we have text/label, use the text/label as value
-                    if (preg_match('/^option_\d+$/', $option['value'])) {
-                        if (isset($option['text'])) {
-                            $optionData['value'] = $option['text'];
-                        } elseif (isset($option['label'])) {
-                            $optionData['value'] = $option['label'];
-                        } else {
-                            $optionData['value'] = $option['value'];
-                        }
-                    } else {
-                        $optionData['value'] = $option['value'];
-                    }
-                } elseif (isset($option['id'])) {
-                    // Use id as fallback for value if needed
-                    $optionData['value'] = (string) $option['id']; 
-                } else {
-                    // Generate a simple value if none provided
-                    $optionData['value'] = 'option_' . ($order + 1);
-                }
-                
-                // Handle label field (required)
-                if (isset($option['label'])) {
-                    $optionData['label'] = $option['label'];
-                } elseif (isset($option['text'])) {
-                    $optionData['label'] = $option['text'];
-                } else {
-                    // Use value as fallback for label
-                    $optionData['label'] = $optionData['value'];
-                }
-                
-                // Additional fields can be included
-                foreach ($option as $key => $value) {
-                    if (!in_array($key, ['order', 'value', 'label', 'text']) && !is_null($value)) {
-                        $optionData[$key] = $value;
-                    }
-                }
-                
-                Log::info('Creating option', [
-                    'question_id' => $question->id,
-                    'option_data' => $optionData
-                ]);
-                
-                // Create the option
-                $question->options()->create($optionData);
-            }
-            
-            // Check for allowOther and allowNone flags in settings
-            $hasOtherOption = false;
-            $hasNoneOption = false;
-            $hasSelectAllOption = false;
-            $settings = null;
-            
-            if ($question->settings) {
-                if (is_string($question->settings)) {
-                    $settings = json_decode($question->settings, true);
-                } else {
-                    $settings = $question->settings;
-                }
-                
-                if (is_array($settings)) {
-                    $hasOtherOption = isset($settings['allowOther']) && $settings['allowOther'] === true;
-                    $hasNoneOption = isset($settings['allowNone']) && $settings['allowNone'] === true;
-                    $hasSelectAllOption = isset($settings['allowSelectAll']) && $settings['allowSelectAll'] === true;
-                }
-            }
-            
-            // Get the highest order
-            $maxOrder = count($options);
-            
-            // Add "Other" option if enabled
-            if ($hasOtherOption) {
-                Log::info('Adding "Other" option to database', [
-                    'question_id' => $question->id
-                ]);
-                
-                $question->options()->create([
-                    'order' => $maxOrder,
-                    'value' => 'Lainnya',
-                    'label' => 'Lainnya'
-                ]);
-                
-                $maxOrder++;
-            }
-            
-            // Add "None" option if enabled
-            if ($hasNoneOption) {
-                Log::info('Adding "None" option to database', [
-                    'question_id' => $question->id
-                ]);
-                
-                $question->options()->create([
-                    'order' => $maxOrder,
-                    'value' => 'Tidak Ada',
-                    'label' => 'Tidak Ada'
-                ]);
-                
-                $maxOrder++;
-            }
-            
-            // Add "Select All" option if this is a checkbox question and allowSelectAll is enabled
-            if ($question->question_type === 'checkbox' && $hasSelectAllOption) {
-                Log::info('Adding "Select All" option to database', [
-                    'question_id' => $question->id
-                ]);
-                
-                $question->options()->create([
-                    'order' => $maxOrder,
-                    'value' => 'Pilih Semua',
-                    'label' => 'Pilih Semua'
-                ]);
-            }
-            
-            return true;
-        });
+            return false;
+        }
     }
 } 

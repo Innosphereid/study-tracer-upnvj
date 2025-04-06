@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class QuestionnaireService implements QuestionnaireServiceInterface
 {
@@ -176,113 +177,82 @@ class QuestionnaireService implements QuestionnaireServiceInterface
                 return false;
             }
             
-            $updateData = [];
-            
-            // Update basic fields if provided
-            if (isset($data['title'])) {
-                $updateData['title'] = $data['title'];
-                Log::debug('Updating questionnaire title', ['title' => $data['title']]);
-            }
-            
-            if (isset($data['description'])) {
-                $updateData['description'] = $data['description'];
-            }
-            
-            if (isset($data['slug'])) {
-                $updateData['slug'] = $data['slug'];
-            }
-            
-            if (isset($data['status'])) {
-                $updateData['status'] = $data['status'];
-            }
-            
-            if (isset($data['start_date'])) {
-                $updateData['start_date'] = $data['start_date'];
-            }
-            
-            if (isset($data['end_date'])) {
-                $updateData['end_date'] = $data['end_date'];
-            }
-            
-            if (isset($data['is_template'])) {
-                $updateData['is_template'] = $data['is_template'];
-            }
-            
-            if (isset($data['settings'])) {
-                $updateData['settings'] = is_string($data['settings']) 
-                    ? $data['settings'] 
-                    : json_encode($data['settings'], JSON_UNESCAPED_SLASHES);
-                Log::debug('Updating questionnaire settings');
-            }
-            
-            // Update questionnaire with basic data first
-            if (!empty($updateData)) {
-                Log::debug('Updating questionnaire basic data', ['update_data' => $updateData]);
-                $updated = $this->questionnaireRepository->update($id, $updateData);
-                if (!$updated) {
-                    Log::error('Failed to update questionnaire basic data', ['id' => $id]);
-                    return false;
-                }
-            } else {
-                $updated = true;
-            }
-            
-            // Process sections and their questions if provided
-            if (isset($data['sections']) && is_array($data['sections'])) {
-                Log::info('Processing sections for update', [
-                    'questionnaire_id' => $id,
-                    'section_count' => count($data['sections'])
-                ]);
+            // Process data for update using transaction
+            return DB::transaction(function() use ($id, $data, $questionnaire) {
+                $updateData = [];
                 
-                // Log the first section structure to help with debugging
-                if (!empty($data['sections'])) {
-                    Log::debug('First section data structure', [
-                        'first_section' => $data['sections'][0],
-                        'has_questions' => isset($data['sections'][0]['questions']),
-                        'question_count' => isset($data['sections'][0]['questions']) ? count($data['sections'][0]['questions']) : 0
+                // Update basic fields if provided
+                if (isset($data['title'])) {
+                    $updateData['title'] = $data['title'];
+                    Log::debug('Updating questionnaire title', ['title' => $data['title']]);
+                }
+                
+                if (isset($data['description'])) {
+                    $updateData['description'] = $data['description'];
+                }
+                
+                if (isset($data['slug'])) {
+                    $updateData['slug'] = $data['slug'];
+                }
+                
+                if (isset($data['status'])) {
+                    $updateData['status'] = $data['status'];
+                }
+                
+                if (isset($data['start_date'])) {
+                    $updateData['start_date'] = $data['start_date'];
+                }
+                
+                if (isset($data['end_date'])) {
+                    $updateData['end_date'] = $data['end_date'];
+                }
+                
+                if (isset($data['is_template'])) {
+                    $updateData['is_template'] = $data['is_template'];
+                }
+                
+                if (isset($data['settings'])) {
+                    // Ensure settings is properly formatted as JSON
+                    if (is_array($data['settings'])) {
+                        $updateData['settings'] = json_encode($data['settings'], JSON_UNESCAPED_SLASHES);
+                    } else {
+                        $updateData['settings'] = $data['settings'];
+                    }
+                    Log::debug('Updating questionnaire settings');
+                }
+                
+                // Update questionnaire with basic data first
+                if (!empty($updateData)) {
+                    Log::debug('Updating questionnaire basic data', ['update_data' => $updateData]);
+                    $updated = $this->questionnaireRepository->update($id, $updateData);
+                    if (!$updated) {
+                        Log::error('Failed to update questionnaire basic data', ['id' => $id]);
+                        return false;
+                    }
+                } else {
+                    $updated = true;
+                }
+                
+                // Process sections and their questions if provided
+                if (isset($data['sections']) && is_array($data['sections'])) {
+                    Log::info('Processing sections for update', [
+                        'questionnaire_id' => $id,
+                        'section_count' => count($data['sections'])
                     ]);
                     
-                    // Log the first question if available
-                    if (isset($data['sections'][0]['questions']) && !empty($data['sections'][0]['questions'])) {
-                        Log::debug('First question data structure', [
-                            'first_question' => $data['sections'][0]['questions'][0]
-                        ]);
-                    }
+                    // Process and save sections, handling new and temporary IDs
+                    $this->processAndSaveSections($id, $data['sections']);
+                    
+                    // Update JSON representation
+                    $questionnaire->refresh();
+                    $questionnaire->storeAsJson();
                 }
                 
-                try {
-                    // Process sections and questions
-                    $this->processAndSaveSections($id, $data['sections']);
-                } catch (\Exception $e) {
-                    Log::error('Error processing sections', [
-                        'exception' => get_class($e),
-                        'message' => $e->getMessage(),
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'trace' => $e->getTraceAsString()
-                    ]);
-                    return false;
-                }
-            }
-            
-            // Always update the JSON representation after any changes
-            try {
-                $questionnaire->refresh();
-                $questionnaire->storeAsJson();
-                Log::info('Successfully updated JSON representation for questionnaire', ['id' => $id]);
-            } catch (\Exception $e) {
-                Log::error('Error updating JSON representation', [
-                    'exception' => get_class($e),
-                    'message' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine()
-                ]);
-                // Don't fail the entire update if only JSON storage fails
-            }
-            
-            return $updated;
+                return true;
+            });
         } catch (\Exception $e) {
-            Log::error('Unhandled exception in updateQuestionnaire', [
+            Log::error('Error updating questionnaire', [
+                'id' => $id,
                 'exception' => get_class($e),
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
@@ -1242,512 +1212,287 @@ class QuestionnaireService implements QuestionnaireServiceInterface
     /**
      * Normalize question data from frontend format to backend format
      * 
-     * @param array $questionData
-     * @param int $order
-     * @return array
+     * This method handles the conversion from frontend Vue component structure
+     * to the format expected by the database models, dealing with different field
+     * names and ensuring correct data types.
+     *
+     * @param array $questionData Frontend question data
+     * @param int $order The order position of the question
+     * @return array Normalized question data for the backend
      */
     private function normalizeQuestionData(array $questionData, int $order): array
     {
-        // Log the raw data coming in to help with debugging
-        Log::debug('Normalizing question data', [
-            'raw_data' => $questionData,
-            'order' => $order,
-            'id_type' => isset($questionData['id']) ? gettype($questionData['id']) : 'not set',
-            'id_value' => isset($questionData['id']) ? $questionData['id'] : 'not set'
-        ]);
-        
         $result = [
             'order' => $order
         ];
         
-        // Handle ID - only take numeric IDs, ignore UUIDs from frontend
-        if (isset($questionData['id'])) {
-            // Check if it's a numeric ID (from database)
-            if (is_numeric($questionData['id'])) {
-                $result['id'] = $questionData['id'];
-                Log::debug('Using existing numeric ID', ['id' => $questionData['id']]);
-            } else {
-                // It's a UUID or other temporary ID - log but don't include
-                Log::debug('Ignoring temporary ID', ['id' => $questionData['id']]);
-            }
+        // Log the input data for debugging
+        Log::debug('Normalizing question data', [
+            'question_data_keys' => array_keys($questionData),
+            'has_id' => isset($questionData['id']),
+            'has_type' => isset($questionData['type']) || isset($questionData['question_type']),
+            'type' => isset($questionData['type']) ? $questionData['type'] : (isset($questionData['question_type']) ? $questionData['question_type'] : 'unknown')
+        ]);
+        
+        // Copy ID if provided and it's numeric (valid database ID)
+        if (isset($questionData['id']) && is_numeric($questionData['id'])) {
+            $result['id'] = (int)$questionData['id'];
         }
         
-        // Handle question type
-        if (isset($questionData['question_type'])) {
+        // Map question type from frontend to backend
+        if (isset($questionData['type'])) {
+            $result['question_type'] = $this->mapBackendQuestionType($questionData['type']);
+        } elseif (isset($questionData['question_type'])) {
             $result['question_type'] = $questionData['question_type'];
-            Log::debug('Using question_type from data', ['type' => $questionData['question_type']]);
-        } elseif (isset($questionData['type'])) {
-            // Map Vue component question types to database question types
-            $typeMap = [
-                'short-text' => 'text',
-                'long-text' => 'textarea',
-                'radio' => 'radio',
-                'checkbox' => 'checkbox',
-                'dropdown' => 'dropdown',
-                'rating' => 'rating',
-                'date' => 'date',
-                'file-upload' => 'file',
-                'matrix' => 'matrix',
-                'email' => 'text',
-                'phone' => 'text',
-                'number' => 'text',
-                'yes-no' => 'yes-no',
-                'slider' => 'slider',
-                'ranking' => 'ranking',
-                'likert' => 'likert'
-            ];
-            
-            $frontendType = $questionData['type'];
-            $result['question_type'] = isset($typeMap[$frontendType]) ? $typeMap[$frontendType] : 'text';
-            Log::debug('Mapped frontend type to backend type', [
-                'frontend_type' => $frontendType,
-                'backend_type' => $result['question_type']
-            ]);
         } else {
-            Log::warning('No question type provided, defaulting to text');
+            // Default to text if no type specified
             $result['question_type'] = 'text';
+            Log::warning('Question missing type, defaulting to text', [
+                'question_id' => $questionData['id'] ?? 'new',
+                'question_title' => $questionData['title'] ?? $questionData['text'] ?? 'Untitled'
+            ]);
         }
         
-        // Special handling for likert questions that might be stored as matrix
-        if (isset($questionData['settings'])) {
-            $settings = $questionData['settings'];
-            if (is_string($settings)) {
-                try {
-                    $decodedSettings = json_decode($settings, true);
-                    if (isset($decodedSettings['type']) && $decodedSettings['type'] === 'likert') {
-                        Log::info('Detected likert question stored as another type, fixing type');
-                        $result['question_type'] = 'likert';
-                    }
-                } catch (\Exception $e) {
-                    // Failed to decode, leave as is
-                    Log::warning('Failed to decode settings JSON', ['error' => $e->getMessage()]);
-                }
-            } elseif (is_array($settings) && isset($settings['type']) && $settings['type'] === 'likert') {
-                Log::info('Detected likert question from settings array, fixing type');
-                $result['question_type'] = 'likert';
-            }
-        }
-        
-        // Handle title/text
-        if (isset($questionData['title'])) {
-            $result['title'] = $questionData['title'];
-        } elseif (isset($questionData['text'])) {
+        // Map text or title field
+        if (isset($questionData['text'])) {
             $result['title'] = $questionData['text'];
+        } elseif (isset($questionData['title'])) {
+            $result['title'] = $questionData['title'];
         } else {
-            $result['title'] = 'Untitled Question'; // Provide a default
-            Log::warning('No title provided for question, using default');
+            $result['title'] = 'Untitled Question';
+            Log::warning('Question missing title/text, using default', [
+                'question_id' => $questionData['id'] ?? 'new'
+            ]);
         }
         
-        // Handle description/helpText
-        if (isset($questionData['description'])) {
-            $result['description'] = $questionData['description'];
-        } elseif (isset($questionData['helpText'])) {
+        // Map description or helpText field
+        if (isset($questionData['helpText'])) {
             $result['description'] = $questionData['helpText'];
-        }
-        
-        // Handle required
-        if (isset($questionData['is_required'])) {
-            $result['is_required'] = (bool)$questionData['is_required'];
-        } elseif (isset($questionData['required'])) {
-            $result['is_required'] = (bool)$questionData['required'];
+        } elseif (isset($questionData['description'])) {
+            $result['description'] = $questionData['description'];
         } else {
-            $result['is_required'] = false; // Default to not required
+            $result['description'] = '';
         }
         
-        // Handle options
+        // Map required field
+        if (isset($questionData['required'])) {
+            $result['is_required'] = (bool)$questionData['required'];
+        } elseif (isset($questionData['is_required'])) {
+            $result['is_required'] = (bool)$questionData['is_required'];
+        } else {
+            $result['is_required'] = false;
+        }
+
+        // Handle options for choice-based questions
         if (isset($questionData['options']) && is_array($questionData['options'])) {
-            $options = [];
-            foreach ($questionData['options'] as $optionOrder => $option) {
-                // Log option structure
-                Log::debug('Processing option', [
-                    'option_data' => $option,
-                    'option_order' => $optionOrder
-                ]);
+            $result['options'] = [];
+            foreach ($questionData['options'] as $i => $option) {
+                $newOption = [];
                 
-                $normalizedOption = [
-                    'order' => $optionOrder
-                ];
-                
-                // Handle option ID
+                // Only include ID if it's numeric (valid database ID)
                 if (isset($option['id']) && is_numeric($option['id'])) {
-                    $normalizedOption['id'] = $option['id'];
+                    $newOption['id'] = (int)$option['id'];
                 }
                 
-                // Handle value - ensure it's not empty
-                if (isset($option['value']) && !empty($option['value'])) {
-                    // If value follows the option_X pattern and we have text/label, use text/label as value
-                    if (preg_match('/^option_\d+$/', $option['value'])) {
-                        if (isset($option['text'])) {
-                            $normalizedOption['value'] = $option['text'];
-                        } elseif (isset($option['label'])) {
-                            $normalizedOption['value'] = $option['label'];
-                        } else {
-                            $normalizedOption['value'] = $option['value'];
-                        }
-                    } else {
-                        $normalizedOption['value'] = $option['value'];
-                    }
-                } elseif (isset($option['text'])) {
-                    // If no value but text exists, use that as the value
-                    $normalizedOption['value'] = $option['text'];
+                // Map option text/label & value
+                if (isset($option['text'])) {
+                    $newOption['label'] = $option['text'];
+                } elseif (isset($option['label'])) {
+                    $newOption['label'] = $option['label'];
+                } else {
+                    $newOption['label'] = "Option " . ($i + 1);
                 }
                 
-                // Handle label/text
-                if (isset($option['label'])) {
-                    $normalizedOption['label'] = $option['label'];
-                } elseif (isset($option['text'])) {
-                    $normalizedOption['label'] = $option['text'];
-                } elseif (isset($normalizedOption['value'])) {
-                    // If no label but value exists, use that as the label
-                    $normalizedOption['label'] = $normalizedOption['value'];
+                if (isset($option['value'])) {
+                    $newOption['value'] = $option['value'];
+                } else {
+                    $newOption['value'] = $newOption['label'];
                 }
                 
-                // Only add options that have at least a value or label
-                if (!empty($normalizedOption['value']) || !empty($normalizedOption['label'])) {
-                    $options[] = $normalizedOption;
-                }
+                // Set order
+                $newOption['order'] = $option['order'] ?? $i;
+                
+                $result['options'][] = $newOption;
             }
-            $result['options'] = $options;
         }
         
-        // Build clean settings object - avoiding nested settings
+        // Process settings into a format that can be stored in the database
         $settings = [];
         
-        // Primary settings that should be both in settings JSON and as columns
-        $primarySettings = [
-            'text' => 'text',
-            'helpText' => 'helpText',
-            'required' => 'required',
-            'type' => 'type'
+        // Collect specific question settings based on type
+        $result = $this->processQuestionTypeSettings($questionData, $result);
+        
+        return $result;
+    }
+
+    /**
+     * Maps frontend question types to backend database types
+     *
+     * @param string $frontendType The question type from the frontend
+     * @return string The corresponding backend/database question type
+     */
+    private function mapBackendQuestionType(string $frontendType): string
+    {
+        $typeMap = [
+            'short-text' => 'text',
+            'long-text' => 'textarea',
+            'radio' => 'radio',
+            'checkbox' => 'checkbox',
+            'dropdown' => 'dropdown',
+            'rating' => 'rating',
+            'date' => 'date',
+            'file-upload' => 'file',
+            'matrix' => 'matrix',
+            'likert' => 'likert',
+            'yes-no' => 'yes-no',
+            'slider' => 'slider',
+            'ranking' => 'ranking',
+            'email' => 'text',
+            'phone' => 'text',
+            'number' => 'text'
         ];
         
-        // First, copy essential fields to the settings
-        foreach ($primarySettings as $frontendField => $settingsField) {
-            if (isset($questionData[$frontendField])) {
-                $settings[$settingsField] = $questionData[$frontendField];
-            }
-        }
+        return $typeMap[$frontendType] ?? 'text';
+    }
+    
+    /**
+     * Process question type specific settings and add them to the result
+     *
+     * @param array $questionData Frontend question data 
+     * @param array $result The result array being built
+     * @return array Updated result with settings
+     */
+    private function processQuestionTypeSettings(array $questionData, array $result): array
+    {
+        $settings = [];
         
-        // Then add the frontend type to settings
+        // Add the frontend type to settings if it exists
         if (isset($questionData['type'])) {
             $settings['type'] = $questionData['type'];
         }
         
-        // Copy specific field sets based on question type
-        if (isset($questionData['type'])) {
-            switch ($questionData['type']) {
-                case 'radio':
-                case 'checkbox':
-                case 'dropdown':
-                    // These question types have options and option-related settings
-                    $optionFieldSets = ['options', 'allowOther', 'allowNone', 'optionsOrder', 'defaultValue'];
-                    foreach ($optionFieldSets as $field) {
-                        if (isset($questionData[$field])) {
-                            $settings[$field] = $questionData[$field];
-                        }
-                    }
-                    break;
-                    
-                case 'rating':
-                    // Rating specific settings
-                    $ratingFieldSets = ['maxRating', 'showValues', 'icon', 'defaultValue', 'step'];
-                    foreach ($ratingFieldSets as $field) {
-                        if (isset($questionData[$field])) {
-                            $settings[$field] = $questionData[$field];
-                        }
-                    }
-                    break;
-                    
-                case 'matrix':
-                    // Matrix specific settings
-                    $matrixFieldSets = ['matrixType', 'rows', 'columns'];
-                    foreach ($matrixFieldSets as $field) {
-                        if (isset($questionData[$field])) {
-                            $settings[$field] = $questionData[$field];
-                        }
-                    }
-                    break;
-                    
-                case 'file-upload':
-                    // File upload specific settings
-                    $fileFieldSets = ['allowedTypes', 'maxFiles', 'maxSize'];
-                    foreach ($fileFieldSets as $field) {
-                        if (isset($questionData[$field])) {
-                            $settings[$field] = $questionData[$field];
-                        }
-                    }
-                    break;
-                    
-                case 'short-text':
-                case 'long-text':
-                case 'email':
-                case 'phone':
-                case 'number':
-                    // Text input specific settings
-                    $textFieldSets = ['placeholder', 'defaultValue', 'minLength', 'maxLength', 'pattern'];
-                    foreach ($textFieldSets as $field) {
-                        if (isset($questionData[$field])) {
-                            $settings[$field] = $questionData[$field];
-                        }
-                    }
-                    break;
-                    
-                case 'date':
-                    // Date specific settings
-                    $dateFieldSets = ['format', 'min', 'max', 'defaultValue'];
-                    foreach ($dateFieldSets as $field) {
-                        if (isset($questionData[$field])) {
-                            $settings[$field] = $questionData[$field];
-                        }
-                    }
-                    break;
-                
-                case 'yes-no':
-                    // Yes-No specific settings
-                    $yesNoFieldSets = ['yesLabel', 'noLabel', 'defaultValue'];
-                    foreach ($yesNoFieldSets as $field) {
-                        if (isset($questionData[$field])) {
-                            $settings[$field] = $questionData[$field];
-                        }
-                    }
-                    
-                    // Ensure default labels if not provided
-                    if (!isset($settings['yesLabel'])) {
-                        $settings['yesLabel'] = 'Ya';
-                    }
-                    if (!isset($settings['noLabel'])) {
-                        $settings['noLabel'] = 'Tidak';
-                    }
-                    
-                    // Add explicit type field
-                    $settings['type'] = 'yes-no';
-                    
-                    Log::info('Normalized yes-no question data', [
-                        'yes_label' => $settings['yesLabel'], 
-                        'no_label' => $settings['noLabel'],
-                        'question_type' => $result['question_type']
-                    ]);
-                    break;
-                
-                case 'slider':
-                    // Slider specific settings
-                    $sliderFieldSets = ['min', 'max', 'step', 'showTicks', 'showLabels', 'labels', 'defaultValue'];
-                    foreach ($sliderFieldSets as $field) {
-                        if (isset($questionData[$field])) {
-                            $settings[$field] = $questionData[$field];
-                        }
-                    }
-                    
-                    // Ensure required values
-                    if (!isset($settings['min'])) {
-                        $settings['min'] = 0;
-                    }
-                    if (!isset($settings['max'])) {
-                        $settings['max'] = 100;
-                    }
-                    if (!isset($settings['step'])) {
-                        $settings['step'] = 1;
-                    }
-                    if (!isset($settings['showTicks'])) {
-                        $settings['showTicks'] = true;
-                    }
-                    if (!isset($settings['showLabels'])) {
-                        $settings['showLabels'] = true;
-                    }
-                    if (!isset($settings['labels'])) {
-                        $settings['labels'] = [
-                            $settings['min'] => 'Minimum',
-                            $settings['max'] => 'Maximum'
-                        ];
-                    }
-                    
-                    // Add explicit type field
-                    $settings['type'] = 'slider';
-                    
-                    Log::info('Normalized slider question data', [
-                        'min' => $settings['min'],
-                        'max' => $settings['max'],
-                        'step' => $settings['step'],
-                        'question_type' => $result['question_type']
-                    ]);
-                    break;
-                
-                case 'ranking':
-                    // Ranking specific settings
-                    $rankingFieldSets = ['options'];
-                    foreach ($rankingFieldSets as $field) {
-                        if (isset($questionData[$field])) {
-                            $settings[$field] = $questionData[$field];
-                        }
-                    }
-                    
-                    // Ensure we have options
-                    if (!isset($settings['options']) || !is_array($settings['options']) || empty($settings['options'])) {
-                        $settings['options'] = [
-                            ['id' => 'item-' . uniqid(), 'text' => 'Item 1'],
-                            ['id' => 'item-' . uniqid(), 'text' => 'Item 2'],
-                            ['id' => 'item-' . uniqid(), 'text' => 'Item 3']
-                        ];
-                    }
-                    
-                    // Add explicit type field
-                    $settings['type'] = 'ranking';
-                    
-                    Log::info('Normalized ranking question data', [
-                        'options_count' => count($settings['options']),
-                        'question_type' => $result['question_type']
-                    ]);
-                    break;
-                    
-                case 'likert':
-                    // Likert specific settings
-                    $likertFieldSets = ['scale', 'statements', 'leftLabel', 'rightLabel'];
-                    foreach ($likertFieldSets as $field) {
-                        if (isset($questionData[$field])) {
-                            $settings[$field] = $questionData[$field];
-                        }
-                    }
-                    
-                    // Ensure we have a valid scale
-                    if (!isset($settings['scale']) || !is_array($settings['scale']) || empty($settings['scale'])) {
-                        $settings['scale'] = [
-                            ['value' => 1, 'label' => 'Sangat Tidak Setuju'],
-                            ['value' => 2, 'label' => 'Tidak Setuju'],
-                            ['value' => 3, 'label' => 'Netral'],
-                            ['value' => 4, 'label' => 'Setuju'],
-                            ['value' => 5, 'label' => 'Sangat Setuju']
-                        ];
-                    }
-                    
-                    // Ensure we have at least one statement
-                    if (!isset($settings['statements']) || !is_array($settings['statements']) || empty($settings['statements'])) {
-                        $settings['statements'] = [
-                            [
-                                'id' => 'statement-' . uniqid(),
-                                'text' => $result['title'] ?? 'Default Statement'
-                            ]
-                        ];
-                    }
-                    
-                    // Add explicit type field
-                    $settings['type'] = 'likert';
-                    
-                    Log::info('Normalized likert question data', [
-                        'likert_scale_count' => count($settings['scale']),
-                        'likert_statements_count' => count($settings['statements']),
-                        'question_type' => $result['question_type']
-                    ]);
-                    break;
-            }
-        }
+        // Process specific settings based on question type
+        $type = $questionData['type'] ?? $questionData['question_type'] ?? 'text';
         
-        // Now go through all remaining properties 
-        foreach ($questionData as $key => $value) {
-            // Skip fields that we've already handled or that are reserved backend column names
-            $reservedFields = [
-                'id', 'section_id', 'questionnaire_id', 'question_type', 
-                'title', 'description', 'is_required', 'order', 'options', 
-                'created_at', 'updated_at', 'settings' // Make sure to exclude existing 'settings'
-            ];
-            
-            if (!in_array($key, $reservedFields) && !isset($settings[$key]) && !is_null($value)) {
-                $settings[$key] = $value;
-            }
-        }
-
-        // Make sure settings doesn't have a 'settings' property to avoid nesting
-        if (isset($settings['settings'])) {
-            // If settings contains a settings object, merge it up one level
-            if (is_array($settings['settings'])) {
-                foreach ($settings['settings'] as $key => $value) {
-                    if (!isset($settings[$key])) {
-                        $settings[$key] = $value;
+        switch ($type) {
+            case 'radio':
+            case 'checkbox':
+            case 'dropdown':
+                // Options-based question settings
+                foreach (['allowOther', 'allowNone', 'optionsOrder', 'defaultValue'] as $field) {
+                    if (isset($questionData[$field])) {
+                        $settings[$field] = $questionData[$field];
                     }
                 }
-            }
-            // Remove the nested settings property
-            unset($settings['settings']);
-        }
-        
-        // Check if we received settings directly
-        if (isset($questionData['settings'])) {
-            // If it's a string, try to decode it
-            if (is_string($questionData['settings'])) {
-                try {
-                    $decodedSettings = json_decode($questionData['settings'], true);
-                    if (is_array($decodedSettings)) {
-                        // Check if the decoded settings has a 'settings' property
-                        if (isset($decodedSettings['settings'])) {
-                            if (is_array($decodedSettings['settings'])) {
-                                // Merge up one level
-                                foreach ($decodedSettings['settings'] as $key => $value) {
-                                    if (!isset($settings[$key])) {
-                                        $settings[$key] = $value;
-                                    }
-                                }
-                            } elseif (is_string($decodedSettings['settings'])) {
-                                // It's nested another level, try to decode again
-                                try {
-                                    $doubleDecoded = json_decode($decodedSettings['settings'], true);
-                                    if (is_array($doubleDecoded)) {
-                                        foreach ($doubleDecoded as $key => $value) {
-                                            if (!isset($settings[$key])) {
-                                                $settings[$key] = $value;
-                                            }
-                                        }
-                                    }
-                                } catch (\Exception $e) {
-                                    Log::warning('Failed to decode nested settings string', [
-                                        'error' => $e->getMessage()
-                                    ]);
-                                }
-                            }
-                        } else {
-                            // Just merge the decoded settings
-                            foreach ($decodedSettings as $key => $value) {
-                                if (!isset($settings[$key])) {
-                                    $settings[$key] = $value;
-                                }
-                            }
-                        }
-                    }
-                } catch (\Exception $e) {
-                    Log::warning('Failed to decode settings string', [
-                        'error' => $e->getMessage()
-                    ]);
-                }
-            } elseif (is_array($questionData['settings'])) {
-                // If it's already an array, merge properties
-                foreach ($questionData['settings'] as $key => $value) {
-                    if (!isset($settings[$key]) && $key !== 'settings') {
-                        $settings[$key] = $value;
+                break;
+                
+            case 'rating':
+                // Rating specific settings
+                foreach (['maxRating', 'showValues', 'icon', 'defaultValue', 'step'] as $field) {
+                    if (isset($questionData[$field])) {
+                        $settings[$field] = $questionData[$field];
                     }
                 }
-            }
+                break;
+                
+            case 'matrix':
+                // Matrix specific settings
+                foreach (['matrixType', 'rows', 'columns'] as $field) {
+                    if (isset($questionData[$field])) {
+                        $settings[$field] = $questionData[$field];
+                    }
+                }
+                break;
+                
+            case 'file-upload':
+                // File upload specific settings
+                foreach (['allowedTypes', 'maxFiles', 'maxSize'] as $field) {
+                    if (isset($questionData[$field])) {
+                        $settings[$field] = $questionData[$field];
+                    }
+                }
+                break;
+                
+            case 'short-text':
+            case 'long-text':
+            case 'email':
+            case 'phone':
+            case 'number':
+                // Text input specific settings
+                foreach (['placeholder', 'defaultValue', 'minLength', 'maxLength', 'pattern'] as $field) {
+                    if (isset($questionData[$field])) {
+                        $settings[$field] = $questionData[$field];
+                    }
+                }
+                break;
+                
+            case 'date':
+                // Date specific settings
+                foreach (['format', 'min', 'max', 'defaultValue'] as $field) {
+                    if (isset($questionData[$field])) {
+                        $settings[$field] = $questionData[$field];
+                    }
+                }
+                break;
+                
+            case 'yes-no':
+                // Yes-No specific settings
+                foreach (['yesLabel', 'noLabel', 'defaultValue'] as $field) {
+                    if (isset($questionData[$field])) {
+                        $settings[$field] = $questionData[$field];
+                    }
+                }
+                
+                // Default labels
+                if (!isset($settings['yesLabel'])) {
+                    $settings['yesLabel'] = 'Ya';
+                }
+                if (!isset($settings['noLabel'])) {
+                    $settings['noLabel'] = 'Tidak';
+                }
+                break;
+                
+            case 'slider':
+                // Slider specific settings
+                foreach (['min', 'max', 'step', 'showTicks', 'showLabels', 'labels', 'defaultValue'] as $field) {
+                    if (isset($questionData[$field])) {
+                        $settings[$field] = $questionData[$field];
+                    }
+                }
+                
+                // Default values
+                if (!isset($settings['min'])) {
+                    $settings['min'] = 0;
+                }
+                if (!isset($settings['max'])) {
+                    $settings['max'] = 100;
+                }
+                if (!isset($settings['step'])) {
+                    $settings['step'] = 1;
+                }
+                break;
+                
+            case 'ranking':
+                // Ranking specific settings
+                if (isset($questionData['options'])) {
+                    $settings['options'] = $questionData['options'];
+                }
+                break;
+                
+            case 'likert':
+                // Likert specific settings
+                foreach (['scale', 'statements', 'leftLabel', 'rightLabel'] as $field) {
+                    if (isset($questionData[$field])) {
+                        $settings[$field] = $questionData[$field];
+                    }
+                }
+                break;
         }
         
+        // If we have settings, encode them to JSON
         if (!empty($settings)) {
             $result['settings'] = json_encode($settings, JSON_UNESCAPED_SLASHES);
-            Log::debug('Settings encoded for question', [
-                'settings_count' => count($settings),
-                'settings_keys' => array_keys($settings)
-            ]);
         }
-        
-        // Process file-upload specific settings
-        if ($questionData['question_type'] === 'file' || $questionData['question_type'] === 'file-upload') {
-            // Check if settings exist
-            if (isset($settings['allowedTypes']) && is_array($settings['allowedTypes'])) {
-                // Special handling for */* to ensure it's not escaped
-                if (in_array('*/*', $settings['allowedTypes'])) {
-                    Log::info('Normalizing question data with */* in allowedTypes');
-                    // Force to exactly ['*/*'] to prevent mixed types
-                    $settings['allowedTypes'] = ['*/*'];
-                }
-            }
-        }
-        
-        Log::debug('Normalized question data result', ['result' => $result]);
         
         return $result;
     }
