@@ -127,9 +127,9 @@ class ResponseController extends Controller
      * Get statistics for a questionnaire.
      *
      * @param int $questionnaireId
-     * @return JsonResponse
+     * @return View|JsonResponse
      */
-    public function statistics(int $questionnaireId): JsonResponse
+    public function statistics(int $questionnaireId)
     {
         Log::info('Getting statistics', ['questionnaireId' => $questionnaireId]);
         
@@ -141,6 +141,12 @@ class ResponseController extends Controller
         
         $statistics = $this->responseService->getQuestionnaireStatistics($questionnaireId);
         
-        return response()->json(['success' => true, 'statistics' => $statistics]);
+        // Check if the request expects JSON or HTML
+        if (request()->expectsJson() || request()->ajax()) {
+            return response()->json(['success' => true, 'statistics' => $statistics]);
+        }
+        
+        // Return the view for HTML requests
+        return view('questionnaire.results', compact('questionnaire', 'statistics'));
     }
 } 

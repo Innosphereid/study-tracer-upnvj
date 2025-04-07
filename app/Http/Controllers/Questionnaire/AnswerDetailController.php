@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Questionnaire;
 
-use App\Contracts\Repositories\AnswerDetailRepositoryInterface;
+use App\Contracts\Services\AnswerDetailServiceInterface;
+use App\Contracts\Services\QuestionnaireServiceInterface;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\AnswerDetailResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -12,109 +12,172 @@ use Illuminate\Support\Facades\Log;
 class AnswerDetailController extends Controller
 {
     /**
-     * @var AnswerDetailRepositoryInterface
+     * @var AnswerDetailServiceInterface
      */
-    protected $answerDetailRepository;
+    protected $answerDetailService;
+    
+    /**
+     * @var QuestionnaireServiceInterface
+     */
+    protected $questionnaireService;
     
     /**
      * AnswerDetailController constructor.
      *
-     * @param AnswerDetailRepositoryInterface $answerDetailRepository
+     * @param AnswerDetailServiceInterface $answerDetailService
+     * @param QuestionnaireServiceInterface $questionnaireService
      */
-    public function __construct(AnswerDetailRepositoryInterface $answerDetailRepository)
-    {
-        $this->answerDetailRepository = $answerDetailRepository;
+    public function __construct(
+        AnswerDetailServiceInterface $answerDetailService,
+        QuestionnaireServiceInterface $questionnaireService
+    ) {
+        $this->answerDetailService = $answerDetailService;
+        $this->questionnaireService = $questionnaireService;
     }
     
     /**
-     * Get all answers for a response.
+     * Get answer details by response ID.
      *
+     * @param Request $request
      * @param int $responseId
      * @return JsonResponse
      */
-    public function getByResponse(int $responseId): JsonResponse
+    public function getByResponse(Request $request, int $responseId): JsonResponse
     {
-        Log::info('Getting answer details for response', ['responseId' => $responseId]);
+        Log::info('Getting answer details by response', ['responseId' => $responseId]);
         
-        $answers = $this->answerDetailRepository->getByResponseId($responseId);
+        $answers = $this->answerDetailService->getByResponseId($responseId);
         
         return response()->json([
-            'status' => 'success',
-            'data' => AnswerDetailResource::collection($answers),
-            'meta' => [
-                'count' => $answers->count()
-            ]
+            'success' => true,
+            'data' => $answers
         ]);
     }
     
     /**
-     * Get all answers for a question.
+     * Get answer details by question ID.
      *
+     * @param Request $request
      * @param int $questionId
      * @return JsonResponse
      */
-    public function getByQuestion(int $questionId): JsonResponse
+    public function getByQuestion(Request $request, int $questionId): JsonResponse
     {
-        Log::info('Getting answer details for question', ['questionId' => $questionId]);
+        $questionnaireId = $request->input('questionnaireId');
+        $startDate = $request->input('start');
+        $endDate = $request->input('end');
         
-        $answers = $this->answerDetailRepository->getByQuestionId($questionId);
+        Log::info('Getting answer details by question', [
+            'questionId' => $questionId,
+            'questionnaireId' => $questionnaireId,
+            'startDate' => $startDate,
+            'endDate' => $endDate
+        ]);
+        
+        // Validate questionnaire ownership if needed
+        if ($questionnaireId) {
+            $questionnaire = $this->questionnaireService->getQuestionnaireById((int)$questionnaireId);
+            
+            if (!$questionnaire) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Questionnaire not found'
+                ], 404);
+            }
+        }
+        
+        // Apply date filters if provided
+        $filters = [];
+        if ($startDate) {
+            $filters['start_date'] = $startDate;
+        }
+        if ($endDate) {
+            $filters['end_date'] = $endDate;
+        }
+        if ($questionnaireId) {
+            $filters['questionnaire_id'] = (int)$questionnaireId;
+        }
+        
+        $answers = $this->answerDetailService->getByQuestionId($questionId, $filters);
         
         return response()->json([
-            'status' => 'success',
-            'data' => AnswerDetailResource::collection($answers),
-            'meta' => [
-                'count' => $answers->count()
-            ]
+            'success' => true,
+            'data' => $answers
         ]);
     }
     
     /**
-     * Get all answers for a questionnaire.
+     * Get answer details by questionnaire ID.
      *
+     * @param Request $request
      * @param int $questionnaireId
      * @return JsonResponse
      */
-    public function getByQuestionnaire(int $questionnaireId): JsonResponse
+    public function getByQuestionnaire(Request $request, int $questionnaireId): JsonResponse
     {
-        Log::info('Getting answer details for questionnaire', ['questionnaireId' => $questionnaireId]);
+        $startDate = $request->input('start');
+        $endDate = $request->input('end');
         
-        $answers = $this->answerDetailRepository->getByQuestionnaireId($questionnaireId);
+        Log::info('Getting answer details by questionnaire', [
+            'questionnaireId' => $questionnaireId,
+            'startDate' => $startDate,
+            'endDate' => $endDate
+        ]);
+        
+        // Validate questionnaire ownership if needed
+        $questionnaire = $this->questionnaireService->getQuestionnaireById($questionnaireId);
+        
+        if (!$questionnaire) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Questionnaire not found'
+            ], 404);
+        }
+        
+        // Apply date filters if provided
+        $filters = [];
+        if ($startDate) {
+            $filters['start_date'] = $startDate;
+        }
+        if ($endDate) {
+            $filters['end_date'] = $endDate;
+        }
+        
+        $answers = $this->answerDetailService->getByQuestionnaireId($questionnaireId, $filters);
         
         return response()->json([
-            'status' => 'success',
-            'data' => AnswerDetailResource::collection($answers),
-            'meta' => [
-                'count' => $answers->count()
-            ]
+            'success' => true,
+            'data' => $answers
         ]);
     }
     
     /**
-     * Get specific answer for a response and question.
+     * Get answer details by response ID and question ID.
      *
+     * @param Request $request
      * @param int $responseId
      * @param int $questionId
      * @return JsonResponse
      */
-    public function getByResponseAndQuestion(int $responseId, int $questionId): JsonResponse
+    public function getByResponseAndQuestion(Request $request, int $responseId, int $questionId): JsonResponse
     {
-        Log::info('Getting specific answer detail', [
+        Log::info('Getting answer details by response and question', [
             'responseId' => $responseId,
             'questionId' => $questionId
         ]);
         
-        $answer = $this->answerDetailRepository->getByResponseAndQuestionId($responseId, $questionId);
+        $answer = $this->answerDetailService->getByResponseAndQuestionId($responseId, $questionId);
         
         if (!$answer) {
             return response()->json([
-                'status' => 'error',
+                'success' => false,
                 'message' => 'Answer not found'
             ], 404);
         }
         
         return response()->json([
-            'status' => 'success',
-            'data' => new AnswerDetailResource($answer)
+            'success' => true,
+            'data' => $answer
         ]);
     }
 } 
