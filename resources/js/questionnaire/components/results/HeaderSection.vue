@@ -272,14 +272,26 @@
                 </button>
             </div>
         </div>
+
+        <!-- Export Notification Modal -->
+        <ExportNotificationModal
+            v-model:show="showExportModal"
+            :export-type="currentExportType"
+            @feedback="handleExportFeedback"
+        />
     </div>
 </template>
 
 <script>
 import { ref, computed } from "vue";
+import ExportNotificationModal from "../../components/ui/ExportNotificationModal.vue";
 
 export default {
     name: "HeaderSection",
+
+    components: {
+        ExportNotificationModal,
+    },
 
     props: {
         questionnaireTitle: {
@@ -300,6 +312,8 @@ export default {
         const customStartDate = ref("");
         const customEndDate = ref("");
         const selectedPeriodType = ref("all");
+        const showExportModal = ref(false);
+        const currentExportType = ref("pdf");
 
         // Computed properties
         const completionRate = computed(() => {
@@ -396,15 +410,25 @@ export default {
             if (format === "csv") {
                 window.location.href = `/kuesioner/${props.statistics.questionnaire_id}/responses/export`;
             } else {
-                alert(
-                    `Export to ${format.toUpperCase()} is not implemented yet.`
-                );
+                // Show the export notification modal instead of alert
+                currentExportType.value = format;
+                showExportModal.value = true;
             }
 
-            // Hide dropdown after export
+            // Hide dropdown after export selection
             if (this.$refs && this.$refs.exportMenu) {
                 this.$refs.exportMenu.classList.add("hidden");
             }
+        };
+
+        /**
+         * Handle feedback request for export feature
+         * @param {string} exportType - The type of export requested
+         */
+        const handleExportFeedback = (exportType) => {
+            console.log(`User requested ${exportType} export feature`);
+            // Here you could implement logic to track feature requests
+            // or redirect to a feedback form
         };
 
         const handlePrint = () => {
@@ -456,8 +480,11 @@ export default {
             toggleCustomDate,
             applyCustomDate,
             handleExport,
+            handleExportFeedback,
             handlePrint,
             handleShare,
+            showExportModal,
+            currentExportType,
         };
     },
 };
