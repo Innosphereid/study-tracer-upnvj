@@ -137,21 +137,65 @@ export default {
             type: "all", // 'all', 'week', 'month', 'custom'
         });
 
+        // Move sections from questionnaire_json to sections if needed
+        if (
+            props.questionnaire &&
+            (!props.questionnaire.sections ||
+                props.questionnaire.sections.length === 0) &&
+            props.questionnaire.questionnaire_json &&
+            props.questionnaire.questionnaire_json.sections &&
+            props.questionnaire.questionnaire_json.sections.length > 0
+        ) {
+            console.log(
+                "Copying sections from questionnaire_json to sections property"
+            );
+            props.questionnaire.sections =
+                props.questionnaire.questionnaire_json.sections;
+        }
+
         // Computed properties
         const currentSection = computed(() => {
+            console.log(
+                "Computing current section. Sections:",
+                props.questionnaire.sections
+            );
+
             if (
                 !props.questionnaire.sections ||
                 props.questionnaire.sections.length === 0
             ) {
+                console.warn("No sections found in questionnaire data", {
+                    questionnaire: props.questionnaire,
+                });
                 return null;
             }
-            return props.questionnaire.sections[currentSectionIndex.value];
+
+            const section =
+                props.questionnaire.sections[currentSectionIndex.value];
+            console.log("Current section:", section);
+
+            // Check if the section has questions properly loaded
+            if (
+                section &&
+                (!section.questions || section.questions.length === 0)
+            ) {
+                console.warn("Section has no questions:", section);
+            }
+
+            return section;
         });
 
         // Methods
         const fetchQuestionResponses = async (questionIds) => {
-            if (!questionIds || questionIds.length === 0) return;
+            if (!questionIds || questionIds.length === 0) {
+                console.warn("No question IDs to fetch responses for", {
+                    currentSection: currentSection.value,
+                });
+                loading.value = false;
+                return;
+            }
 
+            console.log("Fetching responses for questions:", questionIds);
             loading.value = true;
             error.value = null;
 
@@ -223,7 +267,41 @@ export default {
 
         // Lifecycle hooks
         onMounted(() => {
-            if (currentSection.value && currentSection.value.questions) {
+            console.log("ResultsApp mounted with data:", {
+                questionnaire: props.questionnaire,
+                statistics: props.statistics,
+                questionnaireId: props.questionnaireId,
+            });
+
+            // Check if questionnaire_json has sections but props.questionnaire.sections is empty
+            if (
+                props.questionnaire &&
+                (!props.questionnaire.sections ||
+                    props.questionnaire.sections.length === 0) &&
+                props.questionnaire.questionnaire_json &&
+                props.questionnaire.questionnaire_json.sections &&
+                props.questionnaire.questionnaire_json.sections.length > 0
+            ) {
+                console.log(
+                    "Moving sections from questionnaire_json to sections property"
+                );
+                props.questionnaire.sections =
+                    props.questionnaire.questionnaire_json.sections;
+            }
+
+            // Ensure sections are properly loaded
+            if (
+                props.questionnaire &&
+                (!props.questionnaire.sections ||
+                    props.questionnaire.sections.length === 0 ||
+                    (props.questionnaire.sections[0] &&
+                        !props.questionnaire.sections[0].questions))
+            ) {
+                console.log(
+                    "Attempting to fetch/fix sections since none were found or they're incomplete"
+                );
+                fetchSections();
+            } else if (currentSection.value && currentSection.value.questions) {
                 const questionIds = currentSection.value.questions.map(
                     (q) => q.id
                 );
@@ -232,6 +310,167 @@ export default {
                 loading.value = false;
             }
         });
+
+        // Add a new method to fetch sections if they aren't loaded
+        const fetchSections = async () => {
+            try {
+                loading.value = true;
+                error.value = null;
+                console.log("Attempting to fetch sections from API endpoint");
+
+                try {
+                    // First try to fetch from our new API endpoint
+                    const response = await fetch(
+                        `/kuesioner/${props.questionnaireId}/sections`
+                    );
+
+                    if (response.ok) {
+                        const data = await response.json();
+
+                        if (
+                            data.success &&
+                            data.sections &&
+                            data.sections.length > 0
+                        ) {
+                            console.log(
+                                "Received sections from API:",
+                                data.sections
+                            );
+
+                            // Update the questionnaire with fetched sections
+                            props.questionnaire.sections = data.sections;
+
+                            // Now that we have sections, try to fetch responses for the current section
+                            if (
+                                currentSection.value &&
+                                currentSection.value.questions &&
+                                currentSection.value.questions.length > 0
+                            ) {
+                                const questionIds =
+                                    currentSection.value.questions.map(
+                                        (q) => q.id
+                                    );
+                                fetchQuestionResponses(questionIds);
+                                return; // Exit early since we successfully got data
+                            }
+                        }
+                    }
+
+                    // If we reach here, the API call didn't succeed, so fall back to the local data approach
+                    console.log(
+                        "API call didn't return usable data, falling back to local data processing"
+                    );
+                } catch (apiError) {
+                    console.warn(
+                        "API call failed, falling back to local data processing:",
+                        apiError
+                    );
+                }
+
+                // Fallback approach - try to work with what we have or use questionnaire_json
+                if (
+                    props.questionnaire &&
+                    typeof props.questionnaire.id !== "undefined"
+                ) {
+                    // Check if we can use questionnaire_json.sections if available
+                    if (
+                        (!props.questionnaire.sections ||
+                            props.questionnaire.sections.length === 0) &&
+                        props.questionnaire.questionnaire_json &&
+                        props.questionnaire.questionnaire_json.sections &&
+                        props.questionnaire.questionnaire_json.sections.length >
+                            0
+                    ) {
+                        console.log(
+                            "Using sections from questionnaire_json",
+                            props.questionnaire.questionnaire_json.sections
+                        );
+                        props.questionnaire.sections =
+                            props.questionnaire.questionnaire_json.sections;
+                    }
+
+                    // If the questionnaire already has sections but they're not properly structured
+                    if (Array.isArray(props.questionnaire.sections)) {
+                        const hasSections =
+                            props.questionnaire.sections.length > 0;
+                        const hasValidSections =
+                            hasSections &&
+                            props.questionnaire.sections.every(
+                                (section) =>
+                                    section && typeof section === "object"
+                            );
+
+                        if (hasSections && hasValidSections) {
+                            // Make sure each section has a questions array
+                            props.questionnaire.sections =
+                                props.questionnaire.sections.map((section) => {
+                                    if (!section.questions) {
+                                        section.questions = [];
+                                    } else if (
+                                        !Array.isArray(section.questions)
+                                    ) {
+                                        // Try to convert to array if it's not already
+                                        section.questions = Object.values(
+                                            section.questions
+                                        );
+                                    }
+                                    return section;
+                                });
+
+                            console.log(
+                                "Updated questionnaire sections structure:",
+                                props.questionnaire.sections
+                            );
+
+                            if (
+                                currentSection.value &&
+                                currentSection.value.questions &&
+                                currentSection.value.questions.length > 0
+                            ) {
+                                const questionIds =
+                                    currentSection.value.questions.map(
+                                        (q) => q.id
+                                    );
+                                fetchQuestionResponses(questionIds);
+                            } else {
+                                console.warn(
+                                    "Current section has no questions after structure update"
+                                );
+                                loading.value = false;
+                            }
+                        } else {
+                            console.error(
+                                "Questionnaire has invalid sections",
+                                props.questionnaire.sections
+                            );
+                            error.value =
+                                "Struktur data seksi kuesioner tidak valid";
+                            loading.value = false;
+                        }
+                    } else {
+                        console.error(
+                            "Questionnaire has no sections array",
+                            props.questionnaire
+                        );
+                        error.value = "Kuesioner tidak memiliki data seksi";
+                        loading.value = false;
+                    }
+                } else {
+                    console.error(
+                        "Invalid questionnaire object",
+                        props.questionnaire
+                    );
+                    error.value = "Data kuesioner tidak valid";
+                    loading.value = false;
+                }
+            } catch (err) {
+                console.error("Error processing questionnaire sections:", err);
+                error.value =
+                    "Terjadi kesalahan saat memproses seksi kuesioner: " +
+                    err.message;
+                loading.value = false;
+            }
+        };
 
         return {
             loading,
@@ -242,6 +481,7 @@ export default {
             selectedPeriod,
             changeSection,
             handlePeriodChange,
+            fetchSections,
         };
     },
 };
