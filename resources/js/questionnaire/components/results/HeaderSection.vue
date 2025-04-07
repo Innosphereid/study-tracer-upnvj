@@ -104,51 +104,33 @@
                                 @click="handleExport('pdf')"
                                 class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
                             >
-                                <svg
+                                <img
+                                    src="/images/logo/pdf-file.svg"
+                                    alt="PDF"
                                     class="mr-3 h-5 w-5 text-gray-500"
-                                    fill="currentColor"
-                                    viewBox="0 0 20 20"
-                                >
-                                    <path
-                                        fill-rule="evenodd"
-                                        d="M4 4a2 2 0 012-2h4.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
-                                        clip-rule="evenodd"
-                                    />
-                                </svg>
+                                />
                                 PDF
                             </a>
                             <a
                                 @click="handleExport('excel')"
                                 class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
                             >
-                                <svg
+                                <img
+                                    src="/images/logo/excel.svg"
+                                    alt="Excel"
                                     class="mr-3 h-5 w-5 text-gray-500"
-                                    fill="currentColor"
-                                    viewBox="0 0 20 20"
-                                >
-                                    <path
-                                        fill-rule="evenodd"
-                                        d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 2v8h8V6H6z"
-                                        clip-rule="evenodd"
-                                    />
-                                </svg>
+                                />
                                 Excel
                             </a>
                             <a
                                 @click="handleExport('csv')"
                                 class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
                             >
-                                <svg
+                                <img
+                                    src="/images/logo/csv-file-format-extension.svg"
+                                    alt="CSV"
                                     class="mr-3 h-5 w-5 text-gray-500"
-                                    fill="currentColor"
-                                    viewBox="0 0 20 20"
-                                >
-                                    <path
-                                        fill-rule="evenodd"
-                                        d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V7a1 1 0 00-1-1H6z"
-                                        clip-rule="evenodd"
-                                    />
-                                </svg>
+                                />
                                 CSV
                             </a>
                         </div>
