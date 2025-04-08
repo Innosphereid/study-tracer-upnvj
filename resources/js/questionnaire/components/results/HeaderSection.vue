@@ -388,9 +388,25 @@ export default {
             // In a real app, you would trigger an export based on the format
             console.log(`Exporting in ${format} format`);
 
+            // Check if we have a valid questionnaire_id
+            const questionnaireId = props.statistics?.questionnaire_id;
+
+            if (!questionnaireId) {
+                console.error(
+                    "Questionnaire ID is undefined. Cannot export results."
+                );
+                alert(
+                    "Error: Unable to identify the questionnaire for export. Please try again later."
+                );
+                return;
+            }
+
+            // Generate the export URL
+            const exportUrl = `/kuesioner/${questionnaireId}/results/export/${format}`;
+
             // Example of redirecting to export route
             if (format === "csv") {
-                window.location.href = `/kuesioner/${props.statistics.questionnaire_id}/responses/export`;
+                window.location.href = exportUrl;
             } else {
                 // Show the export notification modal instead of alert
                 currentExportType.value = format;

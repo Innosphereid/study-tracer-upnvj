@@ -142,6 +142,11 @@ Route::prefix('kuesioner')->middleware(['auth'])->group(function () {
     // Results page (alias for statistics)
     Route::get('/{questionnaireId}/results', 'App\Http\Controllers\Questionnaire\ResponseController@statistics')->name('questionnaires.results');
     
+    // Export results in different formats
+    Route::get('/{questionnaireId}/results/export/{format?}', 'App\Http\Controllers\Questionnaire\ResultExportController@export')
+        ->name('questionnaires.results.export')
+        ->where('questionnaireId', '[0-9]+');
+    
     // Mengelola answer details
     Route::get('/answer-details/response/{responseId}', 'App\Http\Controllers\Questionnaire\AnswerDetailController@getByResponse')->name('answer-details.by-response');
     Route::get('/answer-details/question/{questionId}', 'App\Http\Controllers\Questionnaire\AnswerDetailController@getByQuestion')->name('answer-details.by-question');
