@@ -404,11 +404,11 @@ export default {
             // Generate the export URL
             const exportUrl = `/kuesioner/${questionnaireId}/results/export/${format}`;
 
-            // Example of redirecting to export route
-            if (format === "csv") {
+            // Redirect for PDF and CSV exports, show modal for Excel
+            if (format === "csv" || format === "pdf") {
                 window.location.href = exportUrl;
             } else {
-                // Show the export notification modal instead of alert
+                // Show the export notification modal for Excel only
                 currentExportType.value = format;
                 showExportModal.value = true;
             }

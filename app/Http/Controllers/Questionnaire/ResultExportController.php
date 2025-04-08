@@ -51,42 +51,41 @@ class ResultExportController extends Controller
      */
     public function export(Request $request, $questionnaireId, string $format = 'csv'): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
-        // Ensure questionnaireId is an integer
-        $questionnaireId = (int) $questionnaireId;
-        
-        Log::info('Exporting results', [
-            'questionnaireId' => $questionnaireId,
-            'format' => $format
-        ]);
-        
-        $questionnaire = $this->questionnaireService->getQuestionnaireById($questionnaireId);
-        
-        abort_if(!$questionnaire, 404, 'Kuesioner tidak ditemukan');
-        
         try {
-            // Generate export
-            $exportPath = $this->exportService->exportResults($questionnaireId, $format);
+            // Generate the export
+            $path = $this->exportService->exportResults($questionnaireId, $format);
             
-            // Determine filename
-            $filename = Str::slug($questionnaire->title) . '-results-' . now()->format('Y-m-d') . '.' . $format;
+            // Get the file path
+            $filePath = Storage::disk('questionnaire_exports')->path($path);
             
-            // Stream the file to the browser
-            $disk = 'questionnaire_exports';
+            // Check if the file exists
+            if (!file_exists($filePath)) {
+                throw new \RuntimeException("Export file not found: {$filePath}");
+            }
             
-            $fullPath = Storage::disk($disk)->path($exportPath);
+            // Add a note in session if PDF was rendered with DomPDF fallback
+            if ($format === 'pdf' && !$this->isWkhtmltopdfAvailable()) {
+                session()->flash('info', 'PDF was generated using DomPDF renderer as wkhtmltopdf is not available on this server.');
+            }
             
-            // Return file as a download
-            return response()->download($fullPath, $filename, [
+            // Generate download filename
+            $filename = basename($filePath);
+            
+            // Return the file
+            return response()->download($filePath, $filename, [
                 'Content-Type' => $this->getContentType($format),
             ]);
         } catch (\Exception $e) {
-            Log::error('Failed to export results', [
+            // Log the error
+            Log::error('Export failed', [
                 'questionnaireId' => $questionnaireId,
                 'format' => $format,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
             
-            abort(500, 'Failed to generate export: ' . $e->getMessage());
+            // Redirect back with an error message
+            return abort(500, "Failed to export results: {$e->getMessage()}");
         }
     }
     
@@ -109,5 +108,40 @@ class ResultExportController extends Controller
             default:
                 return 'application/octet-stream';
         }
+    }
+    
+    /**
+     * Check if wkhtmltopdf is available and working
+     *
+     * @return bool
+     */
+    protected function isWkhtmltopdfAvailable(): bool
+    {
+        try {
+            if (config('snappy.pdf.binary')) {
+                $binary = config('snappy.pdf.binary');
+                
+                // Remove quotes if present
+                $binary = trim($binary, '"\'');
+                
+                // Check if the binary exists
+                if (!file_exists($binary)) {
+                    return false;
+                }
+                
+                // Try executing the binary with --version to check if it's working
+                $output = [];
+                $exitCode = 0;
+                exec("\"$binary\" --version 2>&1", $output, $exitCode);
+                
+                return $exitCode === 0;
+            }
+        } catch (\Exception $e) {
+            Log::warning('Error checking wkhtmltopdf availability', [
+                'error' => $e->getMessage()
+            ]);
+        }
+        
+        return false;
     }
 } 

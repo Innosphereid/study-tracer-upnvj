@@ -36,28 +36,6 @@
         <div id="questionnaire-results" data-questionnaire="{{ json_encode($questionnaire) }}"
             data-statistics="{{ json_encode($statistics) }}" data-questionnaire-id="{{ $questionnaire->id }}">
         </div>
-
-        <!-- Fallback Error Handler -->
-        <div id="error-message" style="display: none; margin-top: 2rem;"
-            class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            <h2 class="font-bold text-xl mb-2">Terjadi kesalahan saat memuat hasil kuesioner</h2>
-            <p class="mb-4">Mohon maaf atas ketidaknyamanan ini. Beberapa kemungkinan penyebabnya:</p>
-            <ul class="list-disc pl-5 mb-4">
-                <li>Ada masalah dengan JavaScript aplikasi</li>
-                <li>Data hasil kuesioner mungkin tidak valid atau rusak</li>
-                <li>Ada masalah dengan koneksi jaringan</li>
-            </ul>
-            <p class="mb-4">Silakan coba beberapa hal berikut:</p>
-            <ul class="list-disc pl-5 mb-4">
-                <li>Refresh halaman ini</li>
-                <li>Bersihkan cache browser Anda</li>
-                <li>Coba dengan browser yang berbeda</li>
-            </ul>
-            <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-                onclick="window.location.reload()">
-                Muat Ulang Halaman
-            </button>
-        </div>
     </div>
 
     <script>
