@@ -1,3 +1,16 @@
+/**
+ * @fileoverview Entry point for the questionnaire results application
+ *
+ * This file initializes the Vue application for viewing questionnaire results.
+ * It includes:
+ * - Overview statistics dashboard
+ * - Section-based navigation
+ * - Visualization of different question types
+ * - Results filtering by time period
+ * - Export functionality (PDF, Excel, CSV)
+ * - Back navigation to questionnaire listing page
+ */
+
 import "../bootstrap";
 import { createApp } from "vue";
 import ResultsApp from "./pages/ResultsApp.vue";

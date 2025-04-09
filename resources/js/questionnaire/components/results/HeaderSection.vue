@@ -57,6 +57,9 @@
 
             <!-- Action Buttons -->
             <div class="action-buttons mt-4 md:mt-0 flex gap-3">
+                <!-- Back Button -->
+                <BackButton to="/kuesioner" text="Kembali" />
+
                 <!-- Export Dropdown -->
                 <div class="relative" x-data="{ open: false }">
                     <button
@@ -225,12 +228,14 @@
 <script>
 import { ref, computed } from "vue";
 import ExportNotificationModal from "../../components/ui/ExportNotificationModal.vue";
+import BackButton from "../../components/ui/BackButton.vue";
 
 export default {
     name: "HeaderSection",
 
     components: {
         ExportNotificationModal,
+        BackButton,
     },
 
     props: {
