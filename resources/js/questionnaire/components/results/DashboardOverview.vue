@@ -5,7 +5,7 @@
 -->
 <template>
     <div class="dashboard-overview">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <!-- Timeline Responses Card -->
             <div
                 class="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition-shadow"
@@ -158,38 +158,6 @@
                                 {{ inProgressCount }}
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Device Distribution Card -->
-            <div
-                class="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition-shadow"
-            >
-                <h3 class="text-lg font-medium text-gray-900 mb-3">
-                    Device Distribution
-                </h3>
-                <div class="h-48 flex items-center justify-center">
-                    <div class="text-center text-gray-500">
-                        <svg
-                            class="mx-auto h-10 w-10 text-gray-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                            />
-                        </svg>
-                        <p class="mt-2 text-sm">
-                            Device data not available yet
-                        </p>
-                        <p class="text-xs mt-1">
-                            Will be implemented in a future update
-                        </p>
                     </div>
                 </div>
             </div>
