@@ -81,6 +81,9 @@ class ResultExportService implements ResultExportServiceInterface
         switch ($format) {
             case 'csv':
                 return $this->exportToCsv($questionnaire, $options);
+            case 'excel':
+            case 'xlsx':
+                return $this->exportToExcel($questionnaire, $options);
             case 'pdf':
                 return $this->exportToPdf($questionnaire, $options);
             default:
@@ -1731,5 +1734,72 @@ class ResultExportService implements ResultExportServiceInterface
         }
         
         return $commonWords;
+    }
+    
+    /**
+     * Export questionnaire results to Excel format
+     *
+     * @param Questionnaire $questionnaire
+     * @param array $options
+     * @return string Path to the exported file
+     * 
+     * @throws \RuntimeException If the export fails
+     */
+    protected function exportToExcel(Questionnaire $questionnaire, array $options = []): string
+    {
+        Log::info('Exporting questionnaire results to Excel', [
+            'questionnaireId' => $questionnaire->id,
+            'options' => $options
+        ]);
+        
+        try {
+            // Get responses without loading the 'answers' relationship
+            $responses = $this->responseRepository->getByQuestionnaireId($questionnaire->id);
+            
+            if ($responses->isEmpty()) {
+                throw new \RuntimeException("No responses found for questionnaire {$questionnaire->id}");
+            }
+            
+            // Prepare data for Excel generation
+            $statistics = $this->calculateStatistics($questionnaire, $responses);
+            $questionData = $this->prepareQuestionData($questionnaire, $responses);
+            
+            // Generate filename
+            $filename = $this->generateFilename($questionnaire, 'xlsx', $options);
+            $relativePath = $questionnaire->id . '/' . $filename;
+            $absolutePath = Storage::disk($this->storageDisk)->path($relativePath);
+            
+            // Ensure the directory exists
+            $directory = dirname($absolutePath);
+            if (!file_exists($directory)) {
+                mkdir($directory, 0755, true);
+            }
+            
+            // Create Excel export
+            $exporter = new \App\Exports\QuestionnaireExport(
+                $questionnaire,
+                $responses,
+                $questionData,
+                $statistics
+            );
+            
+            // Export to file
+            $exporter->export($absolutePath);
+            
+            Log::info('Successfully exported questionnaire results to Excel', [
+                'questionnaireId' => $questionnaire->id,
+                'filename' => $filename
+            ]);
+            
+            return $relativePath;
+        } catch (\Exception $e) {
+            Log::error('Failed to export questionnaire results to Excel', [
+                'questionnaireId' => $questionnaire->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            throw new \RuntimeException("Failed to export questionnaire results: {$e->getMessage()}", 0, $e);
+        }
     }
 } 

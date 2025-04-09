@@ -384,6 +384,10 @@ export default {
             return date.toISOString().split("T")[0];
         };
 
+        /**
+         * Handle export request for different formats
+         * @param {string} format - The export format (pdf, excel, csv)
+         */
         const handleExport = (format) => {
             // In a real app, you would trigger an export based on the format
             console.log(`Exporting in ${format} format`);
@@ -404,14 +408,8 @@ export default {
             // Generate the export URL
             const exportUrl = `/kuesioner/${questionnaireId}/results/export/${format}`;
 
-            // Redirect for PDF and CSV exports, show modal for Excel
-            if (format === "csv" || format === "pdf") {
-                window.location.href = exportUrl;
-            } else {
-                // Show the export notification modal for Excel only
-                currentExportType.value = format;
-                showExportModal.value = true;
-            }
+            // Redirect for any export format since all are now supported
+            window.location.href = exportUrl;
 
             // Hide dropdown after export selection
             if (this.$refs && this.$refs.exportMenu) {
