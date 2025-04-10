@@ -152,22 +152,34 @@ class ResponseRepository extends BaseRepository implements ResponseRepositoryInt
     /**
      * @inheritDoc
      */
-    public function getStatistics(int $questionnaireId): array
+    public function getStatistics(int $questionnaireId, array $filters = []): array
     {
-        Log::info('Generating statistics for questionnaire', ['questionnaireId' => $questionnaireId]);
+        Log::info('Generating statistics for questionnaire', [
+            'questionnaireId' => $questionnaireId,
+            'filters' => $filters
+        ]);
         
         $statistics = [];
         
+        // Base query for the questionnaire
+        $baseQuery = $this->model->where('questionnaire_id', $questionnaireId);
+        
+        // Apply date filters if present
+        if (!empty($filters['start_date'])) {
+            $baseQuery->where('created_at', '>=', $filters['start_date']);
+        }
+        
+        if (!empty($filters['end_date'])) {
+            $baseQuery->where('created_at', '<=', $filters['end_date']);
+        }
+        
         // Total responses
-        $totalResponses = $this->model
-            ->where('questionnaire_id', $questionnaireId)
-            ->count();
-            
+        $totalResponses = (clone $baseQuery)->count();
         $statistics['total_responses'] = $totalResponses;
+        $statistics['has_responses'] = $totalResponses > 0;
         
         // Completed responses
-        $completedResponses = $this->model
-            ->where('questionnaire_id', $questionnaireId)
+        $completedResponses = (clone $baseQuery)
             ->whereNotNull('completed_at')
             ->count();
             
@@ -179,8 +191,7 @@ class ResponseRepository extends BaseRepository implements ResponseRepositoryInt
             : 0;
         
         // Average time to complete
-        $averageTimeSeconds = $this->model
-            ->where('questionnaire_id', $questionnaireId)
+        $averageTimeSeconds = (clone $baseQuery)
             ->whereNotNull('completed_at')
             ->whereNotNull('started_at')
             ->selectRaw('AVG(TIMESTAMPDIFF(SECOND, started_at, completed_at)) as average_time')
@@ -188,10 +199,22 @@ class ResponseRepository extends BaseRepository implements ResponseRepositoryInt
             
         $statistics['average_time_seconds'] = $averageTimeSeconds ? (int) $averageTimeSeconds : 0;
         
-        // Responses per day (last 30 days)
-        $responsesPerDay = $this->model
-            ->where('questionnaire_id', $questionnaireId)
-            ->where('created_at', '>=', now()->subDays(30))
+        // Responses per day
+        $responsesQuery = clone $baseQuery;
+        
+        // Define the date range for the responses_per_day data
+        // If no filters are specified, use the last 30 days by default
+        $startDate = !empty($filters['start_date']) 
+            ? new \DateTime($filters['start_date']) 
+            : now()->subDays(30);
+            
+        $endDate = !empty($filters['end_date']) 
+            ? new \DateTime($filters['end_date']) 
+            : now();
+        
+        $responsesPerDay = $responsesQuery
+            ->where('created_at', '>=', $startDate)
+            ->where('created_at', '<=', $endDate)
             ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
             ->groupBy('date')
             ->get()
@@ -199,6 +222,13 @@ class ResponseRepository extends BaseRepository implements ResponseRepositoryInt
             ->toArray();
             
         $statistics['responses_per_day'] = $responsesPerDay;
+        
+        // Add selected period information to statistics
+        $statistics['period'] = [
+            'start_date' => !empty($filters['start_date']) ? $filters['start_date'] : null,
+            'end_date' => !empty($filters['end_date']) ? $filters['end_date'] : null,
+            'type' => !empty($filters['period_type']) ? $filters['period_type'] : 'all'
+        ];
         
         return $statistics;
     }

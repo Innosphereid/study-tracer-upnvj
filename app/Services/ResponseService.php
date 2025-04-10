@@ -336,10 +336,44 @@ class ResponseService implements ResponseServiceInterface
     /**
      * @inheritDoc
      */
-    public function getQuestionnaireStatistics(int $questionnaireId): array
+    public function getQuestionnaireStatistics(int $questionnaireId, array $filters = []): array
     {
-        Log::info('Getting statistics for questionnaire', ['questionnaireId' => $questionnaireId]);
-        return $this->responseRepository->getStatistics($questionnaireId);
+        Log::info('Getting statistics', [
+            'questionnaireId' => $questionnaireId,
+            'filters' => $filters
+        ]);
+        
+        // Format the date filters to ensure consistent format (Y-m-d)
+        if (!empty($filters['start_date'])) {
+            $filters['start_date'] = $this->formatDateForQuery($filters['start_date']);
+        }
+        
+        if (!empty($filters['end_date'])) {
+            // Add time to end_date to include the entire day
+            $endDate = $this->formatDateForQuery($filters['end_date']);
+            $filters['end_date'] = $endDate . ' 23:59:59';
+        }
+        
+        return $this->responseRepository->getStatistics($questionnaireId, $filters);
+    }
+    
+    /**
+     * Format date for database query
+     * 
+     * @param string $date Date in any recognizable format
+     * @return string Formatted date in Y-m-d format
+     */
+    protected function formatDateForQuery(string $date): string
+    {
+        try {
+            return (new \DateTime($date))->format('Y-m-d');
+        } catch (\Exception $e) {
+            Log::warning('Invalid date format provided', [
+                'date' => $date,
+                'error' => $e->getMessage()
+            ]);
+            return date('Y-m-d'); // Return today's date as fallback
+        }
     }
     
     /**

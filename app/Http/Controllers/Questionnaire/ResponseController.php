@@ -126,12 +126,16 @@ class ResponseController extends Controller
     /**
      * Get statistics for a questionnaire.
      *
+     * @param Request $request
      * @param int $questionnaireId
      * @return View|JsonResponse
      */
-    public function statistics(int $questionnaireId)
+    public function statistics(Request $request, int $questionnaireId)
     {
-        Log::info('Getting statistics', ['questionnaireId' => $questionnaireId]);
+        Log::info('Getting statistics', [
+            'questionnaireId' => $questionnaireId,
+            'request_params' => $request->all()
+        ]);
         
         $questionnaire = $this->questionnaireService->getQuestionnaireById($questionnaireId);
         
@@ -139,11 +143,34 @@ class ResponseController extends Controller
             return response()->json(['success' => false, 'message' => 'Kuesioner tidak ditemukan'], 404);
         }
         
-        $statistics = $this->responseService->getQuestionnaireStatistics($questionnaireId);
+        // Extract date filters and other parameters from the request
+        $filters = [];
+        
+        if ($request->has('start')) {
+            $filters['start_date'] = $request->input('start');
+        }
+        
+        if ($request->has('end')) {
+            $filters['end_date'] = $request->input('end');
+        }
+        
+        if ($request->has('period_type')) {
+            $filters['period_type'] = $request->input('period_type');
+        }
+        
+        $statistics = $this->responseService->getQuestionnaireStatistics($questionnaireId, $filters);
         
         // Check if the request expects JSON or HTML
-        if (request()->expectsJson() || request()->ajax()) {
-            return response()->json(['success' => true, 'statistics' => $statistics]);
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true, 
+                'statistics' => $statistics,
+                'period' => [
+                    'start_date' => $request->input('start'),
+                    'end_date' => $request->input('end'),
+                    'type' => $request->input('period_type', 'all')
+                ]
+            ]);
         }
         
         // Return the view for HTML requests

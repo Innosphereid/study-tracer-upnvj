@@ -79,9 +79,10 @@ interface ResponseServiceInterface
      * Get statistics for a questionnaire
      *
      * @param int $questionnaireId
+     * @param array $filters Optional filters including date range
      * @return array
      */
-    public function getQuestionnaireStatistics(int $questionnaireId): array;
+    public function getQuestionnaireStatistics(int $questionnaireId, array $filters = []): array;
     
     /**
      * Export responses to CSV

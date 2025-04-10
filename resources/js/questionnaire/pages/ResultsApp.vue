@@ -13,85 +13,93 @@
         />
 
         <!-- Dashboard Overview -->
-        <dashboard-overview :statistics="statistics" :period="selectedPeriod" />
-
-        <!-- Section Navigation -->
-        <section-navigator
-            :sections="questionnaire.sections"
-            :current-section="currentSection"
-            @change-section="changeSection"
+        <dashboard-overview
+            :statistics="statistics"
+            :period="selectedPeriod"
+            @resetPeriod="resetPeriod"
         />
 
-        <!-- Results Content Area -->
-        <div class="results-content mt-6">
-            <template v-if="loading">
-                <div class="flex justify-center items-center py-12">
-                    <div class="spinner"></div>
-                </div>
-            </template>
+        <!-- Only show section navigation and question results if there are responses -->
+        <template v-if="statistics.has_responses !== false">
+            <!-- Section Navigation -->
+            <section-navigator
+                :sections="questionnaire.sections"
+                :current-section="currentSection"
+                @change-section="changeSection"
+            />
 
-            <template v-else-if="error">
-                <div class="bg-red-50 border-l-4 border-red-500 p-4 my-4">
-                    <div class="flex">
-                        <div class="flex-shrink-0">
-                            <svg
-                                class="h-5 w-5 text-red-500"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                            >
-                                <path
-                                    fill-rule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                    clip-rule="evenodd"
-                                />
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <p class="text-sm text-red-700">{{ error }}</p>
+            <!-- Results Content Area -->
+            <div class="results-content mt-6">
+                <template v-if="loading">
+                    <div class="flex justify-center items-center py-12">
+                        <div class="spinner"></div>
+                    </div>
+                </template>
+
+                <template v-else-if="error">
+                    <div class="bg-red-50 border-l-4 border-red-500 p-4 my-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg
+                                    class="h-5 w-5 text-red-500"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                >
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                        clip-rule="evenodd"
+                                    />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-red-700">{{ error }}</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </template>
+                </template>
 
-            <template
-                v-else-if="
-                    currentSection &&
-                    currentSection.questions &&
-                    currentSection.questions.length > 0
-                "
-            >
-                <question-result-card
-                    v-for="question in currentSection.questions"
-                    :key="question.id"
-                    :question="question"
-                    :responses="questionResponses[question.id] || []"
-                />
-            </template>
+                <template
+                    v-else-if="
+                        currentSection &&
+                        currentSection.questions &&
+                        currentSection.questions.length > 0
+                    "
+                >
+                    <question-result-card
+                        v-for="question in currentSection.questions"
+                        :key="question.id"
+                        :question="question"
+                        :responses="questionResponses[question.id] || []"
+                    />
+                </template>
 
-            <template v-else>
-                <div class="bg-gray-50 rounded-lg p-8 text-center">
-                    <svg
-                        class="mx-auto h-12 w-12 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                        />
-                    </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900">
-                        Tidak ada data
-                    </h3>
-                    <p class="mt-1 text-sm text-gray-500">
-                        Tidak ada pertanyaan yang tersedia untuk section ini.
-                    </p>
-                </div>
-            </template>
-        </div>
+                <template v-else>
+                    <div class="bg-gray-50 rounded-lg p-8 text-center">
+                        <svg
+                            class="mx-auto h-12 w-12 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                            />
+                        </svg>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">
+                            Tidak ada data
+                        </h3>
+                        <p class="mt-1 text-sm text-gray-500">
+                            Tidak ada pertanyaan yang tersedia untuk section
+                            ini.
+                        </p>
+                    </div>
+                </template>
+            </div>
+        </template>
     </div>
 </template>
 
@@ -102,6 +110,11 @@ import DashboardOverview from "../components/results/DashboardOverview.vue";
 import SectionNavigator from "../components/results/SectionNavigator.vue";
 import QuestionResultCard from "../components/results/QuestionResultCard.vue";
 
+/**
+ * Main component for displaying questionnaire results
+ * Supports filtering results by time period and displaying section-specific data
+ * @module ResultsApp
+ */
 export default {
     name: "ResultsApp",
     components: {
@@ -112,14 +125,23 @@ export default {
     },
 
     props: {
+        /**
+         * The questionnaire data including title and sections
+         */
         questionnaire: {
             type: Object,
             required: true,
         },
+        /**
+         * Statistics data for the questionnaire
+         */
         statistics: {
             type: Object,
             required: true,
         },
+        /**
+         * ID of the questionnaire
+         */
         questionnaireId: {
             type: [Number, String],
             required: true,
@@ -185,7 +207,10 @@ export default {
             return section;
         });
 
-        // Methods
+        /**
+         * Fetch question response data with optional period filters
+         * @param {Array} questionIds - Array of question IDs to fetch responses for
+         */
         const fetchQuestionResponses = async (questionIds) => {
             if (!questionIds || questionIds.length === 0) {
                 console.warn("No question IDs to fetch responses for", {
@@ -200,10 +225,16 @@ export default {
             error.value = null;
 
             try {
-                const periodParams =
-                    selectedPeriod.value.type !== "all"
-                        ? `&start=${selectedPeriod.value.start}&end=${selectedPeriod.value.end}`
-                        : "";
+                // Build the period params for the API requests
+                let periodParams = "";
+                if (selectedPeriod.value.type !== "all") {
+                    periodParams = `&start=${selectedPeriod.value.start}&end=${
+                        selectedPeriod.value.end
+                    }&period_type=${
+                        selectedPeriod.value.period_type ||
+                        selectedPeriod.value.type
+                    }`;
+                }
 
                 const promises = questionIds.map((questionId) =>
                     fetch(
@@ -235,6 +266,10 @@ export default {
             }
         };
 
+        /**
+         * Change the currently displayed section
+         * @param {number} sectionIndex - Index of the section to display
+         */
         const changeSection = (sectionIndex) => {
             if (
                 sectionIndex >= 0 &&
@@ -244,23 +279,99 @@ export default {
             }
         };
 
-        const handlePeriodChange = (period) => {
+        /**
+         * Handle period change from the header component
+         * @param {Object} period - Period object with type, start and end dates
+         */
+        const handlePeriodChange = async (period) => {
+            console.log("Period changed:", period);
             selectedPeriod.value = period;
+
+            // Fetch updated statistics for the new period
+            await fetchStatistics(period);
+        };
+
+        /**
+         * Reset the period filter to show all responses
+         */
+        const resetPeriod = async () => {
+            const allTimePeriod = {
+                type: "all",
+                start: null,
+                end: null,
+            };
+
+            selectedPeriod.value = allTimePeriod;
+            await fetchStatistics(allTimePeriod);
+        };
+
+        /**
+         * Fetch statistics for the specified time period
+         * @param {Object} period - Period object with type, start and end dates
+         */
+        const fetchStatistics = async (period) => {
+            loading.value = true;
+            error.value = null;
+
+            try {
+                let url = `/kuesioner/${props.questionnaireId}/results?`;
+
+                // Add period parameters if not "all"
+                if (period.type !== "all") {
+                    url += `start=${period.start}&end=${
+                        period.end
+                    }&period_type=${period.period_type || period.type}`;
+                }
+
+                const response = await fetch(url, {
+                    headers: {
+                        Accept: "application/json",
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error(
+                        `Failed to fetch statistics: ${response.status}`
+                    );
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Update the statistics with new data
+                    Object.assign(props.statistics, data.statistics);
+
+                    // After statistics are updated, also refresh the question responses
+                    if (
+                        currentSection.value &&
+                        currentSection.value.questions
+                    ) {
+                        const questionIds = currentSection.value.questions.map(
+                            (q) => q.id
+                        );
+                        await fetchQuestionResponses(questionIds);
+                    }
+                } else {
+                    throw new Error(
+                        data.message || "Failed to fetch statistics"
+                    );
+                }
+            } catch (err) {
+                console.error("Error fetching statistics:", err);
+                error.value = `Gagal memuat statistik: ${err.message}`;
+            } finally {
+                loading.value = false;
+            }
         };
 
         // Watchers
         watch(currentSection, (newSection) => {
-            if (newSection && newSection.questions) {
+            if (
+                newSection &&
+                newSection.questions &&
+                props.statistics.has_responses !== false
+            ) {
                 const questionIds = newSection.questions.map((q) => q.id);
-                fetchQuestionResponses(questionIds);
-            }
-        });
-
-        watch(selectedPeriod, () => {
-            if (currentSection.value && currentSection.value.questions) {
-                const questionIds = currentSection.value.questions.map(
-                    (q) => q.id
-                );
                 fetchQuestionResponses(questionIds);
             }
         });
@@ -301,13 +412,26 @@ export default {
                     "Attempting to fetch/fix sections since none were found or they're incomplete"
                 );
                 fetchSections();
-            } else if (currentSection.value && currentSection.value.questions) {
+            } else if (
+                currentSection.value &&
+                currentSection.value.questions &&
+                props.statistics.has_responses !== false
+            ) {
                 const questionIds = currentSection.value.questions.map(
                     (q) => q.id
                 );
                 fetchQuestionResponses(questionIds);
             } else {
                 loading.value = false;
+            }
+
+            // Initialize selectedPeriod from statistics if available
+            if (props.statistics && props.statistics.period) {
+                selectedPeriod.value = {
+                    type: props.statistics.period.type || "all",
+                    start: props.statistics.period.start_date || null,
+                    end: props.statistics.period.end_date || null,
+                };
             }
         });
 
@@ -344,7 +468,8 @@ export default {
                             if (
                                 currentSection.value &&
                                 currentSection.value.questions &&
-                                currentSection.value.questions.length > 0
+                                currentSection.value.questions.length > 0 &&
+                                props.statistics.has_responses !== false
                             ) {
                                 const questionIds =
                                     currentSection.value.questions.map(
@@ -481,6 +606,7 @@ export default {
             selectedPeriod,
             changeSection,
             handlePeriodChange,
+            resetPeriod,
             fetchSections,
         };
     },

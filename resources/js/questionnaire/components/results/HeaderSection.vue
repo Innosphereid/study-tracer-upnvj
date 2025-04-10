@@ -200,16 +200,25 @@
                     type="date"
                     v-model="customStartDate"
                     class="form-input text-sm border-gray-300 rounded-md"
+                    :max="customEndDate || today"
                 />
                 <span class="text-gray-500">to</span>
                 <input
                     type="date"
                     v-model="customEndDate"
                     class="form-input text-sm border-gray-300 rounded-md"
+                    :min="customStartDate"
+                    :max="today"
                 />
                 <button
                     @click="applyCustomDate"
-                    class="px-3 py-1 bg-blue-500 text-white text-sm rounded-md hover:bg-blue-600"
+                    :disabled="!customStartDate || !customEndDate"
+                    :class="[
+                        'px-3 py-1 text-sm rounded-md transition-colors',
+                        !customStartDate || !customEndDate
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-blue-500 text-white hover:bg-blue-600',
+                    ]"
                 >
                     Apply
                 </button>
@@ -226,7 +235,7 @@
 </template>
 
 <script>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import ExportNotificationModal from "../../components/ui/ExportNotificationModal.vue";
 import BackButton from "../../components/ui/BackButton.vue";
 
@@ -259,6 +268,7 @@ export default {
         const selectedPeriodType = ref("all");
         const showExportModal = ref(false);
         const currentExportType = ref("pdf");
+        const today = ref(new Date().toISOString().split("T")[0]); // Today's date in YYYY-MM-DD format
 
         // Computed properties
         const completionRate = computed(() => {
@@ -287,18 +297,81 @@ export default {
             return `${hours}h ${remainingMinutes}m`;
         });
 
+        /**
+         * Get a human-readable representation of the current selected period
+         */
         const responsePeriod = computed(() => {
-            // In a real app, you would calculate this from the actual response data
-            // For now, we'll return a placeholder
+            // Use period from statistics if available
+            if (props.statistics && props.statistics.period) {
+                const periodType = props.statistics.period.type;
+                const startDate = props.statistics.period.start_date;
+                const endDate = props.statistics.period.end_date;
+
+                if (periodType === "all") {
+                    return "All time";
+                } else if (periodType === "week") {
+                    return "Last 7 days";
+                } else if (periodType === "month") {
+                    return "Last 30 days";
+                } else if (periodType === "custom" && startDate && endDate) {
+                    return `${formatDateForDisplay(
+                        startDate
+                    )} - ${formatDateForDisplay(endDate)}`;
+                }
+            }
+
+            // Fall back to selected period type if statistics don't include period info
+            if (selectedPeriodType.value === "all") {
+                return "All time";
+            } else if (selectedPeriodType.value === "week") {
+                return "Last 7 days";
+            } else if (selectedPeriodType.value === "month") {
+                return "Last 30 days";
+            } else if (
+                selectedPeriodType.value === "custom" &&
+                customStartDate.value &&
+                customEndDate.value
+            ) {
+                return `${formatDateForDisplay(
+                    customStartDate.value
+                )} - ${formatDateForDisplay(customEndDate.value)}`;
+            }
+
             return "All time";
         });
 
-        // Methods
+        /**
+         * Format a date for display in the UI
+         * @param {string} dateString - Date string in YYYY-MM-DD format
+         * @returns {string} Formatted date in DD/MM/YYYY format
+         */
+        const formatDateForDisplay = (dateString) => {
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                });
+            } catch (e) {
+                return dateString;
+            }
+        };
+
+        /**
+         * Set the period filter
+         * @param {string} periodType - Type of period ('all', 'week', 'month', 'custom')
+         */
         const setPeriod = (periodType) => {
             selectedPeriodType.value = periodType;
             showCustomDate.value = periodType === "custom";
 
-            let period = { type: periodType, start: null, end: null };
+            let period = {
+                type: periodType,
+                start: null,
+                end: null,
+                period_type: periodType,
+            };
 
             if (periodType === "week") {
                 const start = new Date();
@@ -312,9 +385,15 @@ export default {
                 period.end = formatDate(new Date());
             }
 
-            emit("periodChanged", period);
+            // Only emit for non-custom periods or if already in custom mode and hiding the selector
+            if (periodType !== "custom" || !showCustomDate.value) {
+                emit("periodChanged", period);
+            }
         };
 
+        /**
+         * Toggle the custom date input visibility
+         */
         const toggleCustomDate = () => {
             showCustomDate.value = !showCustomDate.value;
             if (showCustomDate.value) {
@@ -327,9 +406,16 @@ export default {
 
                 customStartDate.value = formatDate(start);
                 customEndDate.value = formatDate(end);
+            } else if (selectedPeriodType.value === "custom") {
+                // If hiding custom date panel and currently in custom mode,
+                // apply the current custom dates
+                applyCustomDate();
             }
         };
 
+        /**
+         * Apply the selected custom date range
+         */
         const applyCustomDate = () => {
             if (!customStartDate.value || !customEndDate.value) {
                 return;
@@ -338,11 +424,17 @@ export default {
             selectedPeriodType.value = "custom";
             emit("periodChanged", {
                 type: "custom",
+                period_type: "custom",
                 start: customStartDate.value,
                 end: customEndDate.value,
             });
         };
 
+        /**
+         * Format a date object to YYYY-MM-DD string
+         * @param {Date} date - Date object to format
+         * @returns {string} Formatted date string
+         */
         const formatDate = (date) => {
             return date.toISOString().split("T")[0];
         };
@@ -427,6 +519,21 @@ export default {
             }
         };
 
+        onMounted(() => {
+            // Initialize from props.statistics.period if available
+            if (props.statistics && props.statistics.period) {
+                const periodType = props.statistics.period.type;
+                selectedPeriodType.value = periodType || "all";
+
+                if (periodType === "custom") {
+                    customStartDate.value =
+                        props.statistics.period.start_date || "";
+                    customEndDate.value =
+                        props.statistics.period.end_date || "";
+                }
+            }
+        });
+
         return {
             showCustomDate,
             customStartDate,
@@ -444,6 +551,8 @@ export default {
             handleShare,
             showExportModal,
             currentExportType,
+            today,
+            formatDateForDisplay,
         };
     },
 };

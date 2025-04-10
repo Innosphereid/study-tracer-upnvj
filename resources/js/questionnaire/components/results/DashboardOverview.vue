@@ -5,7 +5,18 @@
 -->
 <template>
     <div class="dashboard-overview">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <!-- Empty State when no responses found in the selected period -->
+        <EmptyState
+            v-if="!statistics.has_responses"
+            title="No responses in this time period"
+            description="There are no responses for the selected time period. Try selecting a different date range."
+            icon="calendar"
+            actionText="View all responses"
+            @action="resetPeriod"
+        />
+
+        <!-- Dashboard content when responses exist -->
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <!-- Timeline Responses Card -->
             <div
                 class="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition-shadow"
@@ -168,9 +179,14 @@
 <script>
 import { ref, computed, onMounted, watch } from "vue";
 import Chart from "chart.js/auto";
+import EmptyState from "../ui/EmptyState.vue";
 
 export default {
     name: "DashboardOverview",
+
+    components: {
+        EmptyState,
+    },
 
     props: {
         statistics: {
@@ -185,7 +201,9 @@ export default {
         },
     },
 
-    setup(props) {
+    emits: ["resetPeriod"],
+
+    setup(props, { emit }) {
         const timelineCanvas = ref(null);
         const completionCanvas = ref(null);
         const timelineView = ref("daily");
@@ -202,7 +220,7 @@ export default {
         });
 
         const hasCompletionData = computed(() => {
-            return props.statistics.total_responses > 0;
+            return (props.statistics.total_responses || 0) > 0;
         });
 
         const completionPercentage = computed(() => {
@@ -214,6 +232,13 @@ export default {
             const completed = props.statistics.completed_responses || 0;
             return total - completed;
         });
+
+        /**
+         * Reset the period filter to view all responses
+         */
+        const resetPeriod = () => {
+            emit("resetPeriod");
+        };
 
         // Methods for chart creation
         const createTimelineChart = () => {
@@ -309,7 +334,7 @@ export default {
             // Get completion data
             const completed = props.statistics.completed_responses || 0;
             const inProgress =
-                props.statistics.total_responses - completed || 0;
+                (props.statistics.total_responses || 0) - completed || 0;
 
             // Destroy existing chart if it exists
             if (completionChart) {
@@ -347,11 +372,12 @@ export default {
                             displayColors: false,
                             callbacks: {
                                 label: (context) => {
+                                    const total = completed + inProgress;
                                     return `${context.label}: ${
                                         context.parsed
                                     } (${Math.round(
                                         (context.parsed * 100) /
-                                            (completed + inProgress)
+                                            (total > 0 ? total : 1)
                                     )}%)`;
                                 },
                             },
@@ -452,15 +478,19 @@ export default {
 
         // Lifecycle hooks and watchers
         onMounted(() => {
-            createTimelineChart();
-            createCompletionChart();
+            if (props.statistics.has_responses !== false) {
+                createTimelineChart();
+                createCompletionChart();
+            }
         });
 
         watch(
             () => props.statistics,
-            () => {
-                createTimelineChart();
-                createCompletionChart();
+            (newVal) => {
+                if (newVal.has_responses !== false) {
+                    createTimelineChart();
+                    createCompletionChart();
+                }
             },
             { deep: true }
         );
@@ -478,6 +508,7 @@ export default {
             hasCompletionData,
             completionPercentage,
             inProgressCount,
+            resetPeriod,
         };
     },
 };
@@ -500,11 +531,9 @@ export default {
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: scale(0.9);
     }
     to {
         opacity: 1;
-        transform: scale(1);
     }
 }
 </style>

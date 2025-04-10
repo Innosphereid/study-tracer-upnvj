@@ -68,7 +68,8 @@ interface ResponseRepositoryInterface extends RepositoryInterface
      * Get response statistics for a questionnaire
      *
      * @param int $questionnaireId
+     * @param array $filters Optional filters such as date range
      * @return array
      */
-    public function getStatistics(int $questionnaireId): array;
+    public function getStatistics(int $questionnaireId, array $filters = []): array;
 } 
