@@ -47,3 +47,240 @@ img.logo {
 .font-display {
     font-family: var(--font-display);
 }
+
+/* Dropdown menu fixes */
+.dropdown-menu {
+    position: absolute;
+    z-index: 100;
+    overflow: visible;
+}
+
+/* Membuat container dropdown tetap visible */
+.dropdown-container {
+    position: relative;
+    overflow: visible;
+}
+
+/* Make sure dropdowns are displayed above all other content */
+.dropdown-menu-container {
+    position: relative;
+    z-index: 50;
+}
+
+/* Global toast styles */
+#global-toast-container {
+    z-index: 9999;
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    pointer-events: none;
+    max-width: 100%;
+    width: auto;
+}
+
+#global-toast-container > div {
+    opacity: 0;
+    transform: translateY(-1rem);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border-radius: 0.375rem;
+    margin-bottom: 0.75rem;
+    pointer-events: auto;
+    transition: all 0.3s ease-out;
+    max-width: calc(100vw - 2rem);
+    width: 350px;
+}
+
+#global-toast-container > div .text-gray-500 {
+    word-break: break-all;
+    overflow-wrap: break-word;
+    white-space: normal;
+}
+
+#global-toast-container > div.translate-y-0 {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Enhanced pagination styles */
+.pagination-container {
+    @apply mt-4 flex justify-center;
+}
+
+.pagination-container nav {
+    @apply inline-flex shadow-sm rounded-md overflow-hidden border border-gray-300;
+}
+
+.pagination-container nav > div {
+    @apply inline-flex items-center;
+}
+
+.pagination-container nav > div:first-child,
+.pagination-container nav > div:last-child {
+    @apply flex items-center;
+}
+
+.pagination-container span.relative,
+.pagination-container a.relative {
+    @apply relative inline-flex items-center justify-center px-3 py-2 text-sm font-medium min-w-[2.5rem];
+    height: 2.5rem;
+}
+
+.pagination-container a.relative {
+    @apply bg-white text-gray-700 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-colors;
+}
+
+.pagination-container span[aria-current="page"] {
+    @apply z-10 bg-indigo-600 text-white font-semibold;
+}
+
+.pagination-container span:not([aria-current="page"]) {
+    @apply bg-white text-gray-400 cursor-not-allowed;
+}
+
+.pagination-container span.text-gray-700 {
+    @apply px-4 py-2 bg-white;
+}
+
+/* Next/Previous links */
+.pagination-container a[rel="prev"],
+.pagination-container a[rel="next"] {
+    @apply px-3 py-2 border-gray-300 bg-white text-gray-700 font-medium;
+}
+
+/* Hide one of the duplicate result info text */
+.pagination-container + .pagination-container {
+    display: none;
+}
+
+/* Pagination wrapper for better alignment */
+.pagination-nav-wrapper {
+    @apply flex flex-col sm:flex-row justify-between items-center gap-4;
+}
+
+.pagination-info {
+    @apply text-sm text-gray-700;
+}
+
+/* Active, hover and focus states for buttons */
+.pagination-container a.relative:hover {
+    @apply bg-gray-100;
+}
+
+.pagination-container a.relative:focus {
+    @apply outline-none ring-2 ring-indigo-500 ring-offset-1;
+}
+
+.pagination-container span[aria-current="page"] {
+    @apply text-white font-semibold;
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+}
+
+/* Improved compact pagination styling */
+.pagination-container {
+    @apply flex justify-center;
+    width: auto;
+}
+
+.pagination-container nav {
+    @apply inline-flex rounded-md overflow-hidden shadow-sm border border-gray-300;
+    width: auto;
+}
+
+.pagination-container nav > div {
+    @apply flex items-center;
+}
+
+.pagination-container nav > div > span,
+.pagination-container nav > div > a {
+    @apply border-0 border-r border-gray-300 last:border-r-0 m-0;
+    min-width: 40px;
+    height: 40px;
+}
+
+.pagination-container span[aria-current="page"] {
+    @apply bg-indigo-600 text-white font-medium border-indigo-600;
+}
+
+.pagination-container a[rel="prev"],
+.pagination-container a[rel="next"] {
+    @apply px-4 py-2 border-gray-300 bg-white text-gray-700 font-medium;
+    width: auto;
+    min-width: 80px;
+}
+
+/* Improve all button alignment */
+.pagination-container span,
+.pagination-container a {
+    @apply flex items-center justify-center;
+}
+
+/* Pagination navigation wrapper */
+.pagination-nav-wrapper {
+    @apply flex flex-col sm:flex-row items-center justify-between gap-2 mb-2;
+}
+
+.pagination-info {
+    @apply text-sm text-gray-700 order-2 sm:order-1;
+}
+
+.pagination-container {
+    @apply order-1 sm:order-2;
+}
+
+/* New Minimalist Elegant Pagination */
+.pagination-nav {
+    @apply py-4;
+}
+
+.pagination-wrapper {
+    @apply flex justify-between items-center;
+    max-width: 100%;
+}
+
+.pagination-prev,
+.pagination-next {
+    @apply flex-shrink-0;
+    width: 120px;
+}
+
+.pagination-prev {
+    @apply text-left;
+}
+
+.pagination-next {
+    @apply text-right;
+}
+
+.pagination-numbers {
+    @apply flex-grow flex justify-center items-center px-2;
+}
+
+.pagination-numbers-container {
+    @apply inline-flex items-center;
+}
+
+.pagination-button {
+    @apply inline-flex items-center justify-center px-4 py-2 mx-1 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500 transition-colors duration-200 ease-in-out;
+    min-width: 40px;
+}
+
+.pagination-button:hover {
+    @apply bg-gray-50 text-gray-800;
+}
+
+.pagination-button-active {
+    @apply bg-indigo-600 text-white border-indigo-600 font-semibold;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.pagination-button-disabled {
+    @apply text-gray-400 cursor-not-allowed bg-gray-50;
+}
+
+.pagination-button-disabled:hover {
+    @apply bg-gray-50 text-gray-400;
+}

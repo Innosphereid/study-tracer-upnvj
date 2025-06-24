@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\SuperAdmin\DashboardController as SuperAdminDashboardController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 
 /*
 |--------------------------------------------------------------------------
@@ -70,7 +71,7 @@ Route::post('/security/report', [SecurityController::class, 'submitReport'])
 
 // Dashboard Routes - Shared route for both admin and superadmin
 Route::get('/dashboard', function () {
-    if (auth()->user()->role === 'superadmin') {
+    if (Auth::user()->role === 'superadmin') {
         return app()->make(SuperAdminDashboardController::class)->index();
     }
     return app()->make(AdminDashboardController::class)->index();
@@ -84,15 +85,6 @@ Route::get('/superadmin/dashboard', [SuperAdminDashboardController::class, 'inde
 Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])
     ->middleware(['auth', 'role:admin,superadmin'])
     ->name('admin.dashboard');
-
-// Fallback route
-Route::fallback(function () {
-    if (auth()->check()) {
-        return redirect()->route('dashboard');
-    }
-    
-    return redirect()->route('login');
-});
 
 // Email Preview Routes (for development only)
 Route::prefix('email-preview')->name('email.preview.')->group(function () {
@@ -111,4 +103,98 @@ Route::prefix('email-preview')->name('email.preview.')->group(function () {
             'reset_time' => now()
         ]);
     })->name('reset-success');
+});
+
+// Questionnaire Routes
+Route::prefix('kuesioner')->middleware(['auth'])->group(function () {
+    // Menampilkan daftar kuesioner
+    Route::get('/', 'App\Http\Controllers\Questionnaire\QuestionnaireController@index')->name('questionnaires.index');
+    
+    // Membuat kuesioner baru
+    Route::get('/create', 'App\Http\Controllers\Questionnaire\QuestionnaireController@create')->name('questionnaires.create');
+    Route::post('/', 'App\Http\Controllers\Questionnaire\QuestionnaireController@store')->name('questionnaires.store');
+    
+    // Menampilkan, mengedit, dan menghapus kuesioner
+    Route::get('/{id}', 'App\Http\Controllers\Questionnaire\QuestionnaireController@show')->name('questionnaires.show')->where('id', '[0-9]+');
+    Route::get('/{id}/edit', 'App\Http\Controllers\Questionnaire\QuestionnaireController@edit')->name('questionnaires.edit');
+    Route::put('/{id}', 'App\Http\Controllers\Questionnaire\QuestionnaireController@update')->name('questionnaires.update');
+    Route::delete('/{id}', 'App\Http\Controllers\Questionnaire\QuestionnaireController@destroy')->name('questionnaires.destroy');
+    
+    // Melihat preview kuesioner
+    Route::get('/{id}/preview', 'App\Http\Controllers\Questionnaire\QuestionnaireController@preview')->name('questionnaires.preview');
+    
+    // Mempublikasikan kuesioner
+    Route::post('/{id}/publish', 'App\Http\Controllers\Questionnaire\QuestionnaireController@publish')->name('questionnaires.publish');
+    
+    // Menutup kuesioner
+    Route::post('/{id}/close', 'App\Http\Controllers\Questionnaire\QuestionnaireController@close')->name('questionnaires.close');
+    
+    // Menduplikasi kuesioner
+    Route::post('/{id}/clone', 'App\Http\Controllers\Questionnaire\QuestionnaireController@clone')->name('questionnaires.clone');
+    
+    // Mengelola respons
+    Route::get('/{questionnaireId}/responses', 'App\Http\Controllers\Questionnaire\ResponseController@index')->name('questionnaires.responses.index');
+    Route::get('/{questionnaireId}/responses/{responseId}', 'App\Http\Controllers\Questionnaire\ResponseController@show')->name('questionnaires.responses.show');
+    Route::delete('/{questionnaireId}/responses/{responseId}', 'App\Http\Controllers\Questionnaire\ResponseController@destroy')->name('questionnaires.responses.destroy');
+    Route::get('/{questionnaireId}/responses/export', 'App\Http\Controllers\Questionnaire\ResponseController@export')->name('questionnaires.responses.export');
+    Route::get('/{questionnaireId}/statistics', 'App\Http\Controllers\Questionnaire\ResponseController@statistics')->name('questionnaires.statistics');
+    
+    // Results page (alias for statistics)
+    Route::get('/{questionnaireId}/results', 'App\Http\Controllers\Questionnaire\ResponseController@statistics')->name('questionnaires.results');
+    
+    // Export results in different formats
+    Route::get('/{questionnaireId}/results/export/{format?}', 'App\Http\Controllers\Questionnaire\ResultExportController@export')
+        ->name('questionnaires.results.export')
+        ->where('questionnaireId', '[0-9]+');
+    
+    // Mengelola answer details
+    Route::get('/answer-details/response/{responseId}', 'App\Http\Controllers\Questionnaire\AnswerDetailController@getByResponse')->name('answer-details.by-response');
+    Route::get('/answer-details/question/{questionId}', 'App\Http\Controllers\Questionnaire\AnswerDetailController@getByQuestion')->name('answer-details.by-question');
+    Route::get('/answer-details/questionnaire/{questionnaireId}', 'App\Http\Controllers\Questionnaire\AnswerDetailController@getByQuestionnaire')->name('answer-details.by-questionnaire');
+    Route::get('/answer-details/response/{responseId}/question/{questionId}', 'App\Http\Controllers\Questionnaire\AnswerDetailController@getByResponseAndQuestion')->name('answer-details.by-response-and-question');
+    
+    // Sections API
+    Route::get('/{questionnaireId}/sections', 'App\Http\Controllers\Questionnaire\SectionController@getByQuestionnaire')->name('sections.by-questionnaire');
+    
+    // Mengelola file upload
+    Route::prefix('file-upload')->group(function () {
+        Route::post('/store', 'App\Http\Controllers\Questionnaire\FileUploadQuestionController@store')
+            ->name('file-upload.store');
+        Route::put('/{id}', 'App\Http\Controllers\Questionnaire\FileUploadQuestionController@update')
+            ->name('file-upload.update');
+        Route::post('/validate', 'App\Http\Controllers\Questionnaire\FileUploadQuestionController@validateFileType')
+            ->name('file-upload.validate');
+    });
+});
+
+// Endpoint untuk alumni (tidak perlu login)
+Route::prefix('kuesioner')->group(function () {
+    // Access questionnaire by slug - menggunakan FormController
+    Route::get('/{slug}', 'App\Http\Controllers\Questionnaire\FormController@show')
+        ->where('slug', '[a-z0-9\-]+')
+        ->name('form.show');
+    
+    // Submit jawaban kuesioner
+    Route::post('/submit', 'App\Http\Controllers\Questionnaire\FormController@store')
+        ->name('form.submit');
+    
+    // Thank you page after submission
+    Route::get('/{slug}/thank-you', 'App\Http\Controllers\Questionnaire\FormController@thankYou')
+        ->name('form.thank-you');
+});
+
+Route::get('/vue-test', function() {
+    return view('vue-test');
+})->name('vue-test');
+
+// Questionnaire Preview Route
+Route::get('/preview', 'App\Http\Controllers\Questionnaire\PreviewController@index')->name('preview.index');
+
+// Fallback route
+Route::fallback(function () {
+    if (Auth::check()) {
+        return redirect()->route('dashboard');
+    }
+    
+    return redirect()->route('login');
 });

@@ -5,6 +5,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="@yield('description', 'UPNVJ Study Tracer System')">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    @yield('head', '')
     <title>@yield('title', 'UPNVJ Study Tracer System')</title>
 
     <!-- Fonts -->
@@ -84,6 +86,10 @@
                 </div>
             </div>
         </footer>
+
+        <!-- Scripts -->
+        @vite(['resources/js/app.js'])
+        @yield('scripts')
     </div>
 </body>
 

@@ -3,10 +3,49 @@ import Alpine from "alpinejs";
 import "./email-check";
 import collapse from "@alpinejs/collapse";
 
+// Register collapse plugin
+Alpine.plugin(collapse);
+
+// Tambahkan konfigurasi untuk dropdown
+document.addEventListener("alpine:init", () => {
+    Alpine.data("dropdown", () => ({
+        open: false,
+        toggle() {
+            this.open = !this.open;
+        },
+        close() {
+            this.open = false;
+        },
+        copyShareLink(link) {
+            navigator.clipboard
+                .writeText(link)
+                .then(() => {
+                    // Panggil fungsi global untuk menampilkan toast
+                    const linkDisplay =
+                        link.length > 35 ? link.substring(0, 30) + "..." : link;
+                    window.showGlobalToast(
+                        "Berhasil!",
+                        `Link berhasil disalin:\n${linkDisplay}`
+                    );
+                    // Tutup dropdown setelah delay singkat
+                    setTimeout(() => {
+                        this.open = false;
+                    }, 300);
+                })
+                .catch((err) => {
+                    console.error("Gagal menyalin: ", err);
+                    window.showGlobalToast(
+                        "Gagal!",
+                        "Tidak dapat menyalin link. Coba copy manual.",
+                        3000
+                    );
+                });
+        },
+    }));
+});
+
 // Make Alpine available globally
 window.Alpine = Alpine;
-
-Alpine.plugin(collapse);
 
 // Initialize Alpine
 Alpine.start();
@@ -46,4 +85,35 @@ document.addEventListener("DOMContentLoaded", () => {
             form.classList.add("opacity-95", "scale-[0.99]");
         });
     }
+
+    // Add animation for form labels
+    const formInputs = document.querySelectorAll(
+        ".form-input, .form-textarea, .form-select"
+    );
+
+    formInputs.forEach((input) => {
+        input.addEventListener("focus", () => {
+            const label = input.previousElementSibling;
+            if (label && label.classList.contains("form-label")) {
+                label.classList.add("form-label-focus");
+            }
+        });
+
+        input.addEventListener("blur", () => {
+            if (input.value === "") {
+                const label = input.previousElementSibling;
+                if (label && label.classList.contains("form-label")) {
+                    label.classList.remove("form-label-focus");
+                }
+            }
+        });
+
+        // Check on load if input has value
+        if (input.value !== "") {
+            const label = input.previousElementSibling;
+            if (label && label.classList.contains("form-label")) {
+                label.classList.add("form-label-focus");
+            }
+        }
+    });
 });
