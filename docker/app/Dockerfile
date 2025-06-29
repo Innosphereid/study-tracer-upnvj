@@ -1,3 +1,15 @@
+# Stage 1: Build assets
+FROM node:18-alpine as frontend
+
+WORKDIR /app
+
+COPY package*.json vite.config.js ./
+COPY resources resources
+
+RUN npm install
+RUN npm run build
+
+# Stage 2: Laravel Application
 FROM php:8.2-fpm-alpine
 
 # Install dependencies
@@ -6,7 +18,6 @@ RUN apk add --no-cache \
     libjpeg-turbo-dev freetype-dev libpng-dev libzip-dev \
     libxml2-dev oniguruma-dev zlib-dev \
     autoconf build-base pkgconf \
-    nodejs npm \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         pdo pdo_mysql zip gd opcache \
@@ -23,12 +34,11 @@ WORKDIR /var/www
 # Copy application files
 COPY . .
 
+# Copy built frontend from previous stage
+COPY --from=frontend /app/public/build /var/www/public/build
+
 # Install PHP dependencies
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader
-
-# Build frontend assets with Vite
-RUN npm install \
-    && npm run build
 
 # Fix permissions for Laravel
 RUN chown -R www-data:www-data /var/www \
